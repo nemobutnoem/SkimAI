@@ -1,0 +1,303 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>User Management - AISKIM</title>
+  <link rel="stylesheet" href="styles.css">
+  <style>
+    body { background: var(--gray-50); }
+    .main-content { padding: var(--space-xl); max-width: 1300px; margin: 0 auto; }
+
+    .page-top { display: flex; align-items: center; justify-content: space-between; margin-bottom: var(--space-xl); }
+    .page-top h2 { font-size: var(--font-xl); font-weight: 700; }
+    .page-top p { font-size: var(--font-sm); color: var(--text-secondary); }
+
+    /* Search & Filter Bar */
+    .filter-bar { display: flex; align-items: center; gap: var(--space-md); margin-bottom: var(--space-lg); }
+    .search-input { flex: 1; max-width: 400px; padding: 10px 16px 10px 40px; border: 1px solid var(--border-color); border-radius: var(--radius-md); font-family: var(--font-family); font-size: var(--font-sm); outline: none; background: var(--white) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%23B2BEC3' stroke-width='2'%3E%3Ccircle cx='11' cy='11' r='8'/%3E%3Cpath d='m21 21-4.35-4.35'/%3E%3C/svg%3E") no-repeat 14px center; transition: border-color var(--transition-fast); }
+    .search-input:focus { border-color: var(--primary); }
+    .filter-btn { display: flex; align-items: center; gap: 6px; padding: 10px 16px; border: 1px solid var(--border-color); border-radius: var(--radius-md); background: var(--white); font-family: var(--font-family); font-size: var(--font-sm); color: var(--text-secondary); cursor: pointer; margin-left: auto; }
+
+    /* Filter Row */
+    .filter-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: var(--space-md); margin-bottom: var(--space-lg); }
+    .filter-select { padding: 8px 32px 8px 12px; border: 1px solid var(--border-color); border-radius: var(--radius-md); font-family: var(--font-family); font-size: var(--font-sm); color: var(--text-secondary); background: var(--white); appearance: none; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23636E72' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 10px center; cursor: pointer; outline: none; }
+
+    /* Summary Stats */
+    .user-stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: var(--space-md); margin-bottom: var(--space-lg); }
+    .user-stat-card { background: var(--white); border-radius: var(--radius-lg); padding: var(--space-lg); border: 1px solid var(--border-color); }
+    .user-stat-card .us-label { font-size: var(--font-sm); color: var(--text-secondary); display: flex; align-items: center; gap: 6px; margin-bottom: var(--space-sm); }
+    .user-stat-card .us-value { font-size: var(--font-2xl); font-weight: 700; }
+    .user-stat-card .us-change { font-size: var(--font-xs); font-weight: 600; color: var(--green); margin-top: 4px; }
+
+    /* Users Table */
+    .users-table-card { background: var(--white); border-radius: var(--radius-lg); border: 1px solid var(--border-color); overflow: hidden; }
+    .users-table { width: 100%; }
+    .users-table thead th { font-size: var(--font-xs); text-transform: uppercase; letter-spacing: 0.5px; }
+    .users-table tbody td { font-size: var(--font-sm); }
+
+    .user-cell { display: flex; align-items: center; gap: var(--space-sm); }
+    .user-avatar-sm { width: 32px; height: 32px; border-radius: var(--radius-full); background: var(--primary-bg); display: flex; align-items: center; justify-content: center; font-size: var(--font-xs); font-weight: 600; color: var(--primary); flex-shrink: 0; }
+    .user-cell .user-name { font-weight: 600; font-size: var(--font-sm); }
+    .user-cell .user-role-sub { font-size: var(--font-xs); color: var(--text-muted); }
+
+    .badge-active { background: var(--green-light); color: var(--green); }
+    .badge-trial { background: var(--orange-light); color: #E17055; }
+    .badge-suspended { background: var(--orange-light); color: #E17055; }
+    .badge-cancelled { background: var(--gray-100); color: var(--text-secondary); }
+
+    .view-link { color: var(--primary); font-weight: 500; font-size: var(--font-sm); cursor: pointer; }
+    .view-link:hover { text-decoration: underline; }
+
+    @media (max-width: 1024px) {
+      .filter-row { grid-template-columns: repeat(2, 1fr); }
+      .user-stats { grid-template-columns: repeat(2, 1fr); }
+    }
+  </style>
+</head>
+<body>
+  <!-- Admin Navbar -->
+  <nav class="admin-navbar">
+    <a href="index.html" class="navbar-logo">
+      <div class="logo-icon">AI</div>
+      <span>AISKIM</span>
+    </a>
+    <span style="background:var(--red);color:white;padding:3px 10px;border-radius:var(--radius-full);font-size:11px;font-weight:700;letter-spacing:0.5px;">ADMIN</span>
+    <div class="admin-nav-links">
+      <a href="admin-dashboard.html">Dashboard</a>
+      <a href="admin-reports.html">Reports</a>
+      <a href="admin-users.html" class="active">Users</a>
+      <a href="admin-revenue.html">Revenue</a>
+      <a href="#">Settings</a>
+    </div>
+    <div class="admin-nav-right">
+      <a href="index.html" style="font-size:var(--font-sm);color:var(--text-secondary);margin-right:8px;">← User View</a>
+      <button class="icon-btn">🔍</button>
+      <button class="icon-btn">🔔</button>
+      <div class="avatar">AD</div>
+      <a href="login.html" class="icon-btn" title="Logout">🚪</a>
+    </div>
+  </nav>
+
+  <div class="main-content">
+    <div class="page-top">
+      <div>
+        <h2>User Management</h2>
+        <p>Manage all users, accounts, and subscription plans.</p>
+      </div>
+      <button class="btn btn-primary btn-sm">+ Add User</button>
+    </div>
+
+    <!-- Search & Filter -->
+    <div class="filter-bar">
+      <input type="text" class="search-input" placeholder="Search by name, email, or company...">
+      <button class="filter-btn">🔧 Filters</button>
+    </div>
+
+    <div class="filter-row">
+      <select class="filter-select">
+        <option>All Roles</option>
+        <option>Manager</option>
+        <option>Analyst</option>
+        <option>Viewer</option>
+      </select>
+      <select class="filter-select">
+        <option>All Types</option>
+        <option>Premium</option>
+        <option>Standard</option>
+      </select>
+      <select class="filter-select">
+        <option>All Statuses</option>
+        <option>Active</option>
+        <option>Trial</option>
+        <option>Suspended</option>
+        <option>Cancelled</option>
+      </select>
+      <select class="filter-select">
+        <option>All Levels</option>
+        <option>High</option>
+        <option>Medium</option>
+        <option>Low</option>
+      </select>
+    </div>
+
+    <!-- Summary Stats -->
+    <div class="user-stats">
+      <div class="user-stat-card">
+        <div class="us-label">👥 Total Users</div>
+        <div class="us-value">1,847</div>
+        <div class="us-change">+12.5% vs last month</div>
+      </div>
+      <div class="user-stat-card">
+        <div class="us-label">⭐ Premium Users</div>
+        <div class="us-value">624</div>
+        <div class="us-change">+8.3% vs last month</div>
+      </div>
+      <div class="user-stat-card">
+        <div class="us-label">🟢 Active Today</div>
+        <div class="us-value">892</div>
+        <div class="us-change">+5.2% of total</div>
+      </div>
+      <div class="user-stat-card">
+        <div class="us-label" style="color: var(--red);">🔴 Trial Users</div>
+        <div class="us-value">143</div>
+        <div class="us-change" style="color: var(--text-muted);">Avg. 14 days remaining</div>
+      </div>
+    </div>
+
+    <!-- Users Table -->
+    <div class="users-table-card">
+      <table class="users-table">
+        <thead>
+          <tr>
+            <th>User</th>
+            <th>Email</th>
+            <th>Role</th>
+            <th>Account Type</th>
+            <th>Status</th>
+            <th>Monthly Usage</th>
+            <th>Last Login</th>
+            <th>Created Date</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>
+              <div class="user-cell">
+                <div class="user-avatar-sm">SM</div>
+                <div>
+                  <div class="user-name">Sarah Mitchell</div>
+                  <div class="user-role-sub">TechCorp</div>
+                </div>
+              </div>
+            </td>
+            <td>sarah.mitchell@techcorp.com</td>
+            <td>Manager</td>
+            <td><span class="badge badge-primary">Premium</span></td>
+            <td><span class="badge badge-active">● Active</span></td>
+            <td>847 / 900</td>
+            <td>3 hours ago</td>
+            <td>Jan 15, 2024</td>
+            <td><span class="view-link">View</span></td>
+          </tr>
+          <tr>
+            <td>
+              <div class="user-cell">
+                <div class="user-avatar-sm" style="background: var(--green-light); color: var(--green);">MC</div>
+                <div>
+                  <div class="user-name">Michael Chen</div>
+                  <div class="user-role-sub">DataFlow Inc</div>
+                </div>
+              </div>
+            </td>
+            <td>m.chen@dataflow.com</td>
+            <td>Admin</td>
+            <td><span class="badge badge-primary">Premium</span></td>
+            <td><span class="badge badge-active">● Active</span></td>
+            <td>1,234 / 2,000</td>
+            <td>15 min ago</td>
+            <td>Mar 3, 2024</td>
+            <td><span class="view-link">View</span></td>
+          </tr>
+          <tr>
+            <td>
+              <div class="user-cell">
+                <div class="user-avatar-sm" style="background: var(--orange-light); color: #E17055;">JR</div>
+                <div>
+                  <div class="user-name">James Rodriguez</div>
+                  <div class="user-role-sub">Insight Labs</div>
+                </div>
+              </div>
+            </td>
+            <td>james@insightlabs.co</td>
+            <td>Analyst</td>
+            <td><span class="badge badge-gray">Standard</span></td>
+            <td><span class="badge badge-trial">● Trial</span></td>
+            <td>234 / 500</td>
+            <td>Mar 2, 2024</td>
+            <td>Jan 28, 2024</td>
+            <td><span class="view-link">View</span></td>
+          </tr>
+          <tr>
+            <td>
+              <div class="user-cell">
+                <div class="user-avatar-sm" style="background: var(--blue-light); color: var(--blue);">EM</div>
+                <div>
+                  <div class="user-name">Emily Watson</div>
+                  <div class="user-role-sub">GreenAnalytics</div>
+                </div>
+              </div>
+            </td>
+            <td>emily.watson@greenanalytics.co</td>
+            <td>Manager</td>
+            <td><span class="badge badge-primary">Premium</span></td>
+            <td><span class="badge badge-active">● Active</span></td>
+            <td>567 / 1,000</td>
+            <td>5 hours ago</td>
+            <td>Dec 12, 2023</td>
+            <td><span class="view-link">View</span></td>
+          </tr>
+          <tr>
+            <td>
+              <div class="user-cell">
+                <div class="user-avatar-sm" style="background: var(--red-light); color: var(--red);">DP</div>
+                <div>
+                  <div class="user-name">David Park</div>
+                  <div class="user-role-sub">Insight Cafe</div>
+                </div>
+              </div>
+            </td>
+            <td>david.park@insightcafe.co</td>
+            <td>Viewer</td>
+            <td><span class="badge badge-gray">Standard</span></td>
+            <td><span class="badge badge-suspended">● Suspended</span></td>
+            <td>45 / 100</td>
+            <td>5 days ago</td>
+            <td>Feb 18, 2024</td>
+            <td><span class="view-link">View</span></td>
+          </tr>
+          <tr>
+            <td>
+              <div class="user-cell">
+                <div class="user-avatar-sm">LA</div>
+                <div>
+                  <div class="user-name">Lisa Anderson</div>
+                  <div class="user-role-sub">Strategic Group</div>
+                </div>
+              </div>
+            </td>
+            <td>l.anderson@strategicgroup.io</td>
+            <td>Analyst</td>
+            <td><span class="badge badge-primary">Premium</span></td>
+            <td><span class="badge badge-active">● Active</span></td>
+            <td>412 / 700</td>
+            <td>9 hours ago</td>
+            <td>Jan 26, 2024</td>
+            <td><span class="view-link">View</span></td>
+          </tr>
+          <tr>
+            <td>
+              <div class="user-cell">
+                <div class="user-avatar-sm" style="background: var(--gray-100); color: var(--text-secondary);">RT</div>
+                <div>
+                  <div class="user-name">Robert Taylor</div>
+                  <div class="user-role-sub">Nexus Research</div>
+                </div>
+              </div>
+            </td>
+            <td>robert.taylor@nexusresearch.com</td>
+            <td>Manager</td>
+            <td><span class="badge badge-gray">Standard</span></td>
+            <td><span class="badge badge-cancelled">● Cancelled</span></td>
+            <td>116 / 100</td>
+            <td>12 days ago</td>
+            <td>Oct 5, 2023</td>
+            <td><span class="view-link">View</span></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</body>
+</html>

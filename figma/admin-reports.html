@@ -1,0 +1,302 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Reports Management - AISKIM</title>
+  <link rel="stylesheet" href="styles.css">
+  <style>
+    body { background: var(--gray-50); }
+    .main-content { padding: var(--space-xl); max-width: 1300px; margin: 0 auto; }
+
+    .page-top { display: flex; align-items: center; justify-content: space-between; margin-bottom: var(--space-xl); }
+    .page-top h2 { font-size: var(--font-xl); font-weight: 700; }
+    .page-top p { font-size: var(--font-sm); color: var(--text-secondary); }
+    .page-top-right { display: flex; align-items: center; gap: var(--space-md); }
+    .search-reports { padding: 8px 16px 8px 36px; border: 1px solid var(--border-color); border-radius: var(--radius-md); font-family: var(--font-family); font-size: var(--font-sm); outline: none; background: var(--white) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%23B2BEC3' stroke-width='2'%3E%3Ccircle cx='11' cy='11' r='8'/%3E%3Cpath d='m21 21-4.35-4.35'/%3E%3C/svg%3E") no-repeat 12px center; transition: border-color var(--transition-fast); }
+    .search-reports:focus { border-color: var(--primary); }
+
+    /* Status Tabs */
+    .status-tabs { display: flex; gap: var(--space-sm); margin-bottom: var(--space-lg); }
+    .status-tab { padding: 8px 18px; border-radius: var(--radius-full); font-size: var(--font-sm); font-weight: 500; border: none; cursor: pointer; font-family: var(--font-family); transition: all var(--transition-fast); background: var(--white); color: var(--text-secondary); border: 1px solid var(--border-color); }
+    .status-tab.active { background: var(--primary); color: white; border-color: var(--primary); }
+    .status-tab:hover:not(.active) { border-color: var(--primary); color: var(--primary); }
+    .status-tab .count { font-weight: 700; margin-left: 4px; }
+
+    /* Alert Banner */
+    .alert-banner { display: flex; align-items: center; gap: var(--space-md); padding: 12px 20px; background: var(--orange-light); border: 1px solid #FDCB6E; border-radius: var(--radius-md); margin-bottom: var(--space-lg); font-size: var(--font-sm); }
+    .alert-banner .ab-icon { font-size: 18px; }
+    .alert-banner .ab-action { color: var(--primary); font-weight: 600; margin-left: auto; cursor: pointer; }
+
+    /* Two Column Layout */
+    .reports-layout { display: grid; grid-template-columns: 1fr 380px; gap: var(--space-lg); }
+
+    /* Draft Reports */
+    .report-item { padding: var(--space-lg); border-bottom: 1px solid var(--border-color); }
+    .report-item:last-child { border-bottom: none; }
+    .report-item-header { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: var(--space-sm); }
+    .report-item h4 { font-size: var(--font-base); font-weight: 600; margin-bottom: 2px; }
+    .report-item .report-category { font-size: var(--font-xs); color: var(--text-muted); }
+    .report-tags { display: flex; gap: 6px; margin: var(--space-sm) 0; }
+    .report-tag { padding: 2px 8px; border-radius: var(--radius-sm); font-size: var(--font-xs); font-weight: 500; }
+    .report-tag.saas { background: var(--blue-light); color: var(--blue); }
+    .report-tag.growth { background: var(--green-light); color: var(--green); }
+    .report-tag.fintech { background: var(--primary-bg); color: var(--primary); }
+
+    .report-meta { display: flex; align-items: center; gap: var(--space-lg); margin-top: var(--space-sm); }
+    .report-author { display: flex; align-items: center; gap: 8px; font-size: var(--font-sm); }
+    .report-author .author-avatar { width: 24px; height: 24px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 10px; font-weight: 600; color: white; }
+    .report-score { display: flex; align-items: center; gap: 6px; font-size: var(--font-sm); }
+    .score-bar { width: 60px; height: 6px; border-radius: 3px; background: var(--gray-200); overflow: hidden; }
+    .score-fill { height: 100%; border-radius: 3px; }
+    .report-status { font-size: var(--font-xs); font-weight: 500; color: var(--text-muted); }
+    .report-actions { display: flex; gap: var(--space-sm); font-size: var(--font-sm); }
+    .report-actions a { color: var(--primary); font-weight: 500; cursor: pointer; }
+
+    /* Report Preview Panel */
+    .preview-panel { position: sticky; top: 80px; }
+    .preview-card { margin-bottom: var(--space-lg); }
+    .preview-card h4 { font-size: var(--font-base); font-weight: 600; margin-bottom: var(--space-md); }
+    .preview-title { font-size: var(--font-md); font-weight: 700; margin-bottom: var(--space-sm); }
+    .preview-desc { font-size: var(--font-sm); color: var(--text-secondary); line-height: 1.5; margin-bottom: var(--space-md); }
+
+    .preview-chart-placeholder { background: var(--gray-50); border-radius: var(--radius-md); padding: var(--space-lg); margin-bottom: var(--space-md); }
+    .preview-chart-title { font-size: var(--font-sm); font-weight: 600; margin-bottom: var(--space-sm); text-align: center; }
+    .mini-bar-chart { display: flex; align-items: flex-end; justify-content: center; gap: 6px; height: 60px; }
+    .mini-bar { width: 20px; border-radius: 3px 3px 0 0; background: var(--primary); }
+
+    .preview-stats { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: var(--space-sm); margin-top: var(--space-sm); }
+    .preview-stat { font-size: var(--font-xs); }
+    .preview-stat .ps-label { color: var(--text-muted); }
+    .preview-stat .ps-value { font-weight: 600; }
+
+    /* Moderation Actions */
+    .mod-actions { display: flex; flex-direction: column; gap: var(--space-sm); margin-bottom: var(--space-lg); }
+    .mod-btn { width: 100%; padding: 12px; border-radius: var(--radius-md); font-size: var(--font-sm); font-weight: 600; border: none; cursor: pointer; font-family: var(--font-family); transition: all var(--transition-base); display: flex; align-items: center; justify-content: center; gap: 8px; }
+    .mod-btn.approve { background: var(--green); color: white; }
+    .mod-btn.approve:hover { background: var(--green-dark); }
+    .mod-btn.revision { background: var(--orange); color: var(--text-primary); }
+    .mod-btn.revision:hover { opacity: 0.9; }
+    .mod-btn.reject { background: var(--red); color: white; }
+    .mod-btn.reject:hover { background: #E55A5A; }
+
+    /* Data Source Health */
+    .health-card h4 { font-size: var(--font-base); font-weight: 600; margin-bottom: var(--space-md); }
+    .health-item { display: flex; align-items: center; gap: var(--space-sm); padding: 8px 0; font-size: var(--font-sm); }
+    .health-dot { width: 8px; height: 8px; border-radius: 50%; }
+    .health-dot.green { background: var(--green); }
+    .health-dot.orange { background: var(--orange); }
+    .health-dot.red { background: var(--red); }
+    .health-time { margin-left: auto; font-size: var(--font-xs); color: var(--text-muted); }
+
+    @media (max-width: 1024px) {
+      .reports-layout { grid-template-columns: 1fr; }
+      .preview-panel { position: static; }
+    }
+  </style>
+</head>
+<body>
+  <!-- Admin Navbar -->
+  <nav class="admin-navbar">
+    <a href="index.html" class="navbar-logo">
+      <div class="logo-icon">AI</div>
+      <span>AISKIM</span>
+    </a>
+    <span style="background:var(--red);color:white;padding:3px 10px;border-radius:var(--radius-full);font-size:11px;font-weight:700;letter-spacing:0.5px;">ADMIN</span>
+    <div class="admin-nav-links">
+      <a href="admin-dashboard.html">Dashboard</a>
+      <a href="admin-reports.html" class="active">Reports</a>
+      <a href="admin-users.html">Users</a>
+      <a href="admin-revenue.html">Revenue</a>
+      <a href="#">Settings</a>
+    </div>
+    <div class="admin-nav-right">
+      <a href="index.html" style="font-size:var(--font-sm);color:var(--text-secondary);margin-right:8px;">← User View</a>
+      <button class="icon-btn">🔔</button>
+      <div class="avatar">AD</div>
+      <a href="login.html" class="icon-btn" title="Logout">🚪</a>
+    </div>
+  </nav>
+
+  <div class="main-content">
+    <div class="page-top">
+      <div>
+        <h2>Reports Management</h2>
+        <p>Manage and moderate market intelligence reports.</p>
+      </div>
+      <div class="page-top-right">
+        <input type="text" class="search-reports" placeholder="Search reports...">
+        <select class="input" style="width: auto; padding: 8px 32px 8px 12px; font-size: var(--font-sm);">
+          <option>All Status</option>
+          <option>Draft</option>
+          <option>Pending</option>
+          <option>Published</option>
+        </select>
+        <button class="btn btn-primary btn-sm">+ Publish Report</button>
+      </div>
+    </div>
+
+    <!-- Status Tabs -->
+    <div class="status-tabs">
+      <button class="status-tab active">Draft<span class="count">(12)</span></button>
+      <button class="status-tab">Pending Review<span class="count">(5)</span></button>
+      <button class="status-tab">Published<span class="count">(34)</span></button>
+      <button class="status-tab">Archived<span class="count">(8)</span></button>
+    </div>
+
+    <!-- Alert Banner -->
+    <div class="alert-banner">
+      <span class="ab-icon">⚠️</span>
+      <span>3 reports have low confidence scores below threshold.</span>
+      <span style="color: var(--red); font-weight: 600;">Review</span>
+    </div>
+
+    <div class="alert-banner" style="background: var(--blue-light); border-color: #74b9ff;">
+      <span class="ab-icon">ℹ️</span>
+      <span>Data sources need refresh – last updated 6 hrs ago.</span>
+      <span class="ab-action">Refresh</span>
+    </div>
+
+    <!-- Reports Layout -->
+    <div class="reports-layout">
+      <!-- Left: Report List -->
+      <div>
+        <div class="card" style="padding: 0;">
+          <div style="padding: var(--space-md) var(--space-lg); border-bottom: 1px solid var(--border-color);">
+            <div style="font-size: var(--font-base); font-weight: 600;">Draft Reports</div>
+          </div>
+
+          <!-- Report Table Header -->
+          <div style="display: grid; grid-template-columns: 2fr 1fr 1fr 1fr 1fr; padding: 10px var(--space-lg); font-size: var(--font-xs); font-weight: 600; color: var(--text-secondary); border-bottom: 1px solid var(--border-color);">
+            <span>Report</span>
+            <span>Author</span>
+            <span>AI Score</span>
+            <span>Status</span>
+            <span>Actions</span>
+          </div>
+
+          <!-- Report 1 -->
+          <div class="report-item">
+            <div style="display: grid; grid-template-columns: 2fr 1fr 1fr 1fr 1fr; align-items: center;">
+              <div>
+                <h4>Q4 2024 SaaS Market Analysis</h4>
+                <span class="report-category">Technology • Enterprise Software</span>
+                <div class="report-tags">
+                  <span class="report-tag saas">SaaS</span>
+                  <span class="report-tag growth">Growth</span>
+                </div>
+              </div>
+              <div class="report-author">
+                <div class="author-avatar" style="background: var(--primary);">JS</div>
+                <span>John Smith</span>
+              </div>
+              <div class="report-score">
+                <div class="score-bar"><div class="score-fill" style="width: 85%; background: var(--green);"></div></div>
+                <span style="font-weight: 600; color: var(--green);">85%</span>
+              </div>
+              <span class="badge badge-gray">Draft</span>
+              <div class="report-actions">
+                <a>Edit</a>
+                <a>Submit</a>
+              </div>
+            </div>
+          </div>
+
+          <!-- Report 2 -->
+          <div class="report-item">
+            <div style="display: grid; grid-template-columns: 2fr 1fr 1fr 1fr 1fr; align-items: center;">
+              <div>
+                <h4>Fintech Trends 2025</h4>
+                <span class="report-category">Finance • Digital Banking</span>
+                <div class="report-tags">
+                  <span class="report-tag fintech">Fintech</span>
+                </div>
+              </div>
+              <div class="report-author">
+                <div class="author-avatar" style="background: var(--orange);">RJ</div>
+                <span>Russell Juáregue</span>
+              </div>
+              <div class="report-score">
+                <div class="score-bar"><div class="score-fill" style="width: 20%; background: var(--red);"></div></div>
+                <span style="font-weight: 600; color: var(--red);">20%</span>
+              </div>
+              <span class="badge badge-orange">Low Score</span>
+              <div class="report-actions">
+                <a>Edit</a>
+                <a>Review</a>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Right: Preview Panel -->
+      <div class="preview-panel">
+        <div class="card preview-card">
+          <h4>Report Preview</h4>
+          <div class="preview-title">Q4 2024 SaaS Market Analysis</div>
+          <div class="preview-desc">Comprehensive analysis of the Software-as-a-Service market trends, growth patterns, and competitive landscape for Q4 2024.</div>
+
+          <div class="preview-chart-placeholder">
+            <div class="preview-chart-title">Market Growth Trend</div>
+            <div class="mini-bar-chart">
+              <div class="mini-bar" style="height: 20px;"></div>
+              <div class="mini-bar" style="height: 28px;"></div>
+              <div class="mini-bar" style="height: 35px;"></div>
+              <div class="mini-bar" style="height: 32px;"></div>
+              <div class="mini-bar" style="height: 45px;"></div>
+              <div class="mini-bar" style="height: 50px;"></div>
+              <div class="mini-bar" style="height: 55px;"></div>
+            </div>
+          </div>
+
+          <div class="preview-stats">
+            <div class="preview-stat">
+              <div class="ps-label">Market Size</div>
+              <div class="ps-value">$145.00</div>
+            </div>
+            <div class="preview-stat">
+              <div class="ps-label">Growth Rate</div>
+              <div class="ps-value" style="color: var(--green);">+18.5%</div>
+            </div>
+            <div class="preview-stat">
+              <div class="ps-label">Confidence</div>
+              <div class="ps-value">85%</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Moderation Actions -->
+        <div class="card">
+          <h4 style="font-size: var(--font-base); font-weight: 600; margin-bottom: var(--space-md);">Moderation Actions</h4>
+          <div class="mod-actions">
+            <button class="mod-btn approve">✓ Approve & Publish</button>
+            <button class="mod-btn revision">📝 Request Revision</button>
+            <button class="mod-btn reject">✕ Reject</button>
+          </div>
+        </div>
+
+        <!-- Data Source Health -->
+        <div class="card health-card">
+          <h4>Data Source Health</h4>
+          <div class="health-item">
+            <span class="health-dot green"></span>
+            <span>Market Data API</span>
+            <span class="health-time">5 min ago</span>
+          </div>
+          <div class="health-item">
+            <span class="health-dot green"></span>
+            <span>Financial Reports</span>
+            <span class="health-time">8 min ago</span>
+          </div>
+          <div class="health-item">
+            <span class="health-dot red"></span>
+            <span>News Sentiment</span>
+            <span class="health-time">12 hrs ago</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</body>
+</html>

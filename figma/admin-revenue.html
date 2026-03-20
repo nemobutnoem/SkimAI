@@ -1,0 +1,404 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Subscription & Revenue - AISKIM</title>
+  <link rel="stylesheet" href="styles.css">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <style>
+    body { background: var(--gray-50); }
+    .main-content { padding: var(--space-xl); max-width: 1200px; margin: 0 auto; }
+    .page-top { margin-bottom: var(--space-xl); }
+    .page-top h2 { font-size: var(--font-xl); font-weight: 700; }
+    .page-top p { font-size: var(--font-sm); color: var(--text-secondary); }
+
+    /* Stats Row */
+    .revenue-stats { display: grid; grid-template-columns: repeat(6, 1fr); gap: var(--space-md); margin-bottom: var(--space-lg); }
+    .rev-stat { background: var(--white); border-radius: var(--radius-lg); padding: var(--space-lg); border: 1px solid var(--border-color); }
+    .rev-stat .rs-label { font-size: var(--font-xs); color: var(--text-secondary); margin-bottom: 4px; }
+    .rev-stat .rs-value { font-size: var(--font-xl); font-weight: 700; }
+    .rev-stat .rs-change { font-size: var(--font-xs); font-weight: 600; margin-top: 4px; }
+    .rev-stat .rs-change.positive { color: var(--green); }
+    .rev-stat .rs-change.negative { color: var(--red); }
+    .rev-stat .rs-icon { font-size: 18px; margin-bottom: var(--space-sm); }
+
+    /* Grid layouts */
+    .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-lg); margin-bottom: var(--space-lg); }
+    .three-col { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: var(--space-lg); margin-bottom: var(--space-lg); }
+
+    /* Billing Alert */
+    .billing-alert { display: flex; align-items: flex-start; gap: var(--space-md); padding: var(--space-md); border-radius: var(--radius-md); margin-bottom: var(--space-sm); font-size: var(--font-sm); }
+    .billing-alert.danger { background: var(--red-light); border-left: 3px solid var(--red); }
+    .billing-alert.warning { background: var(--orange-light); border-left: 3px solid var(--orange); }
+    .billing-alert.info { background: var(--blue-light); border-left: 3px solid var(--blue); }
+    .billing-alert .ba-title { font-weight: 600; }
+    .billing-alert .ba-meta { font-size: var(--font-xs); color: var(--text-muted); margin-top: 2px; }
+
+    /* Revenue Channel */
+    .channel-item { display: flex; align-items: center; justify-content: space-between; padding: 10px 0; }
+    .channel-item .ch-left { display: flex; align-items: center; gap: 10px; }
+    .channel-dot { width: 10px; height: 10px; border-radius: 50%; }
+    .channel-item .ch-name { font-size: var(--font-sm); font-weight: 500; }
+    .channel-item .ch-amount { font-size: var(--font-sm); font-weight: 600; }
+    .channel-item .ch-pct { font-size: var(--font-xs); color: var(--text-muted); margin-left: 8px; }
+
+    /* Plan Comparison */
+    .plan-comp { display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-md); }
+    .plan-comp-card { padding: var(--space-lg); border-radius: var(--radius-md); border: 1px solid var(--border-color); }
+    .plan-comp-card h5 { font-size: var(--font-base); font-weight: 600; margin-bottom: 4px; }
+    .plan-comp-card .pcc-price { font-size: var(--font-sm); color: var(--text-muted); margin-bottom: var(--space-md); }
+    .pcc-row { display: flex; justify-content: space-between; font-size: var(--font-sm); padding: 6px 0; }
+    .pcc-row .pcc-label { color: var(--text-secondary); }
+    .pcc-row .pcc-value { font-weight: 600; }
+
+    /* Conversion Funnel */
+    .funnel-row { display: flex; align-items: center; gap: var(--space-md); margin-bottom: var(--space-md); }
+    .funnel-label { min-width: 120px; font-size: var(--font-sm); font-weight: 500; }
+    .funnel-bar-wrap { flex: 1; position: relative; }
+    .funnel-bar { height: 32px; border-radius: var(--radius-sm); display: flex; align-items: center; justify-content: flex-end; padding-right: 12px; font-size: var(--font-xs); font-weight: 600; color: white; transition: width var(--transition-slow); }
+    .funnel-count { min-width: 80px; font-size: var(--font-sm); color: var(--text-secondary); text-align: right; }
+
+    /* Subscription Events */
+    .event-table td { font-size: var(--font-sm); }
+    .event-badge { padding: 3px 10px; border-radius: var(--radius-full); font-size: var(--font-xs); font-weight: 600; }
+    .event-badge.success { background: var(--green-light); color: var(--green); }
+    .event-badge.failed { background: var(--red-light); color: var(--red); }
+
+    @media (max-width: 1024px) {
+      .revenue-stats { grid-template-columns: repeat(3, 1fr); }
+      .three-col { grid-template-columns: 1fr; }
+      .two-col { grid-template-columns: 1fr; }
+    }
+    @media (max-width: 768px) {
+      .revenue-stats { grid-template-columns: repeat(2, 1fr); }
+    }
+  </style>
+</head>
+<body>
+  <!-- Admin Navbar -->
+  <nav class="admin-navbar">
+    <a href="index.html" class="navbar-logo">
+      <div class="logo-icon">AI</div>
+      <span>AISKIM</span>
+    </a>
+    <span style="background:var(--red);color:white;padding:3px 10px;border-radius:var(--radius-full);font-size:11px;font-weight:700;letter-spacing:0.5px;">ADMIN</span>
+    <div class="admin-nav-links">
+      <a href="admin-dashboard.html">Dashboard</a>
+      <a href="admin-reports.html">Reports</a>
+      <a href="admin-users.html">Users</a>
+      <a href="admin-revenue.html" class="active">Revenue</a>
+      <a href="#">Settings</a>
+    </div>
+    <div class="admin-nav-right">
+      <a href="index.html" style="font-size:var(--font-sm);color:var(--text-secondary);margin-right:8px;">← User View</a>
+      <button class="icon-btn">🔔</button>
+      <div class="avatar">AD</div>
+      <a href="login.html" class="icon-btn" title="Logout">🚪</a>
+    </div>
+  </nav>
+
+  <div class="main-content">
+    <div class="page-top">
+      <h2>Subscription & Revenue</h2>
+      <p>Monitor recurring revenue, subscription metrics, and billing performance.</p>
+    </div>
+
+    <!-- Stats Row -->
+    <div class="revenue-stats">
+      <div class="rev-stat">
+        <div class="rs-icon">💰</div>
+        <div class="rs-label">Monthly Recurring Revenue</div>
+        <div class="rs-value">$127,450</div>
+        <div class="rs-change positive">↑ 11.5%</div>
+      </div>
+      <div class="rev-stat">
+        <div class="rs-icon">📈</div>
+        <div class="rs-label">Annual Recurring Revenue</div>
+        <div class="rs-value">$1.53M</div>
+        <div class="rs-change positive">↑ 15.2%</div>
+      </div>
+      <div class="rev-stat">
+        <div class="rs-icon">🔄</div>
+        <div class="rs-label">Upgrade Rate</div>
+        <div class="rs-value">24.3%</div>
+        <div class="rs-change positive">↑ 1.3%</div>
+      </div>
+      <div class="rev-stat">
+        <div class="rs-icon">⚠️</div>
+        <div class="rs-label">Failed Payments</div>
+        <div class="rs-value">47</div>
+        <div class="rs-change negative">↑ 3 more</div>
+      </div>
+      <div class="rev-stat">
+        <div class="rs-icon">💸</div>
+        <div class="rs-label">Refunds</div>
+        <div class="rs-value">$3,240</div>
+        <div class="rs-change negative">↑ 15.2%</div>
+      </div>
+      <div class="rev-stat">
+        <div class="rs-icon">👥</div>
+        <div class="rs-label">Active Premium</div>
+        <div class="rs-value">2,847</div>
+        <div class="rs-change positive">↑ 156 new</div>
+      </div>
+    </div>
+
+    <!-- MRR Chart + User Distribution -->
+    <div class="two-col">
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">Monthly Recurring Revenue</div>
+        </div>
+        <div class="chart-container" style="height: 250px;">
+          <canvas id="mrrChart"></canvas>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">User Distribution</div>
+        </div>
+        <div class="chart-container" style="height: 250px;">
+          <canvas id="userDistChart"></canvas>
+        </div>
+      </div>
+    </div>
+
+    <!-- Conversion Funnel + Billing Alerts -->
+    <div class="two-col">
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">Conversion Funnel</div>
+        </div>
+        <div class="funnel-row">
+          <span class="funnel-label">Visitors</span>
+          <div class="funnel-bar-wrap">
+            <div class="funnel-bar" style="width: 100%; background: var(--primary);">100%</div>
+          </div>
+          <span class="funnel-count">8,456</span>
+        </div>
+        <div class="funnel-row">
+          <span class="funnel-label">Sign Ups</span>
+          <div class="funnel-bar-wrap">
+            <div class="funnel-bar" style="width: 56%; background: var(--primary-light);">56%</div>
+          </div>
+          <span class="funnel-count">12.5% / 4,203</span>
+        </div>
+        <div class="funnel-row">
+          <span class="funnel-label">Standard Users</span>
+          <div class="funnel-bar-wrap">
+            <div class="funnel-bar" style="width: 35%; background: #A29BFE;">35%</div>
+          </div>
+          <span class="funnel-count">2,047 / 24%</span>
+        </div>
+        <div class="funnel-row">
+          <span class="funnel-label">Premium Users</span>
+          <div class="funnel-bar-wrap">
+            <div class="funnel-bar" style="width: 18%; background: var(--green);">18%</div>
+          </div>
+          <span class="funnel-count">2,847 / 6.4%</span>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">Billing Alerts</div>
+        </div>
+        <div class="billing-alert danger">
+          <span>🔴</span>
+          <div>
+            <div class="ba-title">Failed Payment</div>
+            <div>john@example.com</div>
+            <div class="ba-meta">Card ending in 4512 • Expired 2/24</div>
+          </div>
+        </div>
+        <div class="billing-alert warning">
+          <span>🟡</span>
+          <div>
+            <div class="ba-title">Card Expiring Soon</div>
+            <div>sarah.rilla@email.co</div>
+            <div class="ba-meta">Expires 5/2024</div>
+          </div>
+        </div>
+        <div class="billing-alert info">
+          <span>🔵</span>
+          <div>
+            <div class="ba-title">Payment Retry</div>
+            <div>mike.chen@example.com</div>
+            <div class="ba-meta">3rd attempt failed</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Revenue by Channel + Plan Performance -->
+    <div class="two-col">
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">Revenue by Channel</div>
+        </div>
+        <div class="channel-item">
+          <div class="ch-left"><span class="channel-dot" style="background: var(--primary);"></span><span class="ch-name">Organic</span></div>
+          <div><span class="ch-amount">$41,112</span><span class="ch-pct">41%</span></div>
+        </div>
+        <div class="channel-item">
+          <div class="ch-left"><span class="channel-dot" style="background: var(--blue);"></span><span class="ch-name">Paid Ads</span></div>
+          <div><span class="ch-amount">$30,970</span><span class="ch-pct">31%</span></div>
+        </div>
+        <div class="channel-item">
+          <div class="ch-left"><span class="channel-dot" style="background: var(--green);"></span><span class="ch-name">Referrals</span></div>
+          <div><span class="ch-amount">$23,192</span><span class="ch-pct">23%</span></div>
+        </div>
+        <div class="channel-item">
+          <div class="ch-left"><span class="channel-dot" style="background: var(--orange);"></span><span class="ch-name">Email</span></div>
+          <div><span class="ch-amount">$13,042</span><span class="ch-pct">5%</span></div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">Plan Performance Comparison</div>
+        </div>
+        <div class="plan-comp">
+          <div class="plan-comp-card">
+            <h5>Standard Plan</h5>
+            <div class="pcc-price">$20/mo</div>
+            <div class="pcc-row"><span class="pcc-label">Active Users</span><span class="pcc-value">4,919</span></div>
+            <div class="pcc-row"><span class="pcc-label">Monthly Revenue</span><span class="pcc-value">$101,187</span></div>
+            <div class="pcc-row"><span class="pcc-label">Churn Rate</span><span class="pcc-value" style="color: var(--green);">3.2%</span></div>
+            <div class="pcc-row"><span class="pcc-label">Upgrade Rate</span><span class="pcc-value" style="color: var(--green);">14.2%</span></div>
+          </div>
+          <div class="plan-comp-card" style="border-color: var(--primary); background: var(--primary-bg);">
+            <h5 style="color: var(--primary);">Premium Plan</h5>
+            <div class="pcc-price">$30/mo</div>
+            <div class="pcc-row"><span class="pcc-label">Active Users</span><span class="pcc-value">2,847</span></div>
+            <div class="pcc-row"><span class="pcc-label">Monthly Revenue</span><span class="pcc-value">$201,653</span></div>
+            <div class="pcc-row"><span class="pcc-label">Churn Rate</span><span class="pcc-value" style="color: var(--green);">1.8%</span></div>
+            <div class="pcc-row"><span class="pcc-label">Retention</span><span class="pcc-value" style="color: var(--green);">64.2%</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Recent Subscription Events -->
+    <div class="card">
+      <div class="card-header">
+        <div class="card-title">Recent Subscription Events</div>
+        <a href="#" style="font-size: var(--font-sm); color: var(--primary); font-weight: 500;">View All</a>
+      </div>
+      <table class="event-table">
+        <thead>
+          <tr>
+            <th>User</th>
+            <th>Event</th>
+            <th>Plan</th>
+            <th>Amount</th>
+            <th>Date</th>
+            <th>Status</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>
+              <div class="user-cell" style="display:flex;align-items:center;gap:8px;">
+                <div style="width:28px;height:28px;border-radius:50%;background:var(--primary-bg);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:600;color:var(--primary);">AJ</div>
+                <div>
+                  <div style="font-weight:600;">Alex Johnson</div>
+                  <div style="font-size:11px;color:var(--text-muted);">alex@company.com</div>
+                </div>
+              </div>
+            </td>
+            <td>Upgrade</td>
+            <td>Standard → Premium</td>
+            <td>$90.00</td>
+            <td>2 hours ago</td>
+            <td><span class="event-badge success">Success</span></td>
+          </tr>
+          <tr>
+            <td>
+              <div class="user-cell" style="display:flex;align-items:center;gap:8px;">
+                <div style="width:28px;height:28px;border-radius:50%;background:var(--green-light);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:600;color:var(--green);">SC</div>
+                <div>
+                  <div style="font-weight:600;">Sarah Chen</div>
+                  <div style="font-size:11px;color:var(--text-muted);">sarah@email.com</div>
+                </div>
+              </div>
+            </td>
+            <td>Renewal</td>
+            <td>Premium</td>
+            <td>$100.00</td>
+            <td>5 hours ago</td>
+            <td><span class="event-badge success">Success</span></td>
+          </tr>
+          <tr>
+            <td>
+              <div class="user-cell" style="display:flex;align-items:center;gap:8px;">
+                <div style="width:28px;height:28px;border-radius:50%;background:var(--red-light);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:600;color:var(--red);">MR</div>
+                <div>
+                  <div style="font-weight:600;">Mike Rodriguez</div>
+                  <div style="font-size:11px;color:var(--text-muted);">mike@business.com</div>
+                </div>
+              </div>
+            </td>
+            <td>Failed Payment</td>
+            <td>Standard</td>
+            <td>$29.00</td>
+            <td>1 day ago</td>
+            <td><span class="event-badge failed">Failed</span></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <script>
+    // MRR Line Chart
+    new Chart(document.getElementById('mrrChart'), {
+      type: 'line',
+      data: {
+        labels: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'],
+        datasets: [{
+          data: [65000, 72000, 78000, 82000, 88000, 95000, 100000, 105000, 110000, 115000, 120000, 127450],
+          borderColor: '#6C5CE7',
+          backgroundColor: 'rgba(108,92,231,0.08)',
+          fill: true,
+          tension: 0.4,
+          borderWidth: 2.5,
+          pointRadius: 3,
+          pointBackgroundColor: '#6C5CE7',
+          pointBorderColor: '#fff',
+          pointBorderWidth: 2
+        }]
+      },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        plugins: { legend: { display: false } },
+        scales: {
+          x: { grid: { display: false }, ticks: { font: { size: 10, family: 'Inter' }, color: '#B2BEC3' } },
+          y: { grid: { color: '#F1F3F5' }, ticks: { font: { size: 10, family: 'Inter' }, color: '#B2BEC3', callback: v => '$'+v/1000+'k' } }
+        }
+      }
+    });
+
+    // User Distribution Donut
+    new Chart(document.getElementById('userDistChart'), {
+      type: 'doughnut',
+      data: {
+        labels: ['Premium Users', 'Standard Users'],
+        datasets: [{
+          data: [36.5, 63.5],
+          backgroundColor: ['#6C5CE7', '#CED4DA'],
+          borderWidth: 0,
+          cutout: '60%'
+        }]
+      },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        plugins: {
+          legend: { position: 'right', labels: { padding: 20, usePointStyle: true, pointStyle: 'circle', font: { size: 12, family: 'Inter' } } }
+        }
+      }
+    });
+  </script>
+</body>
+</html>

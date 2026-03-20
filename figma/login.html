@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Login - AISKIM</title>
+  <link rel="stylesheet" href="styles.css">
+  <style>
+    body {
+      background: var(--bg-page);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .login-container {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: var(--space-xl);
+    }
+
+    .login-card {
+      background: var(--white);
+      border-radius: var(--radius-xl);
+      padding: 48px;
+      width: 100%;
+      max-width: 520px;
+      box-shadow: var(--shadow-lg);
+      border: 1px solid var(--border-color);
+      animation: fadeIn 0.5s ease;
+    }
+
+    .login-logo {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: var(--space-sm);
+      margin-bottom: var(--space-2xl);
+    }
+
+    .login-logo .logo-icon {
+      width: 40px;
+      height: 40px;
+      font-size: 16px;
+    }
+
+    .login-logo span {
+      font-size: var(--font-2xl);
+      font-weight: 800;
+    }
+
+    .login-card h2 {
+      text-align: center;
+      font-size: var(--font-2xl);
+      margin-bottom: var(--space-sm);
+    }
+
+    .login-card .login-subtitle {
+      text-align: center;
+      color: var(--text-secondary);
+      font-size: var(--font-base);
+      margin-bottom: var(--space-2xl);
+    }
+
+    /* Role Cards */
+    .role-selector {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: var(--space-lg);
+    }
+
+    .role-option {
+      padding: var(--space-xl) var(--space-lg);
+      border: 2px solid var(--border-color);
+      border-radius: var(--radius-xl);
+      text-align: center;
+      cursor: pointer;
+      transition: all var(--transition-base);
+      background: var(--white);
+      text-decoration: none;
+      display: block;
+    }
+
+    .role-option:hover {
+      transform: translateY(-4px);
+      box-shadow: var(--shadow-lg);
+    }
+
+    .role-option.user-role:hover {
+      border-color: var(--primary);
+      background: var(--primary-bg);
+    }
+
+    .role-option.admin-role:hover {
+      border-color: var(--red);
+      background: var(--red-light);
+    }
+
+    .role-option .role-icon {
+      font-size: 48px;
+      margin-bottom: var(--space-md);
+      display: block;
+    }
+
+    .role-option .role-name {
+      font-size: var(--font-lg);
+      font-weight: 700;
+      color: var(--text-primary);
+      margin-bottom: 6px;
+    }
+
+    .role-option .role-desc {
+      font-size: var(--font-sm);
+      color: var(--text-muted);
+      line-height: 1.4;
+    }
+
+    .role-option.user-role .role-name { color: var(--primary); }
+    .role-option.admin-role .role-name { color: var(--red); }
+
+    @media (max-width: 480px) {
+      .login-card { padding: 32px 20px; }
+      .role-selector { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <nav class="navbar">
+    <a href="index.html" class="navbar-logo">
+      <div class="logo-icon">AI</div>
+      <span>AISKIM</span>
+    </a>
+    <div class="navbar-links">
+      <a href="index.html">Home</a>
+      <a href="pricing.html">Pricing</a>
+    </div>
+    <div class="navbar-actions"></div>
+  </nav>
+
+  <div class="login-container">
+    <div class="login-card">
+      <div class="login-logo">
+        <div class="logo-icon">AI</div>
+        <span>AISKIM</span>
+      </div>
+
+      <h2>Welcome to AISKIM</h2>
+      <p class="login-subtitle">Choose your role to continue</p>
+
+      <div class="role-selector">
+        <a href="index.html" class="role-option user-role">
+          <span class="role-icon">👤</span>
+          <div class="role-name">User</div>
+          <div class="role-desc">Market analysis & insights</div>
+        </a>
+        <a href="admin-dashboard.html" class="role-option admin-role">
+          <span class="role-icon">🛡️</span>
+          <div class="role-name">Admin</div>
+          <div class="role-desc">System management</div>
+        </a>
+      </div>
+    </div>
+  </div>
+</body>
+</html>

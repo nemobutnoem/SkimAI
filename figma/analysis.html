@@ -1,0 +1,473 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Electric Bike Market Analysis - AISKIM</title>
+  <link rel="stylesheet" href="styles.css">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <style>
+    body { background: var(--gray-50); }
+
+    .analysis-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: var(--space-lg) var(--space-xl);
+      background: var(--white);
+      border-bottom: 1px solid var(--border-color);
+    }
+
+    .analysis-header h2 { font-size: var(--font-xl); font-weight: 700; }
+    .analysis-header .keyword-tag { font-size: var(--font-sm); color: var(--text-secondary); margin-top: 4px; }
+
+    .header-actions { display: flex; gap: var(--space-sm); }
+
+    .main-content { padding: var(--space-xl); max-width: 1200px; margin: 0 auto; }
+
+    /* AI Insight Summary */
+    .ai-summary {
+      background: var(--white);
+      border-radius: var(--radius-lg);
+      padding: var(--space-lg);
+      margin-bottom: var(--space-lg);
+      border: 1px solid var(--border-color);
+    }
+
+    .ai-summary-title {
+      display: flex;
+      align-items: center;
+      gap: var(--space-sm);
+      font-size: var(--font-md);
+      font-weight: 600;
+      color: var(--primary);
+      margin-bottom: var(--space-md);
+    }
+
+    .insight-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: var(--space-md);
+    }
+
+    .insight-item {
+      padding: var(--space-md);
+      border-radius: var(--radius-md);
+      border: 1px solid var(--border-color);
+      transition: all var(--transition-base);
+    }
+
+    .insight-item:hover { box-shadow: var(--shadow-sm); }
+
+    .insight-item .insight-label {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: var(--font-sm);
+      font-weight: 600;
+      margin-bottom: 6px;
+    }
+
+    .insight-item .insight-label .dot-indicator {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+    }
+
+    .insight-item .insight-text {
+      font-size: var(--font-sm);
+      color: var(--text-secondary);
+      line-height: 1.5;
+    }
+
+    .insight-item:nth-child(1) { background: #F0EDFF; }
+    .insight-item:nth-child(1) .dot-indicator { background: var(--primary); }
+    .insight-item:nth-child(2) { background: var(--blue-light); }
+    .insight-item:nth-child(2) .dot-indicator { background: var(--blue); }
+    .insight-item:nth-child(3) { background: var(--green-light); }
+    .insight-item:nth-child(3) .dot-indicator { background: var(--green); }
+    .insight-item:nth-child(4) { background: var(--orange-light); }
+    .insight-item:nth-child(4) .dot-indicator { background: var(--orange); }
+
+    /* Trend Area Chart */
+    .trend-area {
+      background: var(--white);
+      border-radius: var(--radius-lg);
+      padding: var(--space-lg);
+      margin-bottom: var(--space-md);
+      border: 1px solid var(--border-color);
+    }
+
+    .trend-area-label { font-size: var(--font-sm); color: var(--text-secondary); margin-bottom: var(--space-md); }
+
+    /* AI Actions */
+    .ai-actions {
+      margin-bottom: var(--space-lg);
+    }
+
+    .ai-actions-label { font-size: var(--font-sm); color: var(--text-secondary); margin-bottom: var(--space-sm); }
+
+    .ai-actions-list {
+      display: flex;
+      gap: var(--space-sm);
+      flex-wrap: wrap;
+    }
+
+    /* Two Column Cards */
+    .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-lg); margin-bottom: var(--space-lg); }
+
+    /* Related Keywords */
+    .keyword-list { display: flex; flex-direction: column; gap: var(--space-sm); }
+
+    .keyword-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-size: var(--font-sm);
+    }
+
+    .keyword-row .kw-name { color: var(--text-primary); font-weight: 500; }
+
+    .keyword-row .kw-bar-wrap {
+      display: flex;
+      align-items: center;
+      gap: var(--space-sm);
+      flex: 0 0 160px;
+    }
+
+    .keyword-row .kw-bar {
+      height: 8px;
+      border-radius: var(--radius-full);
+      flex: 1;
+    }
+
+    .keyword-row .kw-change { font-weight: 600; font-size: var(--font-xs); color: var(--green); }
+
+    /* Sentiment Donut */
+    .sentiment-container {
+      display: flex;
+      align-items: center;
+      gap: var(--space-xl);
+    }
+
+    .sentiment-legend {
+      display: flex;
+      gap: var(--space-md);
+      margin-top: var(--space-md);
+      font-size: var(--font-xs);
+    }
+
+    .sentiment-legend span {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .sentiment-legend .dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+    }
+
+    /* News */
+    .news-item {
+      display: flex;
+      gap: var(--space-md);
+      padding: var(--space-md) 0;
+      border-bottom: 1px solid var(--border-color);
+    }
+
+    .news-item:last-child { border-bottom: none; }
+
+    .news-icon {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      margin-top: 6px;
+      flex-shrink: 0;
+    }
+
+    .news-item .news-title { font-size: var(--font-sm); font-weight: 600; margin-bottom: 4px; }
+    .news-item .news-meta { font-size: var(--font-xs); color: var(--text-muted); }
+
+    .ask-more {
+      display: flex;
+      justify-content: flex-end;
+      margin-top: var(--space-sm);
+    }
+
+    @media (max-width: 768px) {
+      .insight-grid, .two-col { grid-template-columns: 1fr; }
+      .analysis-header { flex-direction: column; gap: var(--space-md); align-items: flex-start; }
+    }
+  </style>
+</head>
+<body>
+  <!-- Navbar (User) -->
+  <nav class="navbar">
+    <a href="index.html" class="navbar-logo">
+      <div class="logo-icon">AI</div>
+      <span>AISKIM</span>
+    </a>
+    <div class="navbar-links">
+      <a href="index.html">Home</a>
+      <a href="deep-insight.html">Deep Insight</a>
+      <a href="pricing.html">Pricing</a>
+      <a href="account.html">Account</a>
+    </div>
+    <div class="navbar-actions">
+      <button class="icon-btn">🔔</button>
+      <div class="avatar">AJ</div>
+      <a href="login.html" class="icon-btn" title="Logout">🚪</a>
+    </div>
+  </nav>
+
+  <!-- Analysis Header -->
+  <div class="analysis-header">
+    <div>
+      <h2>Electric Bike Market Analysis</h2>
+      <div class="keyword-tag">Keyword: "electric bike" • Last updated 3 minutes ago</div>
+    </div>
+    <div class="header-actions">
+      <button class="btn btn-secondary btn-sm">📤 Export</button>
+      <button class="btn btn-primary btn-sm">🔄 Refresh Data</button>
+    </div>
+  </div>
+
+  <!-- Main Content -->
+  <div class="main-content">
+
+    <!-- AI Insight Summary -->
+    <div class="ai-summary">
+      <div class="ai-summary-title">
+        <span>💡</span> AI Insight Summary
+      </div>
+      <div class="insight-grid">
+        <div class="insight-item">
+          <div class="insight-label">
+            <span class="dot-indicator"></span> Trend Insight
+          </div>
+          <div class="insight-text">Search keyword increased 34% over the past 7 days, with a significant peak on June 12 indicating rising consumer attention during summer season.</div>
+        </div>
+        <div class="insight-item">
+          <div class="insight-label">
+            <span class="dot-indicator"></span> Media Signal
+          </div>
+          <div class="insight-text">Recent coverage from VnExpress and CafeF highlights new government subsidies for electric vehicles, driving increased market interest.</div>
+        </div>
+        <div class="insight-item">
+          <div class="insight-label">
+            <span class="dot-indicator"></span> Social Sentiment
+          </div>
+          <div class="insight-text">18% positive sentiment on Facebook and Instagram, with users praising battery life improvements and competitive pricing.</div>
+        </div>
+        <div class="insight-item">
+          <div class="insight-label">
+            <span class="dot-indicator"></span> Keyword Opportunity
+          </div>
+          <div class="insight-text">Trending keywords: "budget electric bike" and "eco-friendly commuter" show 45% growth, indicating expanding market segments.</div>
+        </div>
+      </div>
+      <div class="ask-more">
+        <a href="deep-insight.html" style="font-size: var(--font-sm); font-weight: 500;">Ask AI More →</a>
+      </div>
+    </div>
+
+    <!-- 7-Day Trend Analysis Area Chart -->
+    <div class="trend-area">
+      <div class="trend-area-label">7-Day Trend Analysis</div>
+      <div class="chart-container" style="height: 200px;">
+        <canvas id="trendAreaChart"></canvas>
+      </div>
+    </div>
+
+    <!-- Suggested AI Actions -->
+    <div class="ai-actions">
+      <div class="ai-actions-label">Suggested AI Actions:</div>
+      <div class="ai-actions-list">
+        <button class="tag">🔍 Compare with competitors</button>
+        <button class="tag">📈 Predict future demand</button>
+        <button class="tag">🔑 Analyze top keywords</button>
+        <button class="tag">👥 Audience Insights</button>
+      </div>
+    </div>
+
+    <!-- Search Trend + Related Keywords -->
+    <div class="two-col">
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">Search Trend</div>
+          <select class="input" style="width: auto; padding: 6px 30px 6px 12px; font-size: var(--font-xs);">
+            <option>Last 30 days</option>
+            <option>Last 7 days</option>
+            <option>Last 90 days</option>
+          </select>
+        </div>
+        <div class="chart-container" style="height: 200px;">
+          <canvas id="searchTrendChart"></canvas>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">Related Keywords</div>
+        </div>
+        <div class="keyword-list">
+          <div class="keyword-row">
+            <span class="kw-name">electric scooter</span>
+            <div class="kw-bar-wrap">
+              <div class="kw-bar" style="background: var(--green); width: 80%;"></div>
+              <span class="kw-change">+15%</span>
+            </div>
+          </div>
+          <div class="keyword-row">
+            <span class="kw-name">e-bike battery</span>
+            <div class="kw-bar-wrap">
+              <div class="kw-bar" style="background: var(--blue); width: 65%;"></div>
+              <span class="kw-change">+18%</span>
+            </div>
+          </div>
+          <div class="keyword-row">
+            <span class="kw-name">electric bicycle</span>
+            <div class="kw-bar-wrap">
+              <div class="kw-bar" style="background: var(--red); width: 55%;"></div>
+              <span class="kw-change">+17%</span>
+            </div>
+          </div>
+          <div class="keyword-row">
+            <span class="kw-name">eco transport</span>
+            <div class="kw-bar-wrap">
+              <div class="kw-bar" style="background: var(--orange); width: 45%;"></div>
+              <span class="kw-change">+5%</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Social Sentiment + Recent News -->
+    <div class="two-col">
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">Social Sentiment</div>
+        </div>
+        <div class="sentiment-container">
+          <div class="chart-container" style="width: 160px; height: 160px;">
+            <canvas id="sentimentChart"></canvas>
+          </div>
+          <div>
+            <div class="sentiment-legend">
+              <span><span class="dot" style="background: var(--green);"></span> Positive</span>
+              <span><span class="dot" style="background: var(--gray-400);"></span> Neutral</span>
+              <span><span class="dot" style="background: var(--red);"></span> Negative</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">Recent News</div>
+        </div>
+        <div class="news-item">
+          <span class="news-icon" style="background: var(--green);"></span>
+          <div>
+            <div class="news-title">Government Announces Electric Vehicle Subsidies</div>
+            <div class="news-meta">VnExpress • 2 hours ago</div>
+          </div>
+        </div>
+        <div class="news-item">
+          <span class="news-icon" style="background: var(--blue);"></span>
+          <div>
+            <div class="news-title">Electric Bike Sales Surge in Urban Areas</div>
+            <div class="news-meta">CafeF • 5 hours ago</div>
+          </div>
+        </div>
+        <div class="news-item">
+          <span class="news-icon" style="background: var(--orange);"></span>
+          <div>
+            <div class="news-title">New Battery Technology Promises Longer Range</div>
+            <div class="news-meta">TechReview • 1 day ago</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // 7-Day Trend Area Chart
+    new Chart(document.getElementById('trendAreaChart'), {
+      type: 'line',
+      data: {
+        labels: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
+        datasets: [{
+          data: [40, 55, 45, 70, 90, 75, 85],
+          borderColor: '#6C5CE7',
+          backgroundColor: 'rgba(108, 92, 231, 0.1)',
+          fill: true,
+          tension: 0.4,
+          borderWidth: 2,
+          pointRadius: 0
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: { legend: { display: false } },
+        scales: {
+          x: { grid: { display: false }, ticks: { font: { size: 11, family: 'Inter' }, color: '#B2BEC3' } },
+          y: { grid: { color: '#F1F3F5' }, ticks: { font: { size: 11, family: 'Inter' }, color: '#B2BEC3' } }
+        }
+      }
+    });
+
+    // Search Trend Line Chart
+    new Chart(document.getElementById('searchTrendChart'), {
+      type: 'line',
+      data: {
+        labels: ['Jun 1', 'Jun 5', 'Jun 10', 'Jun 15', 'Jun 20', 'Jun 25', 'Jun 30'],
+        datasets: [{
+          data: [20, 30, 35, 60, 90, 70, 80],
+          borderColor: '#6C5CE7',
+          backgroundColor: 'transparent',
+          tension: 0.4,
+          borderWidth: 2,
+          pointRadius: 3,
+          pointBackgroundColor: '#6C5CE7'
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: { legend: { display: false } },
+        scales: {
+          x: { grid: { display: false }, ticks: { font: { size: 10, family: 'Inter' }, color: '#B2BEC3' } },
+          y: { grid: { color: '#F1F3F5' }, ticks: { font: { size: 10, family: 'Inter' }, color: '#B2BEC3' } }
+        }
+      }
+    });
+
+    // Sentiment Donut Chart  
+    new Chart(document.getElementById('sentimentChart'), {
+      type: 'doughnut',
+      data: {
+        labels: ['Positive', 'Neutral', 'Negative'],
+        datasets: [{
+          data: [18, 67, 15],
+          backgroundColor: ['#00B894', '#CED4DA', '#FF6B6B'],
+          borderWidth: 0,
+          cutout: '65%'
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: true,
+        plugins: {
+          legend: { display: false },
+          tooltip: { enabled: true }
+        }
+      }
+    });
+  </script>
+</body>
+</html>
