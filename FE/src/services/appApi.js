@@ -30,6 +30,14 @@ async function request(path, { method = 'GET', body, headers } = {}) {
   return response.json()
 }
 
+function toQueryString(params = {}) {
+  const query = new URLSearchParams()
+  Object.entries(params).forEach(([key, value]) => {
+    if (value != null && value !== '') query.set(key, String(value))
+  })
+  return query.toString()
+}
+
 const realApi = {
   login(payload) {
     return request('/auth/login', { method: 'POST', body: payload })
@@ -86,6 +94,69 @@ const realApi = {
   },
   getAdminRevenue() {
     return request('/admin/revenue')
+  },
+
+  // DB-aligned helpers for upcoming backend rollout
+  getUsers(params) {
+    const query = toQueryString(params)
+    return request(`/users${query ? `?${query}` : ''}`)
+  },
+  getUserById(userId) {
+    return request(`/users/${userId}`)
+  },
+  getPlans() {
+    return request('/plans')
+  },
+  getSubscriptions(params) {
+    const query = toQueryString(params)
+    return request(`/subscriptions${query ? `?${query}` : ''}`)
+  },
+  getSearchQueries(params) {
+    const query = toQueryString(params)
+    return request(`/search-queries${query ? `?${query}` : ''}`)
+  },
+  createSearchQuery(payload) {
+    return request('/search-queries', { method: 'POST', body: payload })
+  },
+  getSnapshotByQueryId(searchQueryId) {
+    return request(`/search-queries/${searchQueryId}/snapshot`)
+  },
+  getSnapshotInsights(snapshotId) {
+    return request(`/snapshots/${snapshotId}/insights`)
+  },
+  getSnapshotKeywords(snapshotId) {
+    return request(`/snapshots/${snapshotId}/keywords`)
+  },
+  getSnapshotCharts(snapshotId) {
+    return request(`/snapshots/${snapshotId}/charts`)
+  },
+  getSourceItems(params) {
+    const query = toQueryString(params)
+    return request(`/source-items${query ? `?${query}` : ''}`)
+  },
+  getReports(params) {
+    const query = toQueryString(params)
+    return request(`/reports${query ? `?${query}` : ''}`)
+  },
+  getReportById(reportId) {
+    return request(`/reports/${reportId}`)
+  },
+  createReport(payload) {
+    return request('/reports', { method: 'POST', body: payload })
+  },
+  exportReport(reportId, payload) {
+    return request(`/reports/${reportId}/exports`, { method: 'POST', body: payload })
+  },
+  getSavedSearches(params) {
+    const query = toQueryString(params)
+    return request(`/saved-searches${query ? `?${query}` : ''}`)
+  },
+  saveSearch(payload) {
+    return request('/saved-searches', { method: 'POST', body: payload })
+  },
+  getAdminActions(params) {
+    const query = toQueryString(params)
+    return request(`/admin/actions${query ? `?${query}` : ''}`)
   },
 }
 
