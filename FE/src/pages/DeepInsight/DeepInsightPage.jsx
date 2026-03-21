@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Card } from '../../components/Card'
 import { Button } from '../../components/Button'
-import { mockApi } from '../../services/mockApi'
+import { appApi } from '../../services/appApi'
 
 export function DeepInsightPage() {
   const [keyword, setKeyword] = useState('AI Marketing')
@@ -9,7 +9,7 @@ export function DeepInsightPage() {
   const [data, setData] = useState(null)
 
   const load = async () => {
-    const result = await mockApi.getDeepInsight({ keyword, source })
+    const result = await appApi.getDeepInsight({ keyword, source })
     setData(result)
   }
 

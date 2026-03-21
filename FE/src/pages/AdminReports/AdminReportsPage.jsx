@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Button } from '../../components/Button'
 import { Card } from '../../components/Card'
-import { mockApi } from '../../services/mockApi'
+import { appApi } from '../../services/appApi'
 
 const STATUSES = ['all', 'draft', 'pending', 'published']
 
@@ -11,7 +11,7 @@ export function AdminReportsPage() {
   const [selectedId, setSelectedId] = useState('')
 
   const loadReports = async (nextStatus = status) => {
-    const data = await mockApi.getAdminReports(nextStatus)
+    const data = await appApi.getAdminReports(nextStatus)
     setReports(data)
     if (!selectedId && data[0]) setSelectedId(data[0].id)
     if (selectedId && !data.some((item) => item.id === selectedId)) {
@@ -28,7 +28,7 @@ export function AdminReportsPage() {
 
   const moderate = async (nextStatus) => {
     if (!selectedId) return
-    await mockApi.moderateReport(selectedId, nextStatus)
+    await appApi.moderateReport(selectedId, nextStatus)
     await loadReports(status)
   }
 

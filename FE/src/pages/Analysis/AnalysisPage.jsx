@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { Card } from '../../components/Card'
 import { Button } from '../../components/Button'
-import { mockApi } from '../../services/mockApi'
+import { appApi } from '../../services/appApi'
 
 export function AnalysisPage() {
   const [searchParams] = useSearchParams()
@@ -14,7 +14,7 @@ export function AnalysisPage() {
   const load = async () => {
     setLoading(true)
     try {
-      const result = await mockApi.getAnalysis(keyword)
+      const result = await appApi.getAnalysis(keyword)
       setData(result)
     } finally {
       setLoading(false)

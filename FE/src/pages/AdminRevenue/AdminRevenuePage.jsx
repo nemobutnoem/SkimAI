@@ -1,12 +1,12 @@
 import { useEffect, useState } from 'react'
 import { Card } from '../../components/Card'
-import { mockApi } from '../../services/mockApi'
+import { appApi } from '../../services/appApi'
 
 export function AdminRevenuePage() {
   const [data, setData] = useState(null)
 
   useEffect(() => {
-    mockApi.getAdminRevenue().then(setData)
+    appApi.getAdminRevenue().then(setData)
   }, [])
 
   return (

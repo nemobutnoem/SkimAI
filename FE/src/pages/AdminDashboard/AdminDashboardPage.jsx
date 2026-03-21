@@ -1,12 +1,12 @@
 import { useEffect, useState } from 'react'
 import { Card } from '../../components/Card'
-import { mockApi } from '../../services/mockApi'
+import { appApi } from '../../services/appApi'
 
 export function AdminDashboardPage() {
   const [data, setData] = useState(null)
 
   useEffect(() => {
-    mockApi.getAdminDashboard().then(setData)
+    appApi.getAdminDashboard().then(setData)
   }, [])
 
   return (

@@ -1,13 +1,13 @@
 import { useEffect, useState } from 'react'
 import { Card } from '../../components/Card'
-import { mockApi } from '../../services/mockApi'
+import { appApi } from '../../services/appApi'
 
 export function AdminUsersPage() {
   const [filters, setFilters] = useState({ q: '', type: 'all', status: 'all' })
   const [users, setUsers] = useState([])
 
   useEffect(() => {
-    mockApi.getAdminUsers(filters).then(setUsers)
+    appApi.getAdminUsers(filters).then(setUsers)
   }, [filters])
 
   return (

@@ -1,9 +1,9 @@
 import { STORAGE_KEYS } from '../constants/storageKeys'
-import { mockApi } from './mockApi'
+import { appApi } from './appApi'
 
 export const authService = {
   async login({ email, password }) {
-    const result = await mockApi.login({ email, password })
+    const result = await appApi.login({ email, password })
     localStorage.setItem(STORAGE_KEYS.AUTH, JSON.stringify(result))
     return result
   },

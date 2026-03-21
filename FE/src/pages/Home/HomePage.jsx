@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { ROUTES } from '../../constants/routes'
-import { mockApi } from '../../services/mockApi'
+import { appApi } from '../../services/appApi'
 import { Button } from '../../components/Button'
 
 export function HomePage() {
@@ -10,7 +10,7 @@ export function HomePage() {
   const [trends, setTrends] = useState([])
 
   useEffect(() => {
-    mockApi.getHomeTrends().then(setTrends)
+    appApi.getHomeTrends().then(setTrends)
   }, [])
 
   return (

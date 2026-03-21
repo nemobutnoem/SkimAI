@@ -1,14 +1,14 @@
 import { useEffect, useState } from 'react'
 import { Button } from '../../components/Button'
 import { Card } from '../../components/Card'
-import { mockApi } from '../../services/mockApi'
+import { appApi } from '../../services/appApi'
 
 export function PricingPage() {
   const [cycle, setCycle] = useState('monthly')
   const [plans, setPlans] = useState([])
 
   useEffect(() => {
-    mockApi.getPricing().then(setPlans)
+    appApi.getPricing().then(setPlans)
   }, [])
 
   return (

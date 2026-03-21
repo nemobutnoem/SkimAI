@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Card } from '../../components/Card'
-import { mockApi } from '../../services/mockApi'
+import { appApi } from '../../services/appApi'
 
 export function DashboardPage() {
   const [data, setData] = useState(null)
@@ -9,7 +9,7 @@ export function DashboardPage() {
   useEffect(() => {
     let alive = true
 
-    mockApi
+    appApi
       .getDashboard()
       .then((d) => {
         if (alive) setData(d)

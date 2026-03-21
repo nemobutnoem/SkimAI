@@ -1,14 +1,14 @@
 import { useEffect, useState } from 'react'
 import { Button } from '../../components/Button'
 import { Card } from '../../components/Card'
-import { mockApi } from '../../services/mockApi'
+import { appApi } from '../../services/appApi'
 
 export function AccountPage() {
   const [data, setData] = useState(null)
   const [saving, setSaving] = useState(false)
 
   useEffect(() => {
-    mockApi.getAccountOverview().then(setData)
+    appApi.getAccountOverview().then(setData)
   }, [])
 
   const toggle = (key) => {
@@ -25,7 +25,7 @@ export function AccountPage() {
     if (!data) return
     setSaving(true)
     try {
-      const notifications = await mockApi.saveNotificationSettings(data.notifications)
+      const notifications = await appApi.saveNotificationSettings(data.notifications)
       setData((prev) => ({ ...prev, notifications }))
     } finally {
       setSaving(false)

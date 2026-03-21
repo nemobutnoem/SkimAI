@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Button } from '../../components/Button'
 import { Card } from '../../components/Card'
-import { mockApi } from '../../services/mockApi'
+import { appApi } from '../../services/appApi'
 
 export function AskExpertPage() {
   const [experts, setExperts] = useState([])
@@ -14,7 +14,7 @@ export function AskExpertPage() {
   const [sending, setSending] = useState(false)
 
   useEffect(() => {
-    mockApi.getExperts().then((items) => {
+    appApi.getExperts().then((items) => {
       setExperts(items)
       setPayload((prev) => ({ ...prev, expertId: items[0]?.id ?? '' }))
     })
@@ -24,7 +24,7 @@ export function AskExpertPage() {
     e.preventDefault()
     setSending(true)
     try {
-      const res = await mockApi.submitExpertQuestion(payload)
+      const res = await appApi.submitExpertQuestion(payload)
       setResult(res)
       setPayload((prev) => ({ ...prev, question: '' }))
     } finally {
