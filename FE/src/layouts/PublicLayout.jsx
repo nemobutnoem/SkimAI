@@ -7,8 +7,7 @@ export function PublicLayout() {
 
   const navLinks = [
     { to: ROUTES.HOME, label: 'Home' },
-    { to: ROUTES.ANALYSIS, label: 'Analysis' },
-    { to: ROUTES.DEEP_INSIGHT, label: 'Deep Insight' },
+    { to: ROUTES.ANALYSIS, label: 'Analytics' },
     { to: ROUTES.ASK_EXPERT, label: 'Ask Expert' },
     { to: ROUTES.PRICING, label: 'Pricing' },
   ]
@@ -18,7 +17,7 @@ export function PublicLayout() {
       <header className="site-header">
         <div className="site-header-inner">
           <NavLink to={ROUTES.HOME} className="site-brand">
-            SkimAI
+            AISKIM
           </NavLink>
 
           <nav className="site-nav">

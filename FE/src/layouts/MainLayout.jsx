@@ -25,7 +25,7 @@ export function MainLayout() {
     <div className="app-shell">
       <header className="app-header">
         <div className="app-brand" role="button" tabIndex={0} onClick={() => navigate(ROUTES.HOME)}>
-          SkimAI
+          AISKIM
         </div>
         <nav className="app-nav">
           {commonLinks.map((link) => (

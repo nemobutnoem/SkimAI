@@ -16,19 +16,25 @@ export function HomePage() {
   return (
     <div className="stack page-wrap">
       <section className="hero card">
-        <h1 className="hero-title">AI Trend Intelligence Platform</h1>
-        <p className="hero-subtitle">Theo doi xu huong thi truong theo thoi gian thuc va nhan de xuat hanh dong.</p>
+        <h1 className="hero-title">
+          Market Insights in <span className="highlight">Seconds</span>, Not Weeks
+        </h1>
+        <p className="hero-subtitle">
+          AI-powered analysis and real-time trend detection to help you make smarter business decisions instantly.
+        </p>
 
         <div className="input-row">
           <input
             value={keyword}
             onChange={(e) => setKeyword(e.target.value)}
-            placeholder="Nhap tu khoa"
+            placeholder="Enter keyword or paste product link..."
           />
           <Button onClick={() => navigate(`${ROUTES.ANALYSIS}?keyword=${encodeURIComponent(keyword)}`)}>
             Analyze
           </Button>
         </div>
+
+        <p className="hint">Try: Electric bike, TikTok Shop trends, or a Shopee product link</p>
       </section>
 
       <section className="stack">

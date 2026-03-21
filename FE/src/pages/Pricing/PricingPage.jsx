@@ -16,7 +16,7 @@ export function PricingPage() {
       <div className="page-header">
         <div>
           <h1>Pricing</h1>
-          <p className="hint">Chon goi phu hop voi quy mo team cua ban.</p>
+          <p className="hint">Choose your AISKIM plan for market intelligence at every scale.</p>
         </div>
         <div className="segmented">
           <button className={cycle === 'monthly' ? 'on' : ''} onClick={() => setCycle('monthly')}>
@@ -32,7 +32,8 @@ export function PricingPage() {
         {plans.map((plan) => (
           <Card key={plan.id} title={plan.name}>
             <div className="stack">
-              <div className="price">${plan[cycle]}/ {cycle === 'monthly' ? 'mo' : 'yr'}</div>
+              <div className="price">${plan[cycle]}</div>
+              <div className="hint">/{cycle === 'monthly' ? 'month' : 'year'}</div>
               <ul className="list">
                 {plan.features.map((feature) => (
                   <li key={feature}>{feature}</li>
