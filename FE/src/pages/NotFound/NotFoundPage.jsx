@@ -7,7 +7,7 @@ export function NotFoundPage() {
       <div className="stack">
         <h1>404</h1>
         <p>Page not found.</p>
-        <Link to={ROUTES.DASHBOARD}>Go home</Link>
+        <Link to={ROUTES.HOME}>Go home</Link>
       </div>
     </div>
   )

@@ -24,8 +24,12 @@ export function LoginPage() {
     setIsSubmitting(true)
 
     try {
-      await login({ email, password })
-      navigate(ROUTES.DASHBOARD)
+      const session = await login({ email, password })
+      if (session?.user?.role === 'admin') {
+        navigate(ROUTES.ADMIN_DASHBOARD)
+      } else {
+        navigate(ROUTES.DASHBOARD)
+      }
     } catch (err) {
       setError(err?.message ?? 'Đăng nhập thất bại')
     } finally {
@@ -37,6 +41,29 @@ export function LoginPage() {
     <div className="center-page">
       <Card title="Login">
         <form onSubmit={onSubmit} className="form">
+          <div className="grid grid-2">
+            <Button
+              type="button"
+              variant="secondary"
+              onClick={() => {
+                setEmail('demo@skimai.local')
+                setPassword('123456')
+              }}
+            >
+              User preset
+            </Button>
+            <Button
+              type="button"
+              variant="secondary"
+              onClick={() => {
+                setEmail('admin@skimai.local')
+                setPassword('123456')
+              }}
+            >
+              Admin preset
+            </Button>
+          </div>
+
           <label className="field">
             <span>Email</span>
             <input
@@ -65,7 +92,9 @@ export function LoginPage() {
           </Button>
 
           <div className="hint">
-            Demo: <code>demo@skimai.local</code> / <code>123456</code>
+            Demo user: <code>demo@skimai.local</code> / <code>123456</code>
+            <br />
+            Demo admin: <code>admin@skimai.local</code> / <code>123456</code>
           </div>
         </form>
       </Card>
