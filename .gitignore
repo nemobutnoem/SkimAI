@@ -25,7 +25,3 @@ out/
 .env
 .env.*
 !.env.example
-
-# Nested repos
-BE/
-FE/
