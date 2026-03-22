@@ -155,11 +155,11 @@ public class FrontendService {
                 ? snapshotInsightRepository.findBySnapshotId(snapshot.getId()).stream().map(item -> item.getContent()).limit(4).toList()
                 : List.of();
 
-        List<String> keywords = snapshot != null
+        List<FrontendDtos.KeywordMetric> keywords = snapshot != null
                 ? snapshotKeywordRepository.findBySnapshotId(snapshot.getId()).stream()
                 .sorted(Comparator.comparing(SnapshotKeywordEntity::getMentionCount).reversed())
-                .map(SnapshotKeywordEntity::getKeyword)
                 .limit(4)
+                .map(sk -> new FrontendDtos.KeywordMetric(sk.getKeyword(), sk.getMentionCount(), 0L, 0L, 0L, 0.0))
                 .toList()
                 : List.of();
 
@@ -179,7 +179,12 @@ public class FrontendService {
                         "Positive sentiment clusters around automation benefits.",
                         "Comparison-oriented searches are rising this week."
                 ) : insights,
-                keywords.isEmpty() ? List.of("agent workflow", "marketing automation", "insight dashboard", "keyword trend") : keywords,
+                keywords.isEmpty() ? List.of(
+                        new FrontendDtos.KeywordMetric("agent workflow", 0, 0L, 0L, 0L, 0.0),
+                        new FrontendDtos.KeywordMetric("marketing automation", 0, 0L, 0L, 0L, 0.0),
+                        new FrontendDtos.KeywordMetric("insight dashboard", 0, 0L, 0L, 0L, 0.0),
+                        new FrontendDtos.KeywordMetric("keyword trend", 0, 0L, 0L, 0L, 0.0)
+                ) : keywords,
                 news.isEmpty() ? List.of(
                         "Recent public content is still limited for this keyword.",
                         "Expand source coverage to improve depth."
@@ -196,7 +201,7 @@ public class FrontendService {
                 "Market demand is clustering around practical use cases, creator comparisons, and performance signals.",
                 analysis.relatedKeywords().stream()
                         .limit(4)
-                        .map(value -> "Push deeper content around \"" + value + "\" in the next sprint.")
+                        .map(km -> "Push deeper content around \"" + km.keyword() + "\" in the next sprint.")
                         .toList(),
                 "Prioritize the fastest-growing demand cluster and track creator momentum week over week."
         );
@@ -261,30 +266,53 @@ public class FrontendService {
                 .limit(4)
                 .toList();
 
-        Map<String, Integer> tokenCount = new HashMap<>();
+        // Build keyword metrics: aggregate views/likes/comments per token
+        Map<String, int[]> tokenStats = new HashMap<>(); // [mentionCount, totalViews, totalLikes, totalComments, engagementSum]
         for (NormalizedSourceItem item : items) {
-            for (String token : tokenize(item.title())) {
-                tokenCount.merge(token, 1, Integer::sum);
+            long itemViews = 0L;
+            long itemLikes = 0L;
+            long itemComments = 0L;
+            double itemEngagement = 0.0;
+            if (item.rawPayload() instanceof Map<?, ?> payload) {
+                itemViews = toLong(payload.get("viewCount"));
+                itemLikes = toLong(payload.get("likeCount"));
+                itemComments = toLong(payload.get("commentCount"));
+                itemEngagement = toDouble(payload.get("engagementRate"));
             }
-            for (String token : tokenize(item.snippet())) {
-                tokenCount.merge(token, 1, Integer::sum);
+            Set<String> tokens = new HashSet<>();
+            tokens.addAll(tokenize(item.title()));
+            tokens.addAll(tokenize(item.snippet()));
+            for (String token : tokens) {
+                tokenStats.computeIfAbsent(token, k -> new int[5]);
+                int[] stats = tokenStats.get(token);
+                stats[0]++; // mentionCount
+                stats[1] += (int) itemViews;
+                stats[2] += (int) itemLikes;
+                stats[3] += (int) itemComments;
+                stats[4] += (int) (itemEngagement * 10000); // store as scaled int
             }
         }
 
         Set<String> stopWords = new HashSet<>(List.of(
-                "about", "after", "agent", "bike", "with", "from", "this", "that", "have", "your",
+                "about", "after", "agent", "with", "from", "this", "that", "have", "your",
                 "what", "when", "where", "which", "into", "they", "them", "more", "than", "then",
-                "youtube", "video", "market", "analysis", "trend", "trends", "news", "views", "likes",
-                "comments", "duration", "topics", "search", "result"
+                "youtube", "video", "market", "analysis", "trend", "trends", "news",
+                "comments", "duration", "topics", "search", "result", "views", "likes",
+                "subscribers", "tags", "best", "review", "2024", "2025", "2026"
         ));
+        String keywordLower = keyword == null ? "" : keyword.trim().toLowerCase(java.util.Locale.ROOT);
 
-        List<String> relatedKeywords = tokenCount.entrySet().stream()
+        List<FrontendDtos.KeywordMetric> relatedKeywords = tokenStats.entrySet().stream()
                 .filter(entry -> entry.getKey().length() >= 4)
                 .filter(entry -> !stopWords.contains(entry.getKey()))
-                .sorted(Map.Entry.<String, Integer>comparingByValue().reversed())
-                .map(Map.Entry::getKey)
-                .distinct()
-                .limit(4)
+                .filter(entry -> !entry.getKey().equals(keywordLower))
+                .sorted((a, b) -> Integer.compare(b.getValue()[0], a.getValue()[0]))
+                .limit(6)
+                .map(entry -> {
+                    int[] s = entry.getValue();
+                    double avgEng = s[0] > 0 ? (s[4] / 10000.0) / s[0] : 0.0;
+                    return new FrontendDtos.KeywordMetric(entry.getKey(), s[0], (long) s[1], (long) s[2], (long) s[3], avgEng);
+                })
                 .toList();
 
         long positive = items.stream().filter(item -> "POSITIVE".equalsIgnoreCase(item.sentimentLabel())).count();
@@ -301,7 +329,12 @@ public class FrontendService {
                 null,
                 null,
                 insights.isEmpty() ? List.of("No live insight found for this keyword yet.") : insights,
-                relatedKeywords.isEmpty() ? List.of("demand", "review", "trend", "comparison") : relatedKeywords,
+                relatedKeywords.isEmpty() ? List.of(
+                        new FrontendDtos.KeywordMetric("demand", 0, 0L, 0L, 0L, 0.0),
+                        new FrontendDtos.KeywordMetric("review", 0, 0L, 0L, 0L, 0.0),
+                        new FrontendDtos.KeywordMetric("trend", 0, 0L, 0L, 0L, 0.0),
+                        new FrontendDtos.KeywordMetric("comparison", 0, 0L, 0L, 0L, 0.0)
+                ) : relatedKeywords,
                 news.isEmpty() ? List.of("No recent public content found for this keyword.") : news,
                 suggestedActions.stream().distinct().limit(4).toList()
         );
@@ -367,5 +400,25 @@ public class FrontendService {
         }
         String lower = value.toLowerCase(Locale.ROOT);
         return Character.toUpperCase(lower.charAt(0)) + lower.substring(1);
+    }
+
+    private long toLong(Object value) {
+        if (value instanceof Number n) {
+            return n.longValue();
+        }
+        if (value instanceof String s) {
+            try { return Long.parseLong(s); } catch (NumberFormatException ignored) {}
+        }
+        return 0L;
+    }
+
+    private double toDouble(Object value) {
+        if (value instanceof Number n) {
+            return n.doubleValue();
+        }
+        if (value instanceof String s) {
+            try { return Double.parseDouble(s); } catch (NumberFormatException ignored) {}
+        }
+        return 0.0;
     }
 }

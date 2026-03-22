@@ -8,7 +8,7 @@ ON CONFLICT (name) DO NOTHING;
 
 INSERT INTO search_providers (provider_code, provider_name, is_active)
 VALUES
-    ('SERPAPI_GOOGLE', 'SerpApi Google', TRUE),
-    ('SERPAPI_NEWS', 'SerpApi News', TRUE),
-    ('YOUTUBE_API', 'YouTube API', FALSE)
-ON CONFLICT (provider_code) DO NOTHING;
+    ('SERPAPI_GOOGLE', 'SerpApi Google', FALSE),
+    ('SERPAPI_NEWS', 'SerpApi News', FALSE),
+    ('YOUTUBE_API', 'YouTube API', TRUE)
+ON CONFLICT (provider_code) DO UPDATE SET is_active = EXCLUDED.is_active;

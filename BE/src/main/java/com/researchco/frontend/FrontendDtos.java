@@ -31,12 +31,22 @@ public class FrontendDtos {
     ) {
     }
 
+    public record KeywordMetric(
+            String keyword,
+            int mentionCount,
+            long totalViews,
+            long totalLikes,
+            long totalComments,
+            double avgEngagement
+    ) {
+    }
+
     public record AnalysisResponse(
             String keyword,
             String searchQueryId,
             String snapshotId,
             List<String> insights,
-            List<String> relatedKeywords,
+            List<KeywordMetric> relatedKeywords,
             List<String> news,
             List<String> suggestedActions
     ) {

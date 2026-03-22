@@ -94,15 +94,26 @@ export function AnalysisPage() {
             <div className="card-title">Related Keywords</div>
           </div>
           <div className="keyword-list">
-            {(data?.relatedKeywords ?? []).map((k, index) => (
-              <div className="keyword-row" key={k}>
-                <span className="kw-name">{k}</span>
-                <div className="kw-bar-wrap">
-                  <div className="kw-bar" style={{ width: `${80 - index * 12}%` }} />
-                  <span className="kw-change">+{18 - index * 3}%</span>
+            {(data?.relatedKeywords ?? []).map((km, index) => {
+              const maxMentions = Math.max(...(data?.relatedKeywords ?? []).map(k => k.mentionCount || 1));
+              const barWidth = Math.max(15, ((km.mentionCount || 1) / maxMentions) * 100);
+              const views = km.totalViews >= 1000000
+                ? (km.totalViews / 1000000).toFixed(1) + 'M'
+                : km.totalViews >= 1000
+                  ? (km.totalViews / 1000).toFixed(1) + 'K'
+                  : String(km.totalViews || 0);
+              return (
+                <div className="keyword-row" key={km.keyword || index}>
+                  <span className="kw-name">{km.keyword}</span>
+                  <div className="kw-bar-wrap">
+                    <div className="kw-bar" style={{ width: `${barWidth}%` }} />
+                    <span className="kw-change" title={`${km.totalLikes || 0} likes · ${km.totalComments || 0} comments`}>
+                      {views} views · {km.mentionCount} mentions
+                    </span>
+                  </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </section>
       </div>

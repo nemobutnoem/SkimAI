@@ -37,7 +37,7 @@ public class FrontendController {
     }
 
     @GetMapping("/analysis")
-    public FrontendDtos.AnalysisResponse getAnalysis(@RequestParam(defaultValue = "AI Agent") String keyword) {
+    public FrontendDtos.AnalysisResponse getAnalysis(@RequestParam(name = "keyword", defaultValue = "AI Agent") String keyword) {
         return frontendService.getAnalysis(keyword);
     }
 
