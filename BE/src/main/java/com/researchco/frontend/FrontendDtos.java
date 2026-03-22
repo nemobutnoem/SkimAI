@@ -41,11 +41,14 @@ public class FrontendDtos {
     ) {
     }
 
+    public record InsightItem(String label, String text) {
+    }
+
     public record AnalysisResponse(
             String keyword,
             String searchQueryId,
             String snapshotId,
-            List<String> insights,
+            List<InsightItem> insights,
             List<KeywordMetric> relatedKeywords,
             List<String> news,
             List<String> suggestedActions

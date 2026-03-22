@@ -5,6 +5,38 @@ import { Button } from '../../components/Button'
 import { ROUTES } from '../../constants/routes'
 import { appApi } from '../../services/appApi'
 
+const INSIGHT_TRUNCATE = 120
+
+function InsightCard({ insight }) {
+  const [expanded, setExpanded] = useState(false)
+  const text = insight?.text || ''
+  const label = insight?.label || 'Insight'
+  const needsTruncate = text.length > INSIGHT_TRUNCATE
+
+  return (
+    <div className="insight-item">
+      <div className="insight-label">
+        <span className="dot-indicator" /> {label}
+      </div>
+      <div className="insight-text">
+        {needsTruncate && !expanded ? text.slice(0, INSIGHT_TRUNCATE) + '...' : text}
+      </div>
+      {needsTruncate && (
+        <button className="see-more-btn" onClick={() => setExpanded(!expanded)}>
+          {expanded ? 'Show less' : 'See more'}
+        </button>
+      )}
+    </div>
+  )
+}
+
+function formatNumber(num) {
+  if (!num && num !== 0) return '0'
+  if (num >= 1000000) return (num / 1000000).toFixed(1) + 'M'
+  if (num >= 1000) return (num / 1000).toFixed(1) + 'K'
+  return String(num)
+}
+
 export function AnalysisPage() {
   const [searchParams] = useSearchParams()
   const keyword = searchParams.get('keyword') || 'AI Agent'
@@ -45,13 +77,8 @@ export function AnalysisPage() {
       <section className="card ai-summary">
         <h2 className="card-title">AI Summary</h2>
         <div className="insight-grid">
-          {(data?.insights ?? []).map((item) => (
-            <div key={item} className="insight-item">
-              <div className="insight-label">
-                <span className="dot-indicator" /> Insight
-              </div>
-              <div className="insight-text">{item}</div>
-            </div>
+          {(data?.insights ?? []).map((item, i) => (
+            <InsightCard key={i} insight={item} />
           ))}
         </div>
         <div className="ask-more">
@@ -97,18 +124,16 @@ export function AnalysisPage() {
             {(data?.relatedKeywords ?? []).map((km, index) => {
               const maxMentions = Math.max(...(data?.relatedKeywords ?? []).map(k => k.mentionCount || 1));
               const barWidth = Math.max(15, ((km.mentionCount || 1) / maxMentions) * 100);
-              const views = km.totalViews >= 1000000
-                ? (km.totalViews / 1000000).toFixed(1) + 'M'
-                : km.totalViews >= 1000
-                  ? (km.totalViews / 1000).toFixed(1) + 'K'
-                  : String(km.totalViews || 0);
               return (
                 <div className="keyword-row" key={km.keyword || index}>
                   <span className="kw-name">{km.keyword}</span>
                   <div className="kw-bar-wrap">
                     <div className="kw-bar" style={{ width: `${barWidth}%` }} />
-                    <span className="kw-change" title={`${km.totalLikes || 0} likes · ${km.totalComments || 0} comments`}>
-                      {views} views · {km.mentionCount} mentions
+                    <span className="kw-metrics">
+                      <span title="Views">👁 {formatNumber(km.totalViews)}</span>
+                      <span title="Likes">❤ {formatNumber(km.totalLikes)}</span>
+                      <span title="Comments">💬 {formatNumber(km.totalComments)}</span>
+                      <span title="Mentions">📊 {km.mentionCount}</span>
                     </span>
                   </div>
                 </div>

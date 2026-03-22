@@ -132,7 +132,9 @@ public class YoutubeApiProvider implements SearchProvider {
                 ));
             }
             return results;
-        } catch (Exception ignored) {
+        } catch (Exception e) {
+            System.err.println("[YOUTUBE_API] Search failed for keyword=\"" + keyword + "\": " + e.getMessage());
+            e.printStackTrace();
             return List.of();
         }
     }
@@ -147,7 +149,8 @@ public class YoutubeApiProvider implements SearchProvider {
                 .queryParam("regionCode", blankToNull(countryCode))
                 .queryParam("relevanceLanguage", blankToNull(languageCode))
                 .queryParam("key", apiKey)
-                .build(true)
+                .encode()
+                .build()
                 .toUri();
 
         JsonNode root = getJson(uri);
@@ -214,6 +217,8 @@ public class YoutubeApiProvider implements SearchProvider {
         HttpRequest request = HttpRequest.newBuilder(uri).GET().build();
         HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
         if (response.statusCode() < 200 || response.statusCode() >= 300) {
+            System.err.println("[YOUTUBE_API] HTTP " + response.statusCode() + " for: " + uri.toString().replaceAll("key=[^&]+", "key=***"));
+            System.err.println("[YOUTUBE_API] Response body: " + response.body());
             return null;
         }
         return objectMapper.readTree(response.body());

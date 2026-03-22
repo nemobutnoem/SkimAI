@@ -20,6 +20,7 @@ import com.researchco.subscription.UserSubscriptionEntity;
 import com.researchco.subscription.UserSubscriptionRepository;
 import com.researchco.user.UserEntity;
 import com.researchco.user.UserRepository;
+import com.researchco.provider.ai.AiProvider;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -53,6 +54,7 @@ public class FrontendService {
     private final PlanRepository planRepository;
     private final SearchProviderRepository searchProviderRepository;
     private final ProviderOrchestrator providerOrchestrator;
+    private final AiProvider aiProvider;
     private final AtomicReference<Map<String, Boolean>> notificationSettings = new AtomicReference<>(
             new LinkedHashMap<>(Map.of(
                     "emailUpdates", true,
@@ -71,7 +73,8 @@ public class FrontendService {
                            UserSubscriptionRepository userSubscriptionRepository,
                            PlanRepository planRepository,
                            SearchProviderRepository searchProviderRepository,
-                           ProviderOrchestrator providerOrchestrator) {
+                           ProviderOrchestrator providerOrchestrator,
+                           AiProvider aiProvider) {
         this.searchQueryRepository = searchQueryRepository;
         this.analysisSnapshotRepository = analysisSnapshotRepository;
         this.snapshotInsightRepository = snapshotInsightRepository;
@@ -83,6 +86,7 @@ public class FrontendService {
         this.planRepository = planRepository;
         this.searchProviderRepository = searchProviderRepository;
         this.providerOrchestrator = providerOrchestrator;
+        this.aiProvider = aiProvider;
     }
 
     public FrontendDtos.DashboardResponse getDashboard() {
@@ -151,10 +155,6 @@ public class FrontendService {
         SearchQueryEntity query = findQueryByKeyword(keyword).orElseGet(() -> fallbackQuery(keyword));
         AnalysisSnapshotEntity snapshot = analysisSnapshotRepository.findBySearchQueryId(query.getId()).orElse(null);
 
-        List<String> insights = snapshot != null
-                ? snapshotInsightRepository.findBySnapshotId(snapshot.getId()).stream().map(item -> item.getContent()).limit(4).toList()
-                : List.of();
-
         List<FrontendDtos.KeywordMetric> keywords = snapshot != null
                 ? snapshotKeywordRepository.findBySnapshotId(snapshot.getId()).stream()
                 .sorted(Comparator.comparing(SnapshotKeywordEntity::getMentionCount).reversed())
@@ -169,16 +169,19 @@ public class FrontendService {
                 .limit(3)
                 .toList();
 
+        String kw = query.getKeyword();
+        List<FrontendDtos.InsightItem> fallbackInsights = List.of(
+                new FrontendDtos.InsightItem("Trend Insight", "Search interest for \"" + kw + "\" is showing steady activity. Consumer attention typically peaks during key seasonal windows."),
+                new FrontendDtos.InsightItem("Media Signal", "Limited media coverage detected for \"" + kw + "\". Expanding source coverage may reveal additional market signals."),
+                new FrontendDtos.InsightItem("Social Sentiment", "Sentiment data for \"" + kw + "\" is still being collected. Initial signals suggest neutral-to-positive reception."),
+                new FrontendDtos.InsightItem("Keyword Opportunity", "Related keyword data for \"" + kw + "\" is limited. Consider broadening search scope to uncover emerging opportunities.")
+        );
+
         return new FrontendDtos.AnalysisResponse(
-                query.getKeyword(),
+                kw,
                 query.getId().toString(),
                 snapshot != null ? snapshot.getId().toString() : null,
-                insights.isEmpty() ? List.of(
-                        "Search volume spikes around peak browsing windows.",
-                        "Demand appears strongest in SME and ecommerce segments.",
-                        "Positive sentiment clusters around automation benefits.",
-                        "Comparison-oriented searches are rising this week."
-                ) : insights,
+                fallbackInsights,
                 keywords.isEmpty() ? List.of(
                         new FrontendDtos.KeywordMetric("agent workflow", 0, 0L, 0L, 0L, 0.0),
                         new FrontendDtos.KeywordMetric("marketing automation", 0, 0L, 0L, 0L, 0.0),
@@ -195,16 +198,7 @@ public class FrontendService {
 
     public FrontendDtos.DeepInsightResponse getDeepInsight(FrontendDtos.DeepInsightRequest request) {
         FrontendDtos.AnalysisResponse analysis = getAnalysis(request.keyword());
-        return new FrontendDtos.DeepInsightResponse(
-                analysis.keyword(),
-                request.source(),
-                "Market demand is clustering around practical use cases, creator comparisons, and performance signals.",
-                analysis.relatedKeywords().stream()
-                        .limit(4)
-                        .map(km -> "Push deeper content around \"" + km.keyword() + "\" in the next sprint.")
-                        .toList(),
-                "Prioritize the fastest-growing demand cluster and track creator momentum week over week."
-        );
+        return aiProvider.generateDeepInsight(analysis, request.source());
     }
 
     public List<FrontendDtos.ExpertItem> getExperts() {
@@ -245,29 +239,83 @@ public class FrontendService {
         Set<String> activeCodes = activeProviders.stream()
                 .map(SearchProviderEntity::getProviderCode)
                 .collect(Collectors.toSet());
+        System.out.println("[DEBUG] Active providers: " + activeCodes + " for keyword=\"" + keyword + "\"");
         if (activeCodes.isEmpty()) {
+            System.out.println("[DEBUG] No active providers found!");
             return List.of();
         }
-        return providerOrchestrator.aggregate(activeCodes, keyword, "US", "en", "7d");
+        List<NormalizedSourceItem> results = providerOrchestrator.aggregate(activeCodes, keyword, "US", "en", "7d");
+        System.out.println("[DEBUG] YouTube returned " + results.size() + " items for keyword=\"" + keyword + "\"");
+        return results;
     }
 
     private FrontendDtos.AnalysisResponse buildLiveAnalysis(String keyword, List<NormalizedSourceItem> items) {
-        List<String> insights = items.stream()
-                .map(item -> firstMeaningfulText(item.snippet(), item.title()))
-                .filter(text -> text != null && !text.isBlank())
-                .distinct()
-                .limit(4)
-                .toList();
+        String kw = keyword == null || keyword.isBlank() ? "AI Agent" : keyword;
 
-        List<String> news = items.stream()
-                .map(NormalizedSourceItem::title)
-                .filter(title -> title != null && !title.isBlank())
-                .distinct()
-                .limit(4)
-                .toList();
+        // Aggregate total metrics across all items
+        long totalViews = 0L;
+        long totalLikes = 0L;
+        long totalComments = 0L;
+        double totalEngagement = 0.0;
+        Set<String> channels = new HashSet<>();
+        long positive = 0;
+        long negative = 0;
+        long neutral = 0;
 
-        // Build keyword metrics: aggregate views/likes/comments per token
-        Map<String, int[]> tokenStats = new HashMap<>(); // [mentionCount, totalViews, totalLikes, totalComments, engagementSum]
+        for (NormalizedSourceItem item : items) {
+            if (item.rawPayload() instanceof Map<?, ?> payload) {
+                totalViews += toLong(payload.get("viewCount"));
+                totalLikes += toLong(payload.get("likeCount"));
+                totalComments += toLong(payload.get("commentCount"));
+                totalEngagement += toDouble(payload.get("engagementRate"));
+            }
+            if (item.sourceName() != null && !item.sourceName().isBlank()) {
+                channels.add(item.sourceName());
+            }
+            String sentiment = item.sentimentLabel();
+            if ("POSITIVE".equalsIgnoreCase(sentiment)) positive++;
+            else if ("NEGATIVE".equalsIgnoreCase(sentiment)) negative++;
+            else neutral++;
+        }
+
+        double avgEngagement = items.isEmpty() ? 0.0 : totalEngagement / items.size();
+        String engagementPct = String.format("%.2f", avgEngagement * 100);
+
+        // 1 — Trend Insight
+        String trendText = String.format(
+                "Across %d videos analyzed, \"%s\" generated %s total views with an average engagement rate of %s%%. %s",
+                items.size(), kw, formatCompact(totalViews), engagementPct,
+                totalViews > 100000
+                        ? "This indicates strong and growing consumer interest."
+                        : "The topic is emerging — early positioning could capture rising demand."
+        );
+
+        // 2 — Media Signal
+        String topChannels = channels.stream().limit(3).collect(Collectors.joining(", "));
+        String mediaText = String.format(
+                "Content about \"%s\" is actively produced by %d creator(s) including %s. %s",
+                kw, channels.size(), topChannels.isEmpty() ? "various channels" : topChannels,
+                channels.size() >= 3
+                        ? "A competitive content landscape suggests high market relevance."
+                        : "Limited creator coverage presents an opportunity for early market voice."
+        );
+
+        // 3 — Social Sentiment
+        long totalSentiment = positive + negative + neutral;
+        int positiveRate = totalSentiment > 0 ? (int) (positive * 100 / totalSentiment) : 0;
+        int negativeRate = totalSentiment > 0 ? (int) (negative * 100 / totalSentiment) : 0;
+        String sentimentText = String.format(
+                "%d%% positive and %d%% negative sentiment detected across %s likes and %s comments. %s",
+                positiveRate, negativeRate, formatCompact(totalLikes), formatCompact(totalComments),
+                positiveRate >= 60
+                        ? "Overall reception is favorable — strong foundation for market entry."
+                        : positiveRate >= 30
+                                ? "Mixed signals detected — deeper competitor analysis recommended."
+                                : "Caution advised — negative sentiment may indicate market friction."
+        );
+
+        // 4 — Keyword Opportunity (build keywords first)
+        Map<String, int[]> tokenStats = new HashMap<>();
         for (NormalizedSourceItem item : items) {
             long itemViews = 0L;
             long itemLikes = 0L;
@@ -281,15 +329,18 @@ public class FrontendService {
             }
             Set<String> tokens = new HashSet<>();
             tokens.addAll(tokenize(item.title()));
-            tokens.addAll(tokenize(item.snippet()));
+            String cleanDesc = cleanSnippet(item.snippet(), "");
+            if (cleanDesc != null) {
+                tokens.addAll(tokenize(cleanDesc));
+            }
             for (String token : tokens) {
                 tokenStats.computeIfAbsent(token, k -> new int[5]);
                 int[] stats = tokenStats.get(token);
-                stats[0]++; // mentionCount
+                stats[0]++;
                 stats[1] += (int) itemViews;
                 stats[2] += (int) itemLikes;
                 stats[3] += (int) itemComments;
-                stats[4] += (int) (itemEngagement * 10000); // store as scaled int
+                stats[4] += (int) (itemEngagement * 10000);
             }
         }
 
@@ -300,7 +351,7 @@ public class FrontendService {
                 "comments", "duration", "topics", "search", "result", "views", "likes",
                 "subscribers", "tags", "best", "review", "2024", "2025", "2026"
         ));
-        String keywordLower = keyword == null ? "" : keyword.trim().toLowerCase(java.util.Locale.ROOT);
+        String keywordLower = kw.trim().toLowerCase(Locale.ROOT);
 
         List<FrontendDtos.KeywordMetric> relatedKeywords = tokenStats.entrySet().stream()
                 .filter(entry -> entry.getKey().length() >= 4)
@@ -315,8 +366,29 @@ public class FrontendService {
                 })
                 .toList();
 
-        long positive = items.stream().filter(item -> "POSITIVE".equalsIgnoreCase(item.sentimentLabel())).count();
-        long negative = items.stream().filter(item -> "NEGATIVE".equalsIgnoreCase(item.sentimentLabel())).count();
+        String topKws = relatedKeywords.stream().limit(3).map(FrontendDtos.KeywordMetric::keyword)
+                .map(k -> "\"" + k + "\"")
+                .collect(Collectors.joining(", "));
+        String kwOpportunityText = relatedKeywords.isEmpty()
+                ? "No strong related keyword signals detected yet for \"" + kw + "\". Consider broadening the search scope."
+                : String.format(
+                        "Trending related keywords %s show high co-occurrence with \"%s\", indicating expanding market segments worth targeting.",
+                        topKws, kw
+                );
+
+        List<FrontendDtos.InsightItem> insights = List.of(
+                new FrontendDtos.InsightItem("Trend Insight", trendText),
+                new FrontendDtos.InsightItem("Media Signal", mediaText),
+                new FrontendDtos.InsightItem("Social Sentiment", sentimentText),
+                new FrontendDtos.InsightItem("Keyword Opportunity", kwOpportunityText)
+        );
+
+        List<String> news = items.stream()
+                .map(NormalizedSourceItem::title)
+                .filter(title -> title != null && !title.isBlank())
+                .distinct()
+                .limit(4)
+                .toList();
 
         List<String> suggestedActions = new ArrayList<>();
         suggestedActions.add("Compare creator momentum");
@@ -325,10 +397,10 @@ public class FrontendService {
         suggestedActions.add("Review top YouTube narratives");
 
         return new FrontendDtos.AnalysisResponse(
-                keyword == null || keyword.isBlank() ? "AI Agent" : keyword,
+                kw,
                 null,
                 null,
-                insights.isEmpty() ? List.of("No live insight found for this keyword yet.") : insights,
+                insights,
                 relatedKeywords.isEmpty() ? List.of(
                         new FrontendDtos.KeywordMetric("demand", 0, 0L, 0L, 0L, 0.0),
                         new FrontendDtos.KeywordMetric("review", 0, 0L, 0L, 0L, 0.0),
@@ -345,6 +417,7 @@ public class FrontendService {
             return List.of();
         }
         return List.of(value.toLowerCase(Locale.ROOT).split("\\s+")).stream()
+                .filter(token -> !token.startsWith("http"))
                 .map(token -> token.replaceAll("[^a-z0-9]", ""))
                 .filter(token -> !token.isBlank())
                 .toList();
@@ -356,6 +429,24 @@ public class FrontendService {
         }
         if (fallback != null && !fallback.isBlank()) {
             return fallback.length() <= 180 ? fallback : fallback.substring(0, 180);
+        }
+        return null;
+    }
+
+    private String cleanSnippet(String snippet, String titleFallback) {
+        String text = snippet;
+        if (text != null) {
+            if (text.contains(" ; views=")) {
+                text = text.substring(0, text.indexOf(" ; views="));
+            } else if (text.startsWith("views=")) {
+                text = "";
+            }
+        }
+        if (text != null && !text.isBlank()) {
+            return text.length() <= 250 ? text : text.substring(0, 250) + "...";
+        }
+        if (titleFallback != null && !titleFallback.isBlank()) {
+            return titleFallback.length() <= 250 ? titleFallback : titleFallback.substring(0, 250) + "...";
         }
         return null;
     }
@@ -420,5 +511,15 @@ public class FrontendService {
             try { return Double.parseDouble(s); } catch (NumberFormatException ignored) {}
         }
         return 0.0;
+    }
+
+    private String formatCompact(long value) {
+        if (value >= 1_000_000) {
+            return String.format("%.1fM", value / 1_000_000.0);
+        }
+        if (value >= 1_000) {
+            return String.format("%.1fK", value / 1_000.0);
+        }
+        return String.valueOf(value);
     }
 }
