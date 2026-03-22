@@ -1,0 +1,142 @@
+import { useEffect, useState } from 'react'
+import { Link } from 'react-router-dom'
+import { useSearchParams } from 'react-router-dom'
+import { Button } from '../../components/Button'
+import { ROUTES } from '../../constants/routes'
+import { appApi } from '../../services/appApi'
+
+export function AnalysisPage() {
+  const [searchParams] = useSearchParams()
+  const keyword = searchParams.get('keyword') || 'AI Agent'
+
+  const [data, setData] = useState(null)
+  const [loading, setLoading] = useState(false)
+
+  const load = async () => {
+    setLoading(true)
+    try {
+      const result = await appApi.getAnalysis(keyword)
+      setData(result)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  useEffect(() => {
+    load()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [keyword])
+
+  return (
+    <div className="analysis-shell page-wrap">
+      <div className="analysis-header-row">
+        <div>
+          <h1>Market Analysis</h1>
+          <p className="hint">Keyword: "{keyword}" • Last updated just now</p>
+        </div>
+        <div className="header-actions">
+          <Button variant="secondary" className="btn-sm">Export</Button>
+          <Button onClick={load} disabled={loading} className="btn-sm">
+            {loading ? 'Refreshing...' : 'Refresh Data'}
+          </Button>
+        </div>
+      </div>
+
+      <section className="card ai-summary">
+        <h2 className="card-title">AI Summary</h2>
+        <div className="insight-grid">
+          {(data?.insights ?? []).map((item) => (
+            <div key={item} className="insight-item">
+              <div className="insight-label">
+                <span className="dot-indicator" /> Insight
+              </div>
+              <div className="insight-text">{item}</div>
+            </div>
+          ))}
+        </div>
+        <div className="ask-more">
+          <Link to={ROUTES.DEEP_INSIGHT} className="ask-more-cta">
+            <span className="ask-more-icon">AI</span>
+            <span>Ask AI More {'->'}</span>
+          </Link>
+        </div>
+      </section>
+
+      <section className="card trend-area">
+        <div className="trend-area-label">7-Day Trend Analysis</div>
+        <div className="chart-placeholder chart-lg" />
+      </section>
+
+      <section className="ai-actions">
+        <div className="ai-actions-label">Suggested AI Actions:</div>
+        <div className="tag-wrap">
+          {(data?.suggestedActions ?? []).map((a) => (
+            <button key={a} className="tag">{a}</button>
+          ))}
+        </div>
+      </section>
+
+      <div className="two-col">
+        <section className="card">
+          <div className="card-header">
+            <div className="card-title">Search Trend</div>
+            <select className="mini-select">
+              <option>Last 30 days</option>
+              <option>Last 7 days</option>
+              <option>Last 90 days</option>
+            </select>
+          </div>
+          <div className="chart-placeholder chart-md" />
+        </section>
+
+        <section className="card">
+          <div className="card-header">
+            <div className="card-title">Related Keywords</div>
+          </div>
+          <div className="keyword-list">
+            {(data?.relatedKeywords ?? []).map((k, index) => (
+              <div className="keyword-row" key={k}>
+                <span className="kw-name">{k}</span>
+                <div className="kw-bar-wrap">
+                  <div className="kw-bar" style={{ width: `${80 - index * 12}%` }} />
+                  <span className="kw-change">+{18 - index * 3}%</span>
+                </div>
+              </div>
+            ))}
+          </div>
+        </section>
+      </div>
+
+      <div className="two-col">
+        <section className="card">
+          <div className="card-header">
+            <div className="card-title">Social Sentiment</div>
+          </div>
+          <div className="sentiment-container">
+            <div className="sentiment-donut" />
+            <div className="sentiment-legend">
+              <span><i className="dot positive" /> Positive</span>
+              <span><i className="dot neutral" /> Neutral</span>
+              <span><i className="dot negative" /> Negative</span>
+            </div>
+          </div>
+        </section>
+
+        <section className="card">
+          <div className="card-header">
+            <div className="card-title">Recent News</div>
+          </div>
+          {(data?.news ?? []).map((news, index) => (
+            <div className="news-item" key={news}>
+              <span className="news-icon" />
+              <div>
+                <div className="news-title">{news}</div>
+                <div className="news-meta">Source {index + 1} • few hours ago</div>
+              </div>
+            </div>
+          ))}
+        </section>
+      </div>
+    </div>
+  )
+}
