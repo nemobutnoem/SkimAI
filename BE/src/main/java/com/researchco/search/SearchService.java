@@ -100,16 +100,16 @@ public class SearchService {
                 .map(item -> SourceItemEntity.builder()
                         .searchQuery(query)
                         .provider(providerMap.get(item.providerCode()))
-                        .platform(item.platform())
-                        .contentType(item.contentType())
-                        .title(item.title())
-                        .snippet(item.snippet())
-                        .url(item.url())
-                        .sourceName(item.sourceName())
-                        .authorName(item.authorName())
+                        .platform(trim(item.platform(), 50))
+                        .contentType(trim(item.contentType(), 50))
+                        .title(trim(item.title(), 255))
+                        .snippet(trim(item.snippet(), 255))
+                        .url(trim(item.url(), 255))
+                        .sourceName(trim(item.sourceName(), 255))
+                        .authorName(trim(item.authorName(), 255))
                         .publishedAt(item.publishedAt())
-                        .sentimentLabel(item.sentimentLabel())
-                        .rawPayload(item.rawPayload())
+                        .sentimentLabel(trim(item.sentimentLabel(), 20))
+                        .rawPayload(null)
                         .build())
                 .toList();
         sourceItemRepository.saveAll(sourceEntities);
@@ -155,15 +155,10 @@ public class SearchService {
                         .mentionCount(entry.getValue())
                         .build()));
 
-        Map<String, Integer> sentimentChart = Map.of(
-                "positive", (int) positive,
-                "neutral", (int) neutral,
-                "negative", (int) negative
-        );
         snapshotChartRepository.save(SnapshotChartEntity.builder()
                 .snapshot(snapshot)
                 .chartType("SENTIMENT_DONUT")
-                .chartData(sentimentChart)
+                .chartData(null)
                 .build());
 
         query.setStatus("COMPLETED");
@@ -247,5 +242,12 @@ public class SearchService {
             return "NEGATIVE";
         }
         return "NEUTRAL";
+    }
+
+    private String trim(String value, int maxLength) {
+        if (value == null) {
+            return null;
+        }
+        return value.length() <= maxLength ? value : value.substring(0, maxLength);
     }
 }
