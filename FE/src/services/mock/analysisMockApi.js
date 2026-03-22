@@ -90,20 +90,67 @@ export const analysisMockApi = {
     const query = findQueryByKeyword(keyword)
     const snapshot = getSnapshotByQueryId(query.id)
 
-    const opportunities = DB.snapshot_keywords
+    const dbKeywords = DB.snapshot_keywords
       .filter((item) => item.snapshot_id === snapshot?.id)
       .sort((a, b) => b.mention_count - a.mention_count)
       .slice(0, 4)
-      .map((item) => `Đẩy mạnh nội dung cho keyword "${item.keyword}" (${item.mention_count} mentions).`)
 
     return {
       keyword: query.keyword,
       source,
+      keyFinding:
+        snapshot?.summary_text ??
+        `Search interest for "${query.keyword}" increased by 47% over the last 30 days, with a significant spike coinciding with industry announcements.`,
+      stats: [
+        { value: '+47%', label: 'Monthly Growth' },
+        { value: '89%', label: 'Peak Day Spike' },
+        { value: '8.2k', label: 'Daily Searches' },
+      ],
+      mediaSignals: [
+        { title: 'Government Policy Support', desc: 'Recent coverage highlights $2B federal investment in electric transportation infrastructure, with specific focus on urban mobility solutions.' },
+        { title: 'Industry Expansion', desc: 'Major retailers announced new partnerships, indicating mainstream market acceptance.' },
+        { title: 'Technology Advancement', desc: 'Battery technology breakthroughs featured in 10+ tech publications, emphasizing improved range and faster charging.' },
+      ],
+      sentiment: {
+        bars: [
+          { label: 'Positive', pct: 69, color: 'var(--green)', cls: 'text-green' },
+          { label: 'Neutral', pct: 24, color: 'var(--gray-500)', cls: '' },
+          { label: 'Negative', pct: 8, color: 'var(--red)', cls: 'text-red' },
+        ],
+        topics: [
+          { name: 'Affordability', change: '+34%' },
+          { name: 'Battery Life', change: '+28%' },
+          { name: 'Urban Commuting', change: '+22%' },
+          { name: 'Environmental Impact', change: '+19%' },
+        ],
+      },
+      opportunityCards: dbKeywords.length
+        ? dbKeywords.map((kw, i) => ({
+            title: kw.keyword,
+            desc: `Keyword "${kw.keyword}" has ${kw.mention_count} mentions — consider targeted content.`,
+            theme: ['green', 'blue', 'orange', 'purple'][i % 4],
+          }))
+        : [
+            { title: 'Budget Segment Growth', desc: 'Rising keywords: "cheap electric bike" (+185%), "affordable e-bike" (+160%) suggest strong demand.', theme: 'green' },
+            { title: 'Subscription Models', desc: '"Electric bike rental" (+152%) and "e-bike subscription" (+118%) show interest in alternative models.', theme: 'blue' },
+            { title: 'Urban Commuter Focus', desc: '"Electric bike commuting" (+147%) indicate opportunity in metropolitan markets.', theme: 'orange' },
+            { title: 'Cargo & Family Bikes', desc: '"Electric cargo bike" (+134%) and "family e-bike" (+86%) represent growing niche segments.', theme: 'purple' },
+          ],
+      strategicRecommendation: {
+        title: 'Focus on Entry-Level Urban Market',
+        desc: 'Based on the analysis, brands should prioritize developing affordable models specifically designed for urban commuters. The convergence of policy support, positive sentiment, and rising budget-focused keywords creates a significant market opportunity.',
+        stats: [
+          { value: '$1.2B', label: 'Estimated Market Size' },
+          { value: '18 Months', label: 'Optimal Entry Window' },
+          { value: '156%', label: 'Budget Keyword Growth', highlight: true },
+        ],
+      },
+      // Keep backward-compatible fields
       marketInsight:
         snapshot?.summary_text ??
         'Thị trường đang tăng trưởng ổn định, nhu cầu tập trung vào tính năng tự động hóa và báo cáo nhanh.',
-      opportunities: opportunities.length
-        ? opportunities
+      opportunities: dbKeywords.length
+        ? dbKeywords.map((item) => `Đẩy mạnh nội dung cho keyword "${item.keyword}" (${item.mention_count} mentions).`)
         : [
             'Tạo gói dùng thử chuyên biệt cho team marketing.',
             'Đẩy mạnh tích hợp với nguồn dữ liệu social.',
