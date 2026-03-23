@@ -1,0 +1,628 @@
+diff --git a/BE/src/main/java/com/researchco/frontend/FrontendDtos.java b/BE/src/main/java/com/researchco/frontend/FrontendDtos.java
+index c7d32b3..8146b06 100644
+--- a/BE/src/main/java/com/researchco/frontend/FrontendDtos.java
++++ b/BE/src/main/java/com/researchco/frontend/FrontendDtos.java
+@@ -41,11 +41,14 @@ public class FrontendDtos {
+     ) {
+     }
+ 
++    public record InsightItem(String label, String text) {
++    }
++
+     public record AnalysisResponse(
+             String keyword,
+             String searchQueryId,
+             String snapshotId,
+-            List<String> insights,
++            List<InsightItem> insights,
+             List<KeywordMetric> relatedKeywords,
+             List<String> news,
+             List<String> suggestedActions
+diff --git a/BE/src/main/java/com/researchco/frontend/FrontendService.java b/BE/src/main/java/com/researchco/frontend/FrontendService.java
+index e444b72..e7cc142 100644
+--- a/BE/src/main/java/com/researchco/frontend/FrontendService.java
++++ b/BE/src/main/java/com/researchco/frontend/FrontendService.java
+@@ -20,6 +20,7 @@ import com.researchco.subscription.UserSubscriptionEntity;
+ import com.researchco.subscription.UserSubscriptionRepository;
+ import com.researchco.user.UserEntity;
+ import com.researchco.user.UserRepository;
++import com.researchco.provider.ai.AiProvider;
+ import org.springframework.stereotype.Service;
+ import org.springframework.transaction.annotation.Transactional;
+ 
+@@ -53,6 +54,7 @@ public class FrontendService {
+     private final PlanRepository planRepository;
+     private final SearchProviderRepository searchProviderRepository;
+     private final ProviderOrchestrator providerOrchestrator;
++    private final AiProvider aiProvider;
+     private final AtomicReference<Map<String, Boolean>> notificationSettings = new AtomicReference<>(
+             new LinkedHashMap<>(Map.of(
+                     "emailUpdates", true,
+@@ -71,7 +73,8 @@ public class FrontendService {
+                            UserSubscriptionRepository userSubscriptionRepository,
+                            PlanRepository planRepository,
+                            SearchProviderRepository searchProviderRepository,
+-                           ProviderOrchestrator providerOrchestrator) {
++                           ProviderOrchestrator providerOrchestrator,
++                           AiProvider aiProvider) {
+         this.searchQueryRepository = searchQueryRepository;
+         this.analysisSnapshotRepository = analysisSnapshotRepository;
+         this.snapshotInsightRepository = snapshotInsightRepository;
+@@ -83,6 +86,7 @@ public class FrontendService {
+         this.planRepository = planRepository;
+         this.searchProviderRepository = searchProviderRepository;
+         this.providerOrchestrator = providerOrchestrator;
++        this.aiProvider = aiProvider;
+     }
+ 
+     public FrontendDtos.DashboardResponse getDashboard() {
+@@ -151,10 +155,6 @@ public class FrontendService {
+         SearchQueryEntity query = findQueryByKeyword(keyword).orElseGet(() -> fallbackQuery(keyword));
+         AnalysisSnapshotEntity snapshot = analysisSnapshotRepository.findBySearchQueryId(query.getId()).orElse(null);
+ 
+-        List<String> insights = snapshot != null
+-                ? snapshotInsightRepository.findBySnapshotId(snapshot.getId()).stream().map(item -> item.getContent()).limit(4).toList()
+-                : List.of();
+-
+         List<FrontendDtos.KeywordMetric> keywords = snapshot != null
+                 ? snapshotKeywordRepository.findBySnapshotId(snapshot.getId()).stream()
+                 .sorted(Comparator.comparing(SnapshotKeywordEntity::getMentionCount).reversed())
+@@ -169,16 +169,19 @@ public class FrontendService {
+                 .limit(3)
+                 .toList();
+ 
++        String kw = query.getKeyword();
++        List<FrontendDtos.InsightItem> fallbackInsights = List.of(
++                new FrontendDtos.InsightItem("Trend Insight", "Search interest for \"" + kw + "\" is showing steady activity. Consumer attention typically peaks during key seasonal windows."),
++                new FrontendDtos.InsightItem("Media Signal", "Limited media coverage detected for \"" + kw + "\". Expanding source coverage may reveal additional market signals."),
++                new FrontendDtos.InsightItem("Social Sentiment", "Sentiment data for \"" + kw + "\" is still being collected. Initial signals suggest neutral-to-positive reception."),
++                new FrontendDtos.InsightItem("Keyword Opportunity", "Related keyword data for \"" + kw + "\" is limited. Consider broadening search scope to uncover emerging opportunities.")
++        );
++
+         return new FrontendDtos.AnalysisResponse(
+-                query.getKeyword(),
++                kw,
+                 query.getId().toString(),
+                 snapshot != null ? snapshot.getId().toString() : null,
+-                insights.isEmpty() ? List.of(
+-                        "Search volume spikes around peak browsing windows.",
+-                        "Demand appears strongest in SME and ecommerce segments.",
+-                        "Positive sentiment clusters around automation benefits.",
+-                        "Comparison-oriented searches are rising this week."
+-                ) : insights,
++                fallbackInsights,
+                 keywords.isEmpty() ? List.of(
+                         new FrontendDtos.KeywordMetric("agent workflow", 0, 0L, 0L, 0L, 0.0),
+                         new FrontendDtos.KeywordMetric("marketing automation", 0, 0L, 0L, 0L, 0.0),
+@@ -195,16 +198,7 @@ public class FrontendService {
+ 
+     public FrontendDtos.DeepInsightResponse getDeepInsight(FrontendDtos.DeepInsightRequest request) {
+         FrontendDtos.AnalysisResponse analysis = getAnalysis(request.keyword());
+-        return new FrontendDtos.DeepInsightResponse(
+-                analysis.keyword(),
+-                request.source(),
+-                "Market demand is clustering around practical use cases, creator comparisons, and performance signals.",
+-                analysis.relatedKeywords().stream()
+-                        .limit(4)
+-                        .map(km -> "Push deeper content around \"" + km.keyword() + "\" in the next sprint.")
+-                        .toList(),
+-                "Prioritize the fastest-growing demand cluster and track creator momentum week over week."
+-        );
++        return aiProvider.generateDeepInsight(analysis, request.source());
+     }
+ 
+     public List<FrontendDtos.ExpertItem> getExperts() {
+@@ -245,29 +239,83 @@ public class FrontendService {
+         Set<String> activeCodes = activeProviders.stream()
+                 .map(SearchProviderEntity::getProviderCode)
+                 .collect(Collectors.toSet());
++        System.out.println("[DEBUG] Active providers: " + activeCodes + " for keyword=\"" + keyword + "\"");
+         if (activeCodes.isEmpty()) {
++            System.out.println("[DEBUG] No active providers found!");
+             return List.of();
+         }
+-        return providerOrchestrator.aggregate(activeCodes, keyword, "US", "en", "7d");
++        List<NormalizedSourceItem> results = providerOrchestrator.aggregate(activeCodes, keyword, "US", "en", "7d");
++        System.out.println("[DEBUG] YouTube returned " + results.size() + " items for keyword=\"" + keyword + "\"");
++        return results;
+     }
+ 
+     private FrontendDtos.AnalysisResponse buildLiveAnalysis(String keyword, List<NormalizedSourceItem> items) {
+-        List<String> insights = items.stream()
+-                .map(item -> firstMeaningfulText(item.snippet(), item.title()))
+-                .filter(text -> text != null && !text.isBlank())
+-                .distinct()
+-                .limit(4)
+-                .toList();
++        String kw = keyword == null || keyword.isBlank() ? "AI Agent" : keyword;
++
++        // Aggregate total metrics across all items
++        long totalViews = 0L;
++        long totalLikes = 0L;
++        long totalComments = 0L;
++        double totalEngagement = 0.0;
++        Set<String> channels = new HashSet<>();
++        long positive = 0;
++        long negative = 0;
++        long neutral = 0;
+ 
+-        List<String> news = items.stream()
+-                .map(NormalizedSourceItem::title)
+-                .filter(title -> title != null && !title.isBlank())
+-                .distinct()
+-                .limit(4)
+-                .toList();
++        for (NormalizedSourceItem item : items) {
++            if (item.rawPayload() instanceof Map<?, ?> payload) {
++                totalViews += toLong(payload.get("viewCount"));
++                totalLikes += toLong(payload.get("likeCount"));
++                totalComments += toLong(payload.get("commentCount"));
++                totalEngagement += toDouble(payload.get("engagementRate"));
++            }
++            if (item.sourceName() != null && !item.sourceName().isBlank()) {
++                channels.add(item.sourceName());
++            }
++            String sentiment = item.sentimentLabel();
++            if ("POSITIVE".equalsIgnoreCase(sentiment)) positive++;
++            else if ("NEGATIVE".equalsIgnoreCase(sentiment)) negative++;
++            else neutral++;
++        }
++
++        double avgEngagement = items.isEmpty() ? 0.0 : totalEngagement / items.size();
++        String engagementPct = String.format("%.2f", avgEngagement * 100);
++
++        // 1 — Trend Insight
++        String trendText = String.format(
++                "Across %d videos analyzed, \"%s\" generated %s total views with an average engagement rate of %s%%. %s",
++                items.size(), kw, formatCompact(totalViews), engagementPct,
++                totalViews > 100000
++                        ? "This indicates strong and growing consumer interest."
++                        : "The topic is emerging — early positioning could capture rising demand."
++        );
++
++        // 2 — Media Signal
++        String topChannels = channels.stream().limit(3).collect(Collectors.joining(", "));
++        String mediaText = String.format(
++                "Content about \"%s\" is actively produced by %d creator(s) including %s. %s",
++                kw, channels.size(), topChannels.isEmpty() ? "various channels" : topChannels,
++                channels.size() >= 3
++                        ? "A competitive content landscape suggests high market relevance."
++                        : "Limited creator coverage presents an opportunity for early market voice."
++        );
++
++        // 3 — Social Sentiment
++        long totalSentiment = positive + negative + neutral;
++        int positiveRate = totalSentiment > 0 ? (int) (positive * 100 / totalSentiment) : 0;
++        int negativeRate = totalSentiment > 0 ? (int) (negative * 100 / totalSentiment) : 0;
++        String sentimentText = String.format(
++                "%d%% positive and %d%% negative sentiment detected across %s likes and %s comments. %s",
++                positiveRate, negativeRate, formatCompact(totalLikes), formatCompact(totalComments),
++                positiveRate >= 60
++                        ? "Overall reception is favorable — strong foundation for market entry."
++                        : positiveRate >= 30
++                                ? "Mixed signals detected — deeper competitor analysis recommended."
++                                : "Caution advised — negative sentiment may indicate market friction."
++        );
+ 
+-        // Build keyword metrics: aggregate views/likes/comments per token
+-        Map<String, int[]> tokenStats = new HashMap<>(); // [mentionCount, totalViews, totalLikes, totalComments, engagementSum]
++        // 4 — Keyword Opportunity (build keywords first)
++        Map<String, int[]> tokenStats = new HashMap<>();
+         for (NormalizedSourceItem item : items) {
+             long itemViews = 0L;
+             long itemLikes = 0L;
+@@ -281,15 +329,18 @@ public class FrontendService {
+             }
+             Set<String> tokens = new HashSet<>();
+             tokens.addAll(tokenize(item.title()));
+-            tokens.addAll(tokenize(item.snippet()));
++            String cleanDesc = cleanSnippet(item.snippet(), "");
++            if (cleanDesc != null) {
++                tokens.addAll(tokenize(cleanDesc));
++            }
+             for (String token : tokens) {
+                 tokenStats.computeIfAbsent(token, k -> new int[5]);
+                 int[] stats = tokenStats.get(token);
+-                stats[0]++; // mentionCount
++                stats[0]++;
+                 stats[1] += (int) itemViews;
+                 stats[2] += (int) itemLikes;
+                 stats[3] += (int) itemComments;
+-                stats[4] += (int) (itemEngagement * 10000); // store as scaled int
++                stats[4] += (int) (itemEngagement * 10000);
+             }
+         }
+ 
+@@ -300,7 +351,7 @@ public class FrontendService {
+                 "comments", "duration", "topics", "search", "result", "views", "likes",
+                 "subscribers", "tags", "best", "review", "2024", "2025", "2026"
+         ));
+-        String keywordLower = keyword == null ? "" : keyword.trim().toLowerCase(java.util.Locale.ROOT);
++        String keywordLower = kw.trim().toLowerCase(Locale.ROOT);
+ 
+         List<FrontendDtos.KeywordMetric> relatedKeywords = tokenStats.entrySet().stream()
+                 .filter(entry -> entry.getKey().length() >= 4)
+@@ -315,8 +366,29 @@ public class FrontendService {
+                 })
+                 .toList();
+ 
+-        long positive = items.stream().filter(item -> "POSITIVE".equalsIgnoreCase(item.sentimentLabel())).count();
+-        long negative = items.stream().filter(item -> "NEGATIVE".equalsIgnoreCase(item.sentimentLabel())).count();
++        String topKws = relatedKeywords.stream().limit(3).map(FrontendDtos.KeywordMetric::keyword)
++                .map(k -> "\"" + k + "\"")
++                .collect(Collectors.joining(", "));
++        String kwOpportunityText = relatedKeywords.isEmpty()
++                ? "No strong related keyword signals detected yet for \"" + kw + "\". Consider broadening the search scope."
++                : String.format(
++                        "Trending related keywords %s show high co-occurrence with \"%s\", indicating expanding market segments worth targeting.",
++                        topKws, kw
++                );
++
++        List<FrontendDtos.InsightItem> insights = List.of(
++                new FrontendDtos.InsightItem("Trend Insight", trendText),
++                new FrontendDtos.InsightItem("Media Signal", mediaText),
++                new FrontendDtos.InsightItem("Social Sentiment", sentimentText),
++                new FrontendDtos.InsightItem("Keyword Opportunity", kwOpportunityText)
++        );
++
++        List<String> news = items.stream()
++                .map(NormalizedSourceItem::title)
++                .filter(title -> title != null && !title.isBlank())
++                .distinct()
++                .limit(4)
++                .toList();
+ 
+         List<String> suggestedActions = new ArrayList<>();
+         suggestedActions.add("Compare creator momentum");
+@@ -325,10 +397,10 @@ public class FrontendService {
+         suggestedActions.add("Review top YouTube narratives");
+ 
+         return new FrontendDtos.AnalysisResponse(
+-                keyword == null || keyword.isBlank() ? "AI Agent" : keyword,
++                kw,
+                 null,
+                 null,
+-                insights.isEmpty() ? List.of("No live insight found for this keyword yet.") : insights,
++                insights,
+                 relatedKeywords.isEmpty() ? List.of(
+                         new FrontendDtos.KeywordMetric("demand", 0, 0L, 0L, 0L, 0.0),
+                         new FrontendDtos.KeywordMetric("review", 0, 0L, 0L, 0L, 0.0),
+@@ -345,6 +417,7 @@ public class FrontendService {
+             return List.of();
+         }
+         return List.of(value.toLowerCase(Locale.ROOT).split("\\s+")).stream()
++                .filter(token -> !token.startsWith("http"))
+                 .map(token -> token.replaceAll("[^a-z0-9]", ""))
+                 .filter(token -> !token.isBlank())
+                 .toList();
+@@ -360,6 +433,24 @@ public class FrontendService {
+         return null;
+     }
+ 
++    private String cleanSnippet(String snippet, String titleFallback) {
++        String text = snippet;
++        if (text != null) {
++            if (text.contains(" ; views=")) {
++                text = text.substring(0, text.indexOf(" ; views="));
++            } else if (text.startsWith("views=")) {
++                text = "";
++            }
++        }
++        if (text != null && !text.isBlank()) {
++            return text.length() <= 250 ? text : text.substring(0, 250) + "...";
++        }
++        if (titleFallback != null && !titleFallback.isBlank()) {
++            return titleFallback.length() <= 250 ? titleFallback : titleFallback.substring(0, 250) + "...";
++        }
++        return null;
++    }
++
+     private Optional<SearchQueryEntity> findQueryByKeyword(String keyword) {
+         String normalized = keyword == null ? "" : keyword.trim().toLowerCase(Locale.ROOT);
+         return searchQueryRepository.findAll().stream()
+@@ -421,4 +512,14 @@ public class FrontendService {
+         }
+         return 0.0;
+     }
++
++    private String formatCompact(long value) {
++        if (value >= 1_000_000) {
++            return String.format("%.1fM", value / 1_000_000.0);
++        }
++        if (value >= 1_000) {
++            return String.format("%.1fK", value / 1_000.0);
++        }
++        return String.valueOf(value);
++    }
+ }
+diff --git a/BE/src/main/java/com/researchco/provider/YoutubeApiProvider.java b/BE/src/main/java/com/researchco/provider/YoutubeApiProvider.java
+index 75c470f..8852906 100644
+--- a/BE/src/main/java/com/researchco/provider/YoutubeApiProvider.java
++++ b/BE/src/main/java/com/researchco/provider/YoutubeApiProvider.java
+@@ -132,7 +132,9 @@ public class YoutubeApiProvider implements SearchProvider {
+                 ));
+             }
+             return results;
+-        } catch (Exception ignored) {
++        } catch (Exception e) {
++            System.err.println("[YOUTUBE_API] Search failed for keyword=\"" + keyword + "\": " + e.getMessage());
++            e.printStackTrace();
+             return List.of();
+         }
+     }
+@@ -147,7 +149,8 @@ public class YoutubeApiProvider implements SearchProvider {
+                 .queryParam("regionCode", blankToNull(countryCode))
+                 .queryParam("relevanceLanguage", blankToNull(languageCode))
+                 .queryParam("key", apiKey)
+-                .build(true)
++                .encode()
++                .build()
+                 .toUri();
+ 
+         JsonNode root = getJson(uri);
+@@ -214,6 +217,8 @@ public class YoutubeApiProvider implements SearchProvider {
+         HttpRequest request = HttpRequest.newBuilder(uri).GET().build();
+         HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
+         if (response.statusCode() < 200 || response.statusCode() >= 300) {
++            System.err.println("[YOUTUBE_API] HTTP " + response.statusCode() + " for: " + uri.toString().replaceAll("key=[^&]+", "key=***"));
++            System.err.println("[YOUTUBE_API] Response body: " + response.body());
+             return null;
+         }
+         return objectMapper.readTree(response.body());
+diff --git a/BE/src/main/java/com/researchco/provider/ai/AiProvider.java b/BE/src/main/java/com/researchco/provider/ai/AiProvider.java
+new file mode 100644
+index 0000000..b5e39ca
+--- /dev/null
++++ b/BE/src/main/java/com/researchco/provider/ai/AiProvider.java
+@@ -0,0 +1,14 @@
++package com.researchco.provider.ai;
++
++import com.researchco.frontend.FrontendDtos;
++
++public interface AiProvider {
++    /**
++     * Phân tích raw data và tr? v? Insight chuyên sâu.
++     *
++     * @param contextData Toàn b? d? li?u dã du?c phân tích tru?c dó (keyword, metrics, sentiment...)
++     * @param source      Ngu?n d? li?u ngu?i dùng yêu c?u (ví d?: search, news, social)
++     * @return Ð?i tu?ng ch?a c?u trúc Insight (marketInsight, opportunities, recommendation)
++     */
++    FrontendDtos.DeepInsightResponse generateDeepInsight(FrontendDtos.AnalysisResponse contextData, String source);
++}
+diff --git a/BE/src/main/java/com/researchco/provider/ai/DefaultAiProvider.java b/BE/src/main/java/com/researchco/provider/ai/DefaultAiProvider.java
+new file mode 100644
+index 0000000..f612bac
+--- /dev/null
++++ b/BE/src/main/java/com/researchco/provider/ai/DefaultAiProvider.java
+@@ -0,0 +1,40 @@
++package com.researchco.provider.ai;
++
++import com.researchco.frontend.FrontendDtos;
++import org.springframework.stereotype.Service;
++
++
++
++@Service
++public class DefaultAiProvider implements AiProvider {
++
++    // TODO: Khai báo WebClient, RestTemplate ho?c API Key c?a b?n ? dây.
++    // private final String apiKey = "YOUR_API_KEY";
++
++    @Override
++    public FrontendDtos.DeepInsightResponse generateDeepInsight(FrontendDtos.AnalysisResponse contextData, String source) {
++        
++        // TODO: Chuy?n d? li?u contextData (views, likes, related keywords) thành 1 chu?i text prompt.
++        // Ví d?: "Du?i dây là s? li?u phân tích v? t? khóa " + contextData.keyword() + "... \n 1. Views: ... \n Hãy dóng vai m?t chuyên gia phân tích và tr? v? d?nh d?ng JSON."
++
++        // TODO: G?i API Model AI th?c t? ? dây (ví d?: g?i POST https://generativelanguage.googleapis.com/...)
++        // String aiResponseString = restTemplate.postForObject(url, request, String.class);
++
++        // TODO: Parse response t? JSON tr? v? c?a AI thành record DeepInsightResponse.
++        
++        /* 
++         * Du?i dây là do?n code GI? L?P d? b?n có khung su?n tr? v? mà không b? l?i.
++         * Xóa ph?n này di sau khi b?n k?t n?i thành công v?i AI.
++         */
++        return new FrontendDtos.DeepInsightResponse(
++                contextData.keyword(),
++                source,
++                "Market demand is clustering around practical use cases, creator comparisons, and performance signals. (Placeholder from AI)",
++                contextData.relatedKeywords().stream()
++                        .limit(4)
++                        .map(km -> "Push deeper content around \"" + km.keyword() + "\" in the next sprint.")
++                        .toList(),
++                "Prioritize the fastest-growing demand cluster and track creator momentum week over week. (Placeholder from AI)"
++        );
++    }
++}
+diff --git a/BE/src/main/resources/application.yml b/BE/src/main/resources/application.yml
+index cdc991f..5b75963 100644
+--- a/BE/src/main/resources/application.yml
++++ b/BE/src/main/resources/application.yml
+@@ -19,6 +19,13 @@ spring:
+ 
+ server:
+   port: ${SERVER_PORT:8080}
++  servlet:
++    encoding:
++      charset: UTF-8
++      enabled: true
++      force: true
++  tomcat:
++    uri-encoding: UTF-8
+ 
+ app:
+   jwt:
+diff --git a/FE/src/pages/Analysis/AnalysisPage.jsx b/FE/src/pages/Analysis/AnalysisPage.jsx
+index dd107e8..27a27e0 100644
+--- a/FE/src/pages/Analysis/AnalysisPage.jsx
++++ b/FE/src/pages/Analysis/AnalysisPage.jsx
+@@ -5,6 +5,38 @@ import { Button } from '../../components/Button'
+ import { ROUTES } from '../../constants/routes'
+ import { appApi } from '../../services/appApi'
+ 
++const INSIGHT_TRUNCATE = 120
++
++function InsightCard({ insight }) {
++  const [expanded, setExpanded] = useState(false)
++  const text = insight?.text || ''
++  const label = insight?.label || 'Insight'
++  const needsTruncate = text.length > INSIGHT_TRUNCATE
++
++  return (
++    <div className="insight-item">
++      <div className="insight-label">
++        <span className="dot-indicator" /> {label}
++      </div>
++      <div className="insight-text">
++        {needsTruncate && !expanded ? text.slice(0, INSIGHT_TRUNCATE) + '...' : text}
++      </div>
++      {needsTruncate && (
++        <button className="see-more-btn" onClick={() => setExpanded(!expanded)}>
++          {expanded ? 'Show less' : 'See more'}
++        </button>
++      )}
++    </div>
++  )
++}
++
++function formatNumber(num) {
++  if (!num && num !== 0) return '0'
++  if (num >= 1000000) return (num / 1000000).toFixed(1) + 'M'
++  if (num >= 1000) return (num / 1000).toFixed(1) + 'K'
++  return String(num)
++}
++
+ export function AnalysisPage() {
+   const [searchParams] = useSearchParams()
+   const keyword = searchParams.get('keyword') || 'AI Agent'
+@@ -45,13 +77,8 @@ export function AnalysisPage() {
+       <section className="card ai-summary">
+         <h2 className="card-title">AI Summary</h2>
+         <div className="insight-grid">
+-          {(data?.insights ?? []).map((item) => (
+-            <div key={item} className="insight-item">
+-              <div className="insight-label">
+-                <span className="dot-indicator" /> Insight
+-              </div>
+-              <div className="insight-text">{item}</div>
+-            </div>
++          {(data?.insights ?? []).map((item, i) => (
++            <InsightCard key={i} insight={item} />
+           ))}
+         </div>
+         <div className="ask-more">
+@@ -97,18 +124,16 @@ export function AnalysisPage() {
+             {(data?.relatedKeywords ?? []).map((km, index) => {
+               const maxMentions = Math.max(...(data?.relatedKeywords ?? []).map(k => k.mentionCount || 1));
+               const barWidth = Math.max(15, ((km.mentionCount || 1) / maxMentions) * 100);
+-              const views = km.totalViews >= 1000000
+-                ? (km.totalViews / 1000000).toFixed(1) + 'M'
+-                : km.totalViews >= 1000
+-                  ? (km.totalViews / 1000).toFixed(1) + 'K'
+-                  : String(km.totalViews || 0);
+               return (
+                 <div className="keyword-row" key={km.keyword || index}>
+                   <span className="kw-name">{km.keyword}</span>
+                   <div className="kw-bar-wrap">
+                     <div className="kw-bar" style={{ width: `${barWidth}%` }} />
+-                    <span className="kw-change" title={`${km.totalLikes || 0} likes · ${km.totalComments || 0} comments`}>
+-                      {views} views · {km.mentionCount} mentions
++                    <span className="kw-metrics">
++                      <span title="Views">?? {formatNumber(km.totalViews)}</span>
++                      <span title="Likes">? {formatNumber(km.totalLikes)}</span>
++                      <span title="Comments">?? {formatNumber(km.totalComments)}</span>
++                      <span title="Mentions">?? {km.mentionCount}</span>
+                     </span>
+                   </div>
+                 </div>
+diff --git a/FE/src/styles/global.css b/FE/src/styles/global.css
+index 63a4336..6c8e3c3 100644
+--- a/FE/src/styles/global.css
++++ b/FE/src/styles/global.css
+@@ -657,6 +657,21 @@ textarea { resize: vertical; }
+   line-height: 1.45;
+ }
+ 
++.see-more-btn {
++  border: none;
++  background: none;
++  color: var(--primary);
++  font-size: 12px;
++  font-weight: 600;
++  cursor: pointer;
++  padding: 4px 0 0;
++  display: inline-block;
++}
++
++.see-more-btn:hover {
++  text-decoration: underline;
++}
++
+ .ask-more {
+   display: flex;
+   justify-content: flex-end;
+@@ -739,40 +754,48 @@ textarea { resize: vertical; }
+ 
+ .keyword-list {
+   display: grid;
+-  gap: 10px;
++  gap: 12px;
+ }
+ 
+ .keyword-row {
+-  display: flex;
+-  align-items: center;
+-  justify-content: space-between;
+-  gap: 10px;
++  display: grid;
++  gap: 6px;
+ }
+ 
+ .kw-name {
+   color: var(--text-primary);
+-  font-weight: 500;
++  font-weight: 600;
+   font-size: 14px;
+ }
+ 
+ .kw-bar-wrap {
+   display: flex;
+-  align-items: center;
+-  gap: 8px;
+-  width: 46%;
++  flex-direction: column;
++  gap: 4px;
+ }
+ 
+ .kw-bar {
+-  height: 8px;
++  height: 6px;
+   border-radius: var(--radius-full);
+-  background: var(--primary);
+-  min-width: 32px;
++  background: var(--primary-gradient);
++  min-width: 20px;
++  transition: width 0.3s ease;
+ }
+ 
+-.kw-change {
++.kw-metrics {
++  display: flex;
++  flex-wrap: wrap;
++  gap: 10px;
+   font-size: 11px;
+-  color: var(--green);
+-  font-weight: 700;
++  color: var(--text-secondary);
++  font-weight: 500;
++}
++
++.kw-metrics span {
++  display: inline-flex;
++  align-items: center;
++  gap: 3px;
++  cursor: default;
+ }
+ 
+ .sentiment-container {

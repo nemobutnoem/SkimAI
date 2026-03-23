@@ -1,0 +1,1199 @@
+diff --git a/BE/src/main/java/com/researchco/admin/AdminService.java b/BE/src/main/java/com/researchco/admin/AdminService.java
+index f3de29d..f01bfc4 100644
+--- a/BE/src/main/java/com/researchco/admin/AdminService.java
++++ b/BE/src/main/java/com/researchco/admin/AdminService.java
+@@ -1,5 +1,7 @@
+ package com.researchco.admin;
+ 
++import com.researchco.payment.PaymentTransactionEntity;
++import com.researchco.payment.PaymentTransactionRepository;
+ import com.researchco.report.ReportRepository;
+ import com.researchco.subscription.UserSubscriptionEntity;
+ import com.researchco.search.SearchQueryRepository;
+@@ -10,6 +12,7 @@ import org.springframework.stereotype.Service;
+ import org.springframework.transaction.annotation.Transactional;
+ 
+ import java.util.Comparator;
++import java.util.ArrayList;
+ import java.util.List;
+ import java.util.Locale;
+ import java.util.UUID;
+@@ -22,18 +25,22 @@ public class AdminService {
+     private final SearchQueryRepository searchQueryRepository;
+     private final ReportRepository reportRepository;
+     private final UserSubscriptionRepository userSubscriptionRepository;
++    private final PaymentTransactionRepository paymentTransactionRepository;
+ 
+     public AdminService(UserRepository userRepository,
+                         SearchQueryRepository searchQueryRepository,
+                         ReportRepository reportRepository,
+-                        UserSubscriptionRepository userSubscriptionRepository) {
++                        UserSubscriptionRepository userSubscriptionRepository,
++                        PaymentTransactionRepository paymentTransactionRepository) {
+         this.userRepository = userRepository;
+         this.searchQueryRepository = searchQueryRepository;
+         this.reportRepository = reportRepository;
+         this.userSubscriptionRepository = userSubscriptionRepository;
++        this.paymentTransactionRepository = paymentTransactionRepository;
+     }
+ 
+     public AdminDtos.DashboardResponse dashboard() {
++        List<String> activities = buildAdminActivities();
+         return new AdminDtos.DashboardResponse(
+                 List.of(
+                         new AdminDtos.StatItem("Users", String.valueOf(userRepository.count())),
+@@ -44,11 +51,7 @@ public class AdminService {
+                                 .filter(sub -> sub.getPlan() != null && !"FREE".equalsIgnoreCase(sub.getPlan().getName()))
+                                 .count()))
+                 ),
+-                List.of(
+-                        "Demo admin reviewed dashboard insights",
+-                        "Search analytics synced from latest snapshot",
+-                        "Revenue overview refreshed for frontend compatibility"
+-                )
++                activities
+         );
+     }
+ 
+@@ -142,37 +145,67 @@ public class AdminService {
+                     );
+                 })
+                 .filter(user -> query.isBlank() || user.name().toLowerCase(Locale.ROOT).contains(query) || user.email().toLowerCase(Locale.ROOT).contains(query))
+-                .filter(user -> "all".equals(planType) || user.type().toLowerCase(Locale.ROOT).equals(planType))
++                .filter(user -> matchesPlanFilter(user.type(), planType))
+                 .filter(user -> "all".equals(statusFilter) || user.status().equalsIgnoreCase(statusFilter))
+                 .toList();
+     }
+ 
+     public AdminDtos.RevenueResponse revenue() {
+-        long activeSubscriptions = userSubscriptionRepository.findAll().stream()
++        List<UserSubscriptionEntity> subscriptions = userSubscriptionRepository.findAll();
++        List<PaymentTransactionEntity> recentPayments = paymentTransactionRepository.findTop20ByOrderByCreatedAtDesc();
++        long activeSubscriptions = subscriptions.stream()
+                 .filter(sub -> "ACTIVE".equalsIgnoreCase(sub.getStatus()))
+                 .count();
+-        int mrr = userSubscriptionRepository.findAll().stream()
++        int mrr = subscriptions.stream()
+                 .filter(sub -> "ACTIVE".equalsIgnoreCase(sub.getStatus()) && sub.getPlan() != null && sub.getPlan().getPrice() != null)
+                 .mapToInt(sub -> sub.getPlan().getPrice().intValue())
+                 .sum();
++        long failedPayments = recentPayments.stream()
++                .filter(payment -> "CANCELLED".equalsIgnoreCase(payment.getStatus()))
++                .count();
++        String failedPct = recentPayments.isEmpty()
++                ? "0.0%"
++                : String.format(Locale.ROOT, "%.1f%%", failedPayments * 100.0 / recentPayments.size());
++
++        int stripeAmount = recentPayments.stream()
++                .filter(payment -> "PAID".equalsIgnoreCase(payment.getStatus()))
++                .filter(payment -> "STRIPE".equalsIgnoreCase(payment.getProvider()))
++                .mapToInt(payment -> payment.getAmount().intValue())
++                .sum();
++        int directAmount = recentPayments.stream()
++                .filter(payment -> "PAID".equalsIgnoreCase(payment.getStatus()))
++                .filter(payment -> !"STRIPE".equalsIgnoreCase(payment.getProvider()))
++                .mapToInt(payment -> payment.getAmount().intValue())
++                .sum();
++        int totalPaidAmount = Math.max(1, stripeAmount + directAmount);
++        int stripePct = Math.round(stripeAmount * 100f / totalPaidAmount);
++        int directPct = 100 - stripePct;
+ 
+         return new AdminDtos.RevenueResponse(
+                 List.of(
+                         new AdminDtos.RevenueMetric("MRR", "$" + mrr),
+                         new AdminDtos.RevenueMetric("ARR", "$" + (mrr * 12)),
+                         new AdminDtos.RevenueMetric("Upgrade Rate", activeSubscriptions == 0 ? "0.0%" : "24.0%"),
+-                        new AdminDtos.RevenueMetric("Failed Payments", "3.5%")
++                        new AdminDtos.RevenueMetric("Failed Payments", failedPct)
+                 ),
+                 List.of(
+-                        new AdminDtos.RevenueChannel("Direct", "$" + Math.round(mrr * 0.38), 38),
+-                        new AdminDtos.RevenueChannel("Referrals", "$" + Math.round(mrr * 0.22), 22),
+-                        new AdminDtos.RevenueChannel("Partner", "$" + Math.round(mrr * 0.19), 19)
++                        new AdminDtos.RevenueChannel("Stripe Checkout", "$" + stripeAmount, stripePct),
++                        new AdminDtos.RevenueChannel("Direct / Manual", "$" + directAmount, directPct)
+                 ),
+-                List.of(
+-                        new AdminDtos.RevenueEvent("rev-1", "Demo User", "Renewal", "Pro", "$49", "success"),
+-                        new AdminDtos.RevenueEvent("rev-2", "admin@test.com", "Upgrade", "Business", "$129", "success"),
+-                        new AdminDtos.RevenueEvent("rev-3", "user@test.com", "Payment Failed", "Free", "$0", "failed")
++                recentPayments.isEmpty()
++                        ? List.of(
++                        new AdminDtos.RevenueEvent("rev-demo", "No payment yet", "Awaiting activity", "-", "$0", "pending")
+                 )
++                        : recentPayments.stream()
++                        .map(payment -> new AdminDtos.RevenueEvent(
++                                payment.getId().toString(),
++                                payment.getUser() != null ? payment.getUser().getEmail() : "Unknown",
++                                mapRevenueEvent(payment),
++                                payment.getPlan() != null ? titleCase(payment.getPlan().getName()) : "-",
++                                "$" + payment.getAmount().intValue(),
++                                mapRevenueStatus(payment.getStatus())
++                        ))
++                        .toList()
+         );
+     }
+ 
+@@ -190,4 +223,60 @@ public class AdminService {
+         String lower = value.toLowerCase(Locale.ROOT);
+         return Character.toUpperCase(lower.charAt(0)) + lower.substring(1);
+     }
++
++    private boolean matchesPlanFilter(String planType, String filter) {
++        if (filter == null || filter.isBlank() || "all".equalsIgnoreCase(filter)) {
++            return true;
++        }
++        String normalizedPlan = planType == null ? "free" : planType.toLowerCase(Locale.ROOT);
++        String normalizedFilter = filter.toLowerCase(Locale.ROOT);
++        if ("paid".equals(normalizedFilter)) {
++            return !"free".equals(normalizedPlan);
++        }
++        return normalizedPlan.equals(normalizedFilter);
++    }
++
++    private List<String> buildAdminActivities() {
++        List<String> items = new ArrayList<>();
++        long pendingReports = reportRepository.findAll().stream()
++                .filter(report -> "PENDING".equalsIgnoreCase(report.getStatus()))
++                .count();
++        items.add("Pending moderation queue: " + pendingReports + " report(s).");
++
++        searchQueryRepository.findAll().stream()
++                .sorted(Comparator.comparing(com.researchco.search.SearchQueryEntity::getCreatedAt, Comparator.nullsLast(Comparator.naturalOrder())).reversed())
++                .limit(2)
++                .forEach(query -> items.add("Recent search: \"" + query.getKeyword() + "\"."));
++
++        reportRepository.findAll().stream()
++                .sorted(Comparator.comparing(com.researchco.report.ReportEntity::getCreatedAt, Comparator.nullsLast(Comparator.naturalOrder())).reversed())
++                .limit(2)
++                .forEach(report -> items.add("Recent report: " + (report.getTitle() == null ? "Untitled report" : report.getTitle()) + "."));
++
++        if (items.isEmpty()) {
++            return List.of("No recent admin activity yet.");
++        }
++        return items.stream().limit(6).toList();
++    }
++
++    private String mapRevenueEvent(PaymentTransactionEntity payment) {
++        if ("PAID".equalsIgnoreCase(payment.getStatus())) {
++            return "Renewal / Purchase";
++        }
++        if ("CANCELLED".equalsIgnoreCase(payment.getStatus())) {
++            return "Payment failed";
++        }
++        return "Checkout pending";
++    }
++
++    private String mapRevenueStatus(String paymentStatus) {
++        if (paymentStatus == null) {
++            return "pending";
++        }
++        return switch (paymentStatus.toUpperCase(Locale.ROOT)) {
++            case "PAID" -> "success";
++            case "CANCELLED" -> "failed";
++            default -> "pending";
++        };
++    }
+ }
+diff --git a/BE/src/main/java/com/researchco/common/DemoDataInitializer.java b/BE/src/main/java/com/researchco/common/DemoDataInitializer.java
+index 3c9e257..2c57c27 100644
+--- a/BE/src/main/java/com/researchco/common/DemoDataInitializer.java
++++ b/BE/src/main/java/com/researchco/common/DemoDataInitializer.java
+@@ -97,6 +97,9 @@ public class DemoDataInitializer implements CommandLineRunner {
+                 .passwordHash(passwordEncoder.encode("123456"))
+                 .role(role)
+                 .status("ACTIVE")
++                .notifyEmailUpdates(true)
++                .notifyWeeklyReport(true)
++                .notifyUsageAlerts(false)
+                 .build();
+         userRepository.save(user);
+ 
+diff --git a/BE/src/main/java/com/researchco/config/SecurityConfig.java b/BE/src/main/java/com/researchco/config/SecurityConfig.java
+index e8f1397..a3ac185 100644
+--- a/BE/src/main/java/com/researchco/config/SecurityConfig.java
++++ b/BE/src/main/java/com/researchco/config/SecurityConfig.java
+@@ -3,6 +3,7 @@ package com.researchco.config;
+ import com.researchco.security.JwtAuthFilter;
+ import org.springframework.context.annotation.Bean;
+ import org.springframework.context.annotation.Configuration;
++import org.springframework.http.HttpMethod;
+ import org.springframework.security.authentication.AuthenticationManager;
+ import org.springframework.security.authentication.AuthenticationProvider;
+ import org.springframework.security.authentication.dao.DaoAuthenticationProvider;
+@@ -39,18 +40,16 @@ public class SecurityConfig {
+                 .csrf(csrf -> csrf.disable())
+                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+                 .authorizeHttpRequests(auth -> auth
++                        .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
+                         .requestMatchers("/api/auth/**").permitAll()
+                         .requestMatchers("/api/home/**").permitAll()
+-                        .requestMatchers(
+-                                "/api/dashboard",
+-                                "/api/analysis",
+-                                "/api/deep-insight",
+-                                "/api/experts/**",
+-                                "/api/pricing",
+-                                "/api/pricing/**",
+-                                "/api/account/**",
+-                                "/api/admin/**"
+-                        ).permitAll()
++                        .requestMatchers(HttpMethod.GET, "/api/analysis").permitAll()
++                        .requestMatchers(HttpMethod.POST, "/api/deep-insight").permitAll()
++                        .requestMatchers(HttpMethod.GET, "/api/experts").permitAll()
++                        .requestMatchers(HttpMethod.POST, "/api/experts/questions").permitAll()
++                        .requestMatchers(HttpMethod.GET, "/api/pricing").permitAll()
++                        .requestMatchers("/api/dashboard", "/api/account/**", "/api/pricing/checkout", "/api/pricing/contact-sales", "/api/pricing/confirm").authenticated()
++                        .requestMatchers("/api/admin/**").hasRole("ADMIN")
+                         .anyRequest().authenticated()
+                 )
+                 .authenticationProvider(authenticationProvider())
+diff --git a/BE/src/main/java/com/researchco/frontend/FrontendController.java b/BE/src/main/java/com/researchco/frontend/FrontendController.java
+index f9b5b4e..8f387e5 100644
+--- a/BE/src/main/java/com/researchco/frontend/FrontendController.java
++++ b/BE/src/main/java/com/researchco/frontend/FrontendController.java
+@@ -37,7 +37,7 @@ public class FrontendController {
+     }
+ 
+     @GetMapping("/analysis")
+-    public FrontendDtos.AnalysisResponse getAnalysis(@RequestParam(name = "keyword", defaultValue = "AI Agent") String keyword) {
++    public FrontendDtos.AnalysisResponse getAnalysis(@RequestParam(name = "keyword", defaultValue = "") String keyword) {
+         return frontendService.getAnalysis(keyword);
+     }
+ 
+diff --git a/BE/src/main/java/com/researchco/frontend/FrontendDtos.java b/BE/src/main/java/com/researchco/frontend/FrontendDtos.java
+index 02b713d..f890f91 100644
+--- a/BE/src/main/java/com/researchco/frontend/FrontendDtos.java
++++ b/BE/src/main/java/com/researchco/frontend/FrontendDtos.java
+@@ -124,6 +124,7 @@ public class FrontendDtos {
+             String yearly,
+             List<String> features,
+             boolean current,
++            String currentBillingCycle,
+             String ctaLabel
+     ) {
+     }
+diff --git a/BE/src/main/java/com/researchco/frontend/FrontendService.java b/BE/src/main/java/com/researchco/frontend/FrontendService.java
+index 6622576..d071f21 100644
+--- a/BE/src/main/java/com/researchco/frontend/FrontendService.java
++++ b/BE/src/main/java/com/researchco/frontend/FrontendService.java
+@@ -54,7 +54,6 @@ import java.util.Map;
+ import java.util.Optional;
+ import java.util.Set;
+ import java.util.UUID;
+-import java.util.concurrent.atomic.AtomicReference;
+ import java.util.stream.Collectors;
+ 
+ @Service
+@@ -79,13 +78,6 @@ public class FrontendService {
+     private final HttpClient httpClient = HttpClient.newHttpClient();
+     private final String stripeSecretKey;
+     private final String frontendBaseUrl;
+-    private final AtomicReference<Map<String, Boolean>> notificationSettings = new AtomicReference<>(
+-            new LinkedHashMap<>(Map.of(
+-                    "emailUpdates", true,
+-                    "weeklyReport", true,
+-                    "usageAlerts", false
+-            ))
+-    );
+ 
+     public FrontendService(SearchQueryRepository searchQueryRepository,
+                            AnalysisSnapshotRepository analysisSnapshotRepository,
+@@ -124,14 +116,14 @@ public class FrontendService {
+     }
+ 
+     public FrontendDtos.DashboardResponse getDashboard() {
+-        UserEntity user = preferredUser();
++        UserEntity user = currentUserOrThrow();
+         List<SearchQueryEntity> recentQueries = searchQueryRepository.findTop10ByUserOrderByCreatedAtDesc(user);
+ 
+         return new FrontendDtos.DashboardResponse(
+                 List.of(
+-                        new FrontendDtos.KpiItem("Documents", String.valueOf(reportRepository.count())),
+-                        new FrontendDtos.KpiItem("Insights", String.valueOf(snapshotInsightRepository.count())),
+-                        new FrontendDtos.KpiItem("Reports", String.valueOf(reportRepository.count()))
++                        new FrontendDtos.KpiItem("Documents", String.valueOf(reportRepository.countByUserId(user.getId()))),
++                        new FrontendDtos.KpiItem("Insights", String.valueOf(snapshotInsightRepository.countBySnapshotSearchQueryUserId(user.getId()))),
++                        new FrontendDtos.KpiItem("Reports", String.valueOf(reportRepository.countByUserId(user.getId())))
+                 ),
+                 recentQueries.stream()
+                         .map(query -> new FrontendDtos.RecentItem(
+@@ -144,7 +136,7 @@ public class FrontendService {
+     }
+ 
+     public FrontendDtos.AccountOverviewResponse getAccountOverview() {
+-        UserEntity user = preferredUser();
++        UserEntity user = currentUserOrThrow();
+         Optional<UserSubscriptionEntity> subscription = userSubscriptionRepository.findFirstByUserAndStatusOrderByStartDateDesc(user, "ACTIVE");
+         PlanEntity plan = subscription.map(UserSubscriptionEntity::getPlan).orElseGet(() ->
+                 planRepository.findByName("FREE").orElse(null)
+@@ -185,30 +177,44 @@ public class FrontendService {
+                         new FrontendDtos.UsageItem("Team Seats", "ENTERPRISE".equalsIgnoreCase(plan != null ? plan.getName() : "") ? 80 : 30)
+                 ),
+                 invoices,
+-                new LinkedHashMap<>(notificationSettings.get())
++                new LinkedHashMap<>(Map.of(
++                        "emailUpdates", booleanOrDefault(user.getNotifyEmailUpdates(), true),
++                        "weeklyReport", booleanOrDefault(user.getNotifyWeeklyReport(), true),
++                        "usageAlerts", booleanOrDefault(user.getNotifyUsageAlerts(), false)
++                ))
+         );
+     }
+ 
+     @Transactional
+     public Map<String, Boolean> saveNotificationSettings(Map<String, Boolean> settings) {
++        Map<String, Boolean> incoming = settings == null ? Map.of() : settings;
++        UserEntity user = currentUserOrThrow();
+         Map<String, Boolean> normalized = new LinkedHashMap<>();
+-        normalized.put("emailUpdates", Boolean.TRUE.equals(settings.get("emailUpdates")));
+-        normalized.put("weeklyReport", Boolean.TRUE.equals(settings.get("weeklyReport")));
+-        normalized.put("usageAlerts", Boolean.TRUE.equals(settings.get("usageAlerts")));
+-        notificationSettings.set(normalized);
++        normalized.put("emailUpdates", Boolean.TRUE.equals(incoming.get("emailUpdates")));
++        normalized.put("weeklyReport", Boolean.TRUE.equals(incoming.get("weeklyReport")));
++        normalized.put("usageAlerts", Boolean.TRUE.equals(incoming.get("usageAlerts")));
++        user.setNotifyEmailUpdates(normalized.get("emailUpdates"));
++        user.setNotifyWeeklyReport(normalized.get("weeklyReport"));
++        user.setNotifyUsageAlerts(normalized.get("usageAlerts"));
++        userRepository.save(user);
+         return normalized;
+     }
+ 
+     @Transactional
+     public FrontendDtos.AnalysisResponse getAnalysis(String keyword) {
++        String normalizedKeyword = keyword == null ? "" : keyword.trim();
++        if (normalizedKeyword.isBlank()) {
++            throw new AppException(HttpStatus.BAD_REQUEST, "Keyword is required");
++        }
++        currentUserOptional().ifPresent(this::validateAnalysisLimit);
+         LocaleProfile localeProfile = resolveLocaleProfile(keyword);
+         SearchQueryEntity trackedQuery = recordSearchActivity(keyword, localeProfile);
+-        List<NormalizedSourceItem> liveItems = fetchLiveSources(keyword);
++        List<NormalizedSourceItem> liveItems = fetchLiveSources(normalizedKeyword);
+         if (!liveItems.isEmpty()) {
+-            return buildLiveAnalysis(trackedQuery, keyword, liveItems);
++            return buildLiveAnalysis(trackedQuery, normalizedKeyword, liveItems);
+         }
+ 
+-        SearchQueryEntity query = trackedQuery != null ? trackedQuery : findQueryByKeyword(keyword).orElseGet(() -> fallbackQuery(keyword));
++        SearchQueryEntity query = trackedQuery != null ? trackedQuery : fallbackQuery(normalizedKeyword);
+         AnalysisSnapshotEntity snapshot = analysisSnapshotRepository.findBySearchQueryId(query.getId()).orElse(null);
+ 
+         List<FrontendDtos.KeywordMetric> keywords = snapshot != null
+@@ -271,12 +277,16 @@ public class FrontendService {
+     }
+ 
+     public List<FrontendDtos.PricingPlan> getPricing() {
+-        UserEntity user = preferredUser();
+-        String currentPlanId = userSubscriptionRepository.findFirstByUserAndStatusOrderByStartDateDesc(user, "ACTIVE")
++        Optional<UserSubscriptionEntity> activeSubscription = currentUserOptional()
++                .flatMap(user -> userSubscriptionRepository.findFirstByUserAndStatusOrderByStartDateDesc(user, "ACTIVE"));
++        String currentPlanId = activeSubscription
+                 .map(UserSubscriptionEntity::getPlan)
+                 .map(PlanEntity::getName)
+                 .map(name -> name.toLowerCase(Locale.ROOT))
+-                .orElse("free");
++                .orElse(null);
++        String currentBillingCycle = activeSubscription
++                .map(this::detectBillingCycle)
++                .orElse(null);
+ 
+         return planRepository.findAll().stream()
+                 .filter(plan -> List.of("FREE", "STARTER", "TEAM", "ENTERPRISE").contains(plan.getName().toUpperCase(Locale.ROOT)))
+@@ -287,8 +297,9 @@ public class FrontendService {
+                         priceLabel(plan.getPrice()),
+                         priceLabel(plan.getPrice() != null ? plan.getPrice().multiply(new BigDecimal("10")) : BigDecimal.ZERO),
+                         pricingFeatures(plan),
+-                        plan.getName().equalsIgnoreCase(currentPlanId),
+-                        plan.getName().equalsIgnoreCase(currentPlanId) ? "Current plan" :
++                        currentPlanId != null && plan.getName().equalsIgnoreCase(currentPlanId),
++                        currentBillingCycle,
++                        currentPlanId != null && plan.getName().equalsIgnoreCase(currentPlanId) ? "Current plan" :
+                                 "ENTERPRISE".equalsIgnoreCase(plan.getName()) ? "Contact sales" : "Start now"
+                 ))
+                 .toList();
+@@ -320,7 +331,7 @@ public class FrontendService {
+             throw new AppException(HttpStatus.BAD_REQUEST, "Stripe secret key is missing. Add STRIPE_SECRET_KEY before using checkout.");
+         }
+ 
+-        UserEntity user = preferredUser();
++        UserEntity user = currentUserOrThrow();
+         PaymentTransactionEntity payment = PaymentTransactionEntity.builder()
+                 .user(user)
+                 .plan(plan)
+@@ -351,6 +362,7 @@ public class FrontendService {
+     }
+ 
+     public FrontendDtos.SalesContactResponse contactSales(FrontendDtos.SalesContactRequest request) {
++        currentUserOrThrow();
+         if (request.contactName() == null || request.contactName().isBlank()
+                 || request.workEmail() == null || request.workEmail().isBlank()
+                 || request.companyName() == null || request.companyName().isBlank()) {
+@@ -386,6 +398,10 @@ public class FrontendService {
+         }
+         PaymentTransactionEntity payment = paymentTransactionRepository.findByProviderSessionId(request.providerSessionId())
+                 .orElseThrow(() -> new AppException(HttpStatus.NOT_FOUND, "Payment session not found"));
++        UserEntity user = currentUserOrThrow();
++        if (!payment.getUser().getId().equals(user.getId())) {
++            throw new AppException(HttpStatus.FORBIDDEN, "Forbidden");
++        }
+ 
+         StripeSessionStatus session = fetchStripeSessionStatus(request.providerSessionId());
+         if (!"paid".equalsIgnoreCase(session.paymentStatus())) {
+@@ -470,7 +486,7 @@ public class FrontendService {
+     }
+ 
+     private FrontendDtos.AnalysisResponse buildLiveAnalysis(SearchQueryEntity trackedQuery, String keyword, List<NormalizedSourceItem> items) {
+-        String kw = keyword == null || keyword.isBlank() ? "AI Agent" : keyword;
++        String kw = keyword == null || keyword.isBlank() ? "Market Topic" : keyword;
+ 
+         // Aggregate total metrics across all items
+         long totalViews = 0L;
+@@ -629,10 +645,13 @@ public class FrontendService {
+     }
+ 
+     private SearchQueryEntity recordSearchActivity(String keyword, LocaleProfile localeProfile) {
+-        UserEntity user = preferredUser();
+-        String normalizedKeyword = (keyword == null || keyword.isBlank()) ? "AI Agent" : keyword.trim();
++        Optional<UserEntity> user = currentUserOptional();
++        if (user.isEmpty()) {
++            return null;
++        }
++        String normalizedKeyword = keyword == null ? "" : keyword.trim();
+         return searchQueryRepository.save(SearchQueryEntity.builder()
+-                .user(user)
++                .user(user.get())
+                 .keyword(normalizedKeyword)
+                 .countryCode(localeProfile.countryCode())
+                 .languageCode(localeProfile.languageCode())
+@@ -716,40 +735,37 @@ public class FrontendService {
+         return null;
+     }
+ 
+-    private Optional<SearchQueryEntity> findQueryByKeyword(String keyword) {
+-        String normalized = keyword == null ? "" : keyword.trim().toLowerCase(Locale.ROOT);
+-        return searchQueryRepository.findAll().stream()
+-                .filter(item -> item.getKeyword() != null && item.getKeyword().trim().toLowerCase(Locale.ROOT).equals(normalized))
+-                .findFirst();
+-    }
+-
+     private SearchQueryEntity fallbackQuery(String keyword) {
+         return SearchQueryEntity.builder()
+                 .id(UUID.randomUUID())
+-                .keyword(keyword == null || keyword.isBlank() ? "AI Agent" : keyword)
++                .keyword(keyword == null || keyword.isBlank() ? "Market Topic" : keyword)
+                 .createdAt(LocalDateTime.now())
+                 .build();
+     }
+ 
+-    private UserEntity preferredUser() {
++    private Optional<UserEntity> currentUserOptional() {
+         java.util.UUID currentUserId = SecurityUtils.currentUserId();
+         if (currentUserId != null) {
+-            Optional<UserEntity> currentUser = userRepository.findById(currentUserId);
+-            if (currentUser.isPresent()) {
+-                return currentUser.get();
++            return userRepository.findById(currentUserId);
++        }
++        return Optional.empty();
++    }
++
++    private UserEntity currentUserOrThrow() {
++        return currentUserOptional().orElseThrow(() -> new AppException(HttpStatus.UNAUTHORIZED, "Unauthorized"));
++    }
++
++    private void validateAnalysisLimit(UserEntity user) {
++        UserSubscriptionEntity subscription = userSubscriptionRepository.findFirstByUserAndStatusOrderByStartDateDesc(user, "ACTIVE")
++                .orElseThrow(() -> new AppException(HttpStatus.FORBIDDEN, "No active subscription"));
++        PlanEntity plan = subscription.getPlan();
++        Integer limit = plan.getSearchLimit();
++        if (limit != null && limit > 0) {
++            long used = searchQueryRepository.countByUser(user);
++            if (used >= limit) {
++                throw new AppException(HttpStatus.FORBIDDEN, "Search limit reached for plan " + plan.getName());
+             }
+         }
+-        return userRepository.findByEmail("demo@skimai.local")
+-                .or(() -> userRepository.findByEmail("user@test.com"))
+-                .orElseGet(() -> userRepository.findAll().stream().findFirst().orElseGet(() ->
+-                        UserEntity.builder()
+-                                .id(UUID.randomUUID())
+-                                .fullName("Demo User")
+-                                .email("demo@skimai.local")
+-                                .role("USER")
+-                                .status("ACTIVE")
+-                                .build()
+-                ));
+     }
+ 
+     private String money(PlanEntity plan) {
+@@ -916,6 +932,15 @@ public class FrontendService {
+         };
+     }
+ 
++    private String detectBillingCycle(UserSubscriptionEntity subscription) {
++        if (subscription == null || subscription.getStartDate() == null || subscription.getEndDate() == null) {
++            return "monthly";
++        }
++        return subscription.getEndDate().isAfter(subscription.getStartDate().plusMonths(11))
++                ? "yearly"
++                : "monthly";
++    }
++
+     private List<String> pricingFeatures(PlanEntity plan) {
+         if (plan == null || plan.getName() == null) {
+             return List.of("Flexible plan");
+@@ -959,4 +984,8 @@ public class FrontendService {
+         }
+         return amount.stripTrailingZeros().toPlainString();
+     }
++
++    private boolean booleanOrDefault(Boolean value, boolean defaultValue) {
++        return value == null ? defaultValue : value;
++    }
+ }
+diff --git a/BE/src/main/java/com/researchco/home/HomeService.java b/BE/src/main/java/com/researchco/home/HomeService.java
+index 6d9cc11..55a92fe 100644
+--- a/BE/src/main/java/com/researchco/home/HomeService.java
++++ b/BE/src/main/java/com/researchco/home/HomeService.java
+@@ -22,14 +22,18 @@ public class HomeService {
+         Map<String, HomeDtos.TrendItem> uniqueTrends = new LinkedHashMap<>();
+         marketTrendRepository.findTop8ByOrderByTrendScoreDescUpdatedAtDesc().stream()
+                 .map(trend -> {
+-                    String market = safeMarketLabel(trend.getMarket(), trend.getKeyword());
+-                    String keyword = trend.getKeyword() == null || trend.getKeyword().isBlank() ? market : trend.getKeyword();
++                    String keyword = trend.getKeyword() == null || trend.getKeyword().isBlank()
++                            ? safeMarketLabel(trend.getMarket(), trend.getKeyword())
++                            : trend.getKeyword();
++                    String cluster = trend.getMarket() == null || trend.getMarket().isBlank()
++                            ? safeMarketLabel(trend.getMarket(), trend.getKeyword())
++                            : trend.getMarket();
+                     return new HomeDtos.TrendItem(
+-                        "trend-" + market.toLowerCase(Locale.ROOT).replaceAll("[^a-z0-9]+", "-"),
+-                        market,
++                        "trend-" + keyword.toLowerCase(Locale.ROOT).replaceAll("[^a-z0-9]+", "-"),
++                        titleCaseKeyword(keyword),
+                         formatChange(trend.getChangePct()),
+                         trend.getSentiment(),
+-                        formatSignalLabel(keyword),
++                        formatSignalLabel(cluster),
+                         trend.getSourceCount(),
+                         formatUpdatedAt(trend.getUpdatedAt())
+                     );
+@@ -46,10 +50,10 @@ public class HomeService {
+         }
+ 
+         List<HomeDtos.TrendItem> fallback = List.of(
+-                new HomeDtos.TrendItem("trend-ai-automation", "AI & Automation", "+34%", "positive", "Signals from AI Agent", 3, "Updated moments ago"),
+-                new HomeDtos.TrendItem("trend-mobility-consumer", "Mobility & Consumer", "+21%", "positive", "Signals from Electric bike", 3, "Updated moments ago"),
+-                new HomeDtos.TrendItem("trend-commerce-platforms", "Commerce & Platforms", "+18%", "neutral", "Signals from TikTok Shop trends", 3, "Updated moments ago"),
+-                new HomeDtos.TrendItem("trend-food-lifestyle", "Food & Lifestyle", "-6%", "negative", "Signals from Pho", 2, "Updated moments ago")
++                new HomeDtos.TrendItem("trend-ai-agent", "AI Agent", "+34%", "positive", "Signals from AI & Automation", 3, "Updated moments ago"),
++                new HomeDtos.TrendItem("trend-electric-bike", "Electric bike", "+21%", "positive", "Signals from Mobility & Consumer", 3, "Updated moments ago"),
++                new HomeDtos.TrendItem("trend-tiktok-shop-trends", "TikTok Shop trends", "+18%", "neutral", "Signals from Commerce & Platforms", 3, "Updated moments ago"),
++                new HomeDtos.TrendItem("trend-pho", "Pho", "-6%", "negative", "Signals from Food & Lifestyle", 2, "Updated moments ago")
+         );
+ 
+         if (trends.isEmpty()) {
+@@ -112,4 +116,12 @@ public class HomeService {
+         long days = duration.toDays();
+         return "Updated " + days + "d ago";
+     }
++
++    private String titleCaseKeyword(String keyword) {
++        if (keyword == null || keyword.isBlank()) {
++            return "Emerging Trend";
++        }
++        String normalized = keyword.trim().toLowerCase(Locale.ROOT);
++        return Character.toUpperCase(normalized.charAt(0)) + normalized.substring(1);
++    }
+ }
+diff --git a/BE/src/main/java/com/researchco/home/MarketTrendRepository.java b/BE/src/main/java/com/researchco/home/MarketTrendRepository.java
+index 413660e..efed835 100644
+--- a/BE/src/main/java/com/researchco/home/MarketTrendRepository.java
++++ b/BE/src/main/java/com/researchco/home/MarketTrendRepository.java
+@@ -14,4 +14,6 @@ public interface MarketTrendRepository extends JpaRepository<MarketTrendEntity,
+     Optional<MarketTrendEntity> findByMarket(String market);
+ 
+     void deleteByMarketNotIn(List<String> markets);
++
++    void deleteByKeywordNotIn(List<String> keywords);
+ }
+diff --git a/BE/src/main/java/com/researchco/home/MarketTrendUpdater.java b/BE/src/main/java/com/researchco/home/MarketTrendUpdater.java
+index 164bc98..1394aa3 100644
+--- a/BE/src/main/java/com/researchco/home/MarketTrendUpdater.java
++++ b/BE/src/main/java/com/researchco/home/MarketTrendUpdater.java
+@@ -4,6 +4,7 @@ import com.researchco.provider.NormalizedSourceItem;
+ import com.researchco.provider.ProviderOrchestrator;
+ import com.researchco.provider.SearchProviderEntity;
+ import com.researchco.provider.SearchProviderRepository;
++import com.researchco.provider.ai.AiProvider;
+ import org.springframework.beans.factory.annotation.Value;
+ import org.springframework.boot.context.event.ApplicationReadyEvent;
+ import org.springframework.context.event.EventListener;
+@@ -13,8 +14,10 @@ import org.springframework.transaction.annotation.Transactional;
+ 
+ import java.util.ArrayList;
+ import java.util.Arrays;
++import java.util.HashMap;
+ import java.util.LinkedHashSet;
+ import java.util.List;
++import java.util.Locale;
+ import java.util.Map;
+ import java.util.Set;
+ import java.util.stream.Collectors;
+@@ -25,15 +28,18 @@ public class MarketTrendUpdater {
+     private final MarketTrendRepository marketTrendRepository;
+     private final SearchProviderRepository searchProviderRepository;
+     private final ProviderOrchestrator providerOrchestrator;
++    private final AiProvider aiProvider;
+     private final String seedKeywords;
+ 
+     public MarketTrendUpdater(MarketTrendRepository marketTrendRepository,
+                               SearchProviderRepository searchProviderRepository,
+                               ProviderOrchestrator providerOrchestrator,
++                              AiProvider aiProvider,
+                               @Value("${home.live-trends.seed-keywords:AI & Automation=AI Agent|Generative AI|AI automation;Mobility & Consumer=Electric bike|Urban mobility|EV commute;Commerce & Platforms=TikTok Shop trends|Social Commerce|Creator commerce;Food & Lifestyle=Pho|Vietnamese street food|Quick noodle recipes}") String seedKeywords) {
+         this.marketTrendRepository = marketTrendRepository;
+         this.searchProviderRepository = searchProviderRepository;
+         this.providerOrchestrator = providerOrchestrator;
++        this.aiProvider = aiProvider;
+         this.seedKeywords = seedKeywords;
+     }
+ 
+@@ -63,21 +69,70 @@ public class MarketTrendUpdater {
+             return;
+         }
+ 
+-        marketTrendRepository.deleteByMarketNotIn(seeds.stream().map(MarketSeed::market).toList());
+-
++        Map<String, TrendSignal> candidateSignals = new HashMap<>();
+         for (MarketSeed seed : seeds) {
+-            List<NormalizedSourceItem> items = new ArrayList<>();
+             for (String query : seed.queries()) {
+-                items.addAll(providerOrchestrator.aggregate(activeCodes, query, "US", "en", "24h"));
++                List<NormalizedSourceItem> items = providerOrchestrator.aggregate(activeCodes, query, "US", "en", "24h");
++                TrendSignal signal = buildSignal(query, items);
++                if (signal.sourceCount() > 0) {
++                    candidateSignals.put(signal.keyword(), signal);
++                }
+             }
+-            upsertTrend(seed, items);
++        }
++
++        if (candidateSignals.isEmpty()) {
++            seedFallbackTrends();
++            return;
++        }
++
++        List<AiProvider.HotTrendSuggestion> aiSelected = aiProvider.suggestHotTrends(
++                candidateSignals.values().stream()
++                        .map(signal -> new AiProvider.TrendSignal(
++                                signal.keyword(),
++                                signal.trendScore(),
++                                signal.sourceCount(),
++                                signal.totalViews(),
++                                signal.totalLikes(),
++                                signal.totalComments(),
++                                signal.avgEngagement()
++                        ))
++                        .toList(),
++                4
++        );
++
++        List<TrendSignal> selectedSignals = aiSelected.stream()
++                .map(selection -> {
++                    TrendSignal signal = candidateSignals.get(selection.keyword());
++                    if (signal == null) {
++                        return null;
++                    }
++                    String cluster = selection.cluster() == null || selection.cluster().isBlank()
++                            ? titleCase(selection.keyword())
++                            : selection.cluster().trim();
++                    return signal.withCluster(cluster);
++                })
++                .filter(signal -> signal != null)
++                .toList();
++
++        if (selectedSignals.isEmpty()) {
++            selectedSignals = candidateSignals.values().stream()
++                    .sorted((a, b) -> Long.compare(b.trendScore(), a.trendScore()))
++                    .limit(4)
++                    .map(signal -> signal.withCluster(titleCase(signal.keyword())))
++                    .toList();
++        }
++
++        marketTrendRepository.deleteByKeywordNotIn(selectedSignals.stream().map(TrendSignal::keyword).toList());
++        for (TrendSignal signal : selectedSignals) {
++            upsertTrend(signal);
+         }
+     }
+ 
+-    private void upsertTrend(MarketSeed seed, List<NormalizedSourceItem> items) {
++    private TrendSignal buildSignal(String keyword, List<NormalizedSourceItem> items) {
+         long views = 0L;
+         long likes = 0L;
+         long comments = 0L;
++        double engagement = 0.0;
+         int positive = 0;
+         int negative = 0;
+ 
+@@ -90,6 +145,7 @@ public class MarketTrendUpdater {
+                 views += toLong(payload.get("viewCount"));
+                 likes += toLong(payload.get("likeCount"));
+                 comments += toLong(payload.get("commentCount"));
++                engagement += toDouble(payload.get("engagementRate"));
+             }
+             if ("POSITIVE".equalsIgnoreCase(item.sentimentLabel())) {
+                 positive++;
+@@ -104,50 +160,49 @@ public class MarketTrendUpdater {
+                         + Math.round(Math.log10(Math.max(views, 1L)) * 20)
+                         + Math.round(Math.log10(Math.max(likes + comments, 1L)) * 12));
+ 
+-        MarketTrendEntity trend = marketTrendRepository.findByMarket(seed.market())
+-                .or(() -> marketTrendRepository.findByKeyword(seed.primaryQuery()))
++        double avgEngagement = items.isEmpty() ? 0.0 : engagement / items.size();
++        return new TrendSignal(
++                keyword,
++                titleCase(keyword),
++                score,
++                Math.max(items.size(), uniqueSources.size()),
++                resolveSentiment(positive, negative),
++                views,
++                likes,
++                comments,
++                avgEngagement
++        );
++    }
++
++    private void upsertTrend(TrendSignal signal) {
++        MarketTrendEntity trend = marketTrendRepository.findByKeyword(signal.keyword())
+                 .orElseGet(() -> MarketTrendEntity.builder()
+-                        .keyword(seed.primaryQuery())
+-                        .market(seed.market())
++                        .keyword(signal.keyword())
++                        .market(signal.cluster())
+                         .previousScore(0L)
+                         .build());
+ 
+         long previous = trend.getTrendScore();
+-        trend.setKeyword(seed.primaryQuery());
+-        trend.setMarket(seed.market());
++        trend.setKeyword(signal.keyword());
++        trend.setMarket(signal.cluster());
+         trend.setPreviousScore(previous);
+-        trend.setTrendScore(score);
+-        trend.setSourceCount(Math.max(items.size(), uniqueSources.size()));
+-        trend.setChangePct(computeChangePct(previous, score));
+-        trend.setSentiment(resolveSentiment(positive, negative));
++        trend.setTrendScore(signal.trendScore());
++        trend.setSourceCount(signal.sourceCount());
++        trend.setChangePct(computeChangePct(previous, signal.trendScore()));
++        trend.setSentiment(signal.sentiment());
+         marketTrendRepository.save(trend);
+     }
+ 
+     private void seedFallbackTrends() {
+-        List<MarketSeed> defaults = List.of(
+-                new MarketSeed("AI & Automation", List.of("AI Agent")),
+-                new MarketSeed("Mobility & Consumer", List.of("Electric bike")),
+-                new MarketSeed("Commerce & Platforms", List.of("TikTok Shop trends")),
+-                new MarketSeed("Food & Lifestyle", List.of("Pho"))
++        List<TrendSignal> defaults = List.of(
++                new TrendSignal("ai agent", "AI & Automation", 120, 5, "positive", 120_000, 7_000, 900, 0.035),
++                new TrendSignal("electric bike", "Mobility & Consumer", 110, 4, "positive", 98_000, 5_100, 700, 0.031),
++                new TrendSignal("tiktok shop trends", "Commerce & Platforms", 102, 4, "neutral", 88_000, 4_300, 520, 0.025),
++                new TrendSignal("pho", "Food & Lifestyle", 96, 3, "neutral", 64_000, 2_800, 410, 0.021)
+         );
+-        int seedScore = 100;
+-        marketTrendRepository.deleteByMarketNotIn(defaults.stream().map(MarketSeed::market).toList());
+-        for (MarketSeed seed : defaults) {
+-            MarketTrendEntity trend = marketTrendRepository.findByMarket(seed.market())
+-                    .or(() -> marketTrendRepository.findByKeyword(seed.primaryQuery()))
+-                    .orElseGet(() -> MarketTrendEntity.builder()
+-                            .keyword(seed.primaryQuery())
+-                            .market(seed.market())
+-                            .build());
+-            trend.setKeyword(seed.primaryQuery());
+-            trend.setMarket(seed.market());
+-            trend.setPreviousScore(trend.getTrendScore());
+-            trend.setTrendScore(seedScore);
+-            trend.setChangePct(seedScore == 100 ? 24 : 12);
+-            trend.setSourceCount(3);
+-            trend.setSentiment(seedScore >= 100 ? "positive" : "neutral");
+-            marketTrendRepository.save(trend);
+-            seedScore -= 10;
++        marketTrendRepository.deleteByKeywordNotIn(defaults.stream().map(TrendSignal::keyword).toList());
++        for (TrendSignal seed : defaults) {
++            upsertTrend(seed);
+         }
+     }
+ 
+@@ -186,6 +241,19 @@ public class MarketTrendUpdater {
+         return 0L;
+     }
+ 
++    private double toDouble(Object value) {
++        if (value instanceof Number n) {
++            return n.doubleValue();
++        }
++        if (value instanceof String s) {
++            try {
++                return Double.parseDouble(s);
++            } catch (NumberFormatException ignored) {
++            }
++        }
++        return 0.0;
++    }
++
+     private List<MarketSeed> parseSeeds(String rawSeeds) {
+         return Arrays.stream(rawSeeds.split(";"))
+                 .map(String::trim)
+@@ -207,8 +275,39 @@ public class MarketTrendUpdater {
+     }
+ 
+     private record MarketSeed(String market, List<String> queries) {
+-        private String primaryQuery() {
+-            return queries.isEmpty() ? market : queries.get(0);
++    }
++
++    private record TrendSignal(
++            String keyword,
++            String cluster,
++            long trendScore,
++            int sourceCount,
++            String sentiment,
++            long totalViews,
++            long totalLikes,
++            long totalComments,
++            double avgEngagement
++    ) {
++        private TrendSignal withCluster(String nextCluster) {
++            return new TrendSignal(
++                    keyword,
++                    nextCluster,
++                    trendScore,
++                    sourceCount,
++                    sentiment,
++                    totalViews,
++                    totalLikes,
++                    totalComments,
++                    avgEngagement
++            );
++        }
++    }
++
++    private String titleCase(String input) {
++        if (input == null || input.isBlank()) {
++            return "Emerging Trend";
+         }
++        String normalized = input.trim().toLowerCase(Locale.ROOT);
++        return Character.toUpperCase(normalized.charAt(0)) + normalized.substring(1);
+     }
+ }
+diff --git a/BE/src/main/java/com/researchco/payment/PaymentTransactionRepository.java b/BE/src/main/java/com/researchco/payment/PaymentTransactionRepository.java
+index 2b09b69..7b59fc0 100644
+--- a/BE/src/main/java/com/researchco/payment/PaymentTransactionRepository.java
++++ b/BE/src/main/java/com/researchco/payment/PaymentTransactionRepository.java
+@@ -11,4 +11,6 @@ public interface PaymentTransactionRepository extends JpaRepository<PaymentTrans
+     Optional<PaymentTransactionEntity> findByProviderSessionId(String providerSessionId);
+ 
+     List<PaymentTransactionEntity> findByUserOrderByCreatedAtDesc(UserEntity user);
++
++    List<PaymentTransactionEntity> findTop20ByOrderByCreatedAtDesc();
+ }
+diff --git a/BE/src/main/java/com/researchco/snapshot/SnapshotInsightRepository.java b/BE/src/main/java/com/researchco/snapshot/SnapshotInsightRepository.java
+index f4b5cce..448f03d 100644
+--- a/BE/src/main/java/com/researchco/snapshot/SnapshotInsightRepository.java
++++ b/BE/src/main/java/com/researchco/snapshot/SnapshotInsightRepository.java
+@@ -7,4 +7,6 @@ import java.util.UUID;
+ 
+ public interface SnapshotInsightRepository extends JpaRepository<SnapshotInsightEntity, UUID> {
+     List<SnapshotInsightEntity> findBySnapshotId(UUID snapshotId);
++
++    long countBySnapshotSearchQueryUserId(UUID userId);
+ }
+diff --git a/BE/src/main/java/com/researchco/user/UserEntity.java b/BE/src/main/java/com/researchco/user/UserEntity.java
+index 95d27cb..202790f 100644
+--- a/BE/src/main/java/com/researchco/user/UserEntity.java
++++ b/BE/src/main/java/com/researchco/user/UserEntity.java
+@@ -46,4 +46,13 @@ public class UserEntity extends BaseEntity {
+ 
+     @Column(nullable = false, length = 20)
+     private String status;
++
++    @Column(name = "notify_email_updates")
++    private Boolean notifyEmailUpdates;
++
++    @Column(name = "notify_weekly_report")
++    private Boolean notifyWeeklyReport;
++
++    @Column(name = "notify_usage_alerts")
++    private Boolean notifyUsageAlerts;
+ }
+diff --git a/BE/src/main/resources/application.yml b/BE/src/main/resources/application.yml
+index 28527c5..981b13f 100644
+--- a/BE/src/main/resources/application.yml
++++ b/BE/src/main/resources/application.yml
+@@ -2,9 +2,9 @@ spring:
+   application:
+     name: researchco-backend
+   datasource:
+-    url: jdbc:postgresql://aws-1-ap-southeast-1.pooler.supabase.com:6543/postgres?sslmode=require&preferQueryMode=simple&prepareThreshold=0
+-    username: postgres.kbxulunixssiykelahpz
+-    password: Nguyenhoang@0712
++    url: ${DB_URL:jdbc:postgresql://localhost:5432/researchco}
++    username: ${DB_USERNAME:postgres}
++    password: ${DB_PASSWORD:postgres}
+   jpa:
+     hibernate:
+       ddl-auto: update
+@@ -28,27 +28,20 @@ server:
+     uri-encoding: UTF-8
+ 
+ app:
+-  frontend-base-url: ${FRONTEND_BASE_URL:http://localhost:5173}
+   jwt:
+-    secret: 56737450-04d2-4593-922a-c5c29b528799
++    secret: ${JWT_SECRET:researchco-secret-key-change-me-at-least-32-chars}
+     expiration-ms: ${JWT_EXPIRATION_MS:86400000}
+ 
+ integration:
+-  serpapi:
+-    api-key: ${SERPAPI_API_KEY:c61ab6a9243e1ae10e443e12785e12962c18b441aeb2c215554689fc650bf5d5}
+-    google-max-results: ${SERPAPI_GOOGLE_MAX_RESULTS:5}
+-    news-max-results: ${SERPAPI_NEWS_MAX_RESULTS:5}
+-  stripe:
+-    secret-key: sk_test_51TE5tTFPLOVqZ09p5aHfArf13WxrgrMhcgEISGszZBLnvSAvWWTvfXR30qXva6ZxfcEpu6DDE2MOp0yEJ31L7yx200t837c2a5
+   gemini:
+     api-key: ${GEMINI_API_KEY:}
+     model: ${GEMINI_MODEL:gemini-2.5-flash}
+   youtube:
+-    api-key: ${YOUTUBE_API_KEY:AIzaSyCg6R0ttPTY7jBhWa5m3LrkqjpgXaAH_uk}
++    api-key: ${YOUTUBE_API_KEY:}
+     max-results: ${YOUTUBE_MAX_RESULTS:5}
+-
+-home:
+-  live-trends:
+-    seed-keywords: ${HOME_LIVE_TRENDS_SEEDS:AI & Automation=AI Agent|Generative AI|AI automation;Mobility & Consumer=Electric bike|Urban mobility|EV commute;Commerce & Platforms=TikTok Shop trends|Social Commerce|Creator commerce;Food & Lifestyle=Pho|Vietnamese street food|Quick noodle recipes}
+-    refresh-ms: ${HOME_LIVE_TRENDS_REFRESH_MS:3600000}
+-
++  serpapi:
++    api-key: ${SERPAPI_API_KEY:}
++    google-max-results: ${SERPAPI_GOOGLE_MAX_RESULTS:5}
++    news-max-results: ${SERPAPI_NEWS_MAX_RESULTS:5}
++  stripe:
++    secret-key: ${STRIPE_SECRET_KEY:}
+diff --git a/FE/src/pages/Account/AccountPage.jsx b/FE/src/pages/Account/AccountPage.jsx
+index 0778543..1876ddb 100644
+--- a/FE/src/pages/Account/AccountPage.jsx
++++ b/FE/src/pages/Account/AccountPage.jsx
+@@ -1,4 +1,4 @@
+-import { useEffect, useState } from 'react'
++?import { useEffect, useState } from 'react'
+ import { Button } from '../../components/Button'
+ import { Card } from '../../components/Card'
+ import { appApi } from '../../services/appApi'
+@@ -142,3 +142,5 @@ export function AccountPage() {
+     </div>
+   )
+ }
++
++
+diff --git a/FE/src/pages/Analysis/AnalysisPage.jsx b/FE/src/pages/Analysis/AnalysisPage.jsx
+index 8f394bc..1df8ec5 100644
+--- a/FE/src/pages/Analysis/AnalysisPage.jsx
++++ b/FE/src/pages/Analysis/AnalysisPage.jsx
+@@ -1,4 +1,4 @@
+-import { useEffect, useMemo, useState } from 'react'
++?import { useEffect, useMemo, useState } from 'react'
+ import { Link, useNavigate, useSearchParams } from 'react-router-dom'
+ import { Button } from '../../components/Button'
+ import { ROUTES } from '../../constants/routes'
+@@ -98,7 +98,7 @@ export function AnalysisPage() {
+             <input
+               value={draftKeyword}
+               onChange={(e) => setDraftKeyword(e.target.value)}
+-              placeholder="Try: ph?, electric bike, AI agent, TikTok Shop trends..."
++              placeholder="Try: pho, electric bike, AI agent, TikTok Shop trends..."
+             />
+             <Button
+               onClick={() => {
+@@ -382,3 +382,5 @@ export function AnalysisPage() {
+     </div>
+   )
+ }
++
++
+diff --git a/FE/src/pages/Dashboard/DashboardPage.jsx b/FE/src/pages/Dashboard/DashboardPage.jsx
+index 498fdc7..60f1aba 100644
+--- a/FE/src/pages/Dashboard/DashboardPage.jsx
++++ b/FE/src/pages/Dashboard/DashboardPage.jsx
+@@ -26,7 +26,7 @@ export function DashboardPage() {
+   }, [])
+ 
+   const quickActions = [
+-    { label: 'Run new analysis', hint: 'Start a fresh keyword research flow', to: `${ROUTES.ANALYSIS}?keyword=AI Agent` },
++    { label: 'Run new analysis', hint: 'Start a fresh keyword research flow', to: ROUTES.ANALYSIS },
+     { label: 'Open pricing', hint: 'Compare plans and upgrade access', to: ROUTES.PRICING },
+     { label: 'Manage account', hint: 'Review billing and notifications', to: ROUTES.ACCOUNT },
+   ]
+diff --git a/FE/src/pages/DeepInsight/DeepInsightPage.jsx b/FE/src/pages/DeepInsight/DeepInsightPage.jsx
+index 04d8df8..0d3a0bc 100644
+--- a/FE/src/pages/DeepInsight/DeepInsightPage.jsx
++++ b/FE/src/pages/DeepInsight/DeepInsightPage.jsx
+@@ -32,7 +32,7 @@ function hasAiError(data) {
+ 
+ export function DeepInsightPage() {
+   const [searchParams] = useSearchParams()
+-  const keyword = searchParams.get('keyword') || 'AI Agent'
++  const keyword = (searchParams.get('keyword') || '').trim()
+   const [analysisContext, setAnalysisContext] = useState(null)
+   const [activeSource, setActiveSource] = useState('Cross-source synthesis')
+   const [data, setData] = useState(null)
+@@ -52,6 +52,11 @@ export function DeepInsightPage() {
+   }, [activeSource, availableSources])
+ 
+   useEffect(() => {
++    if (!keyword) {
++      setAnalysisContext(null)
++      setData(null)
++      return
++    }
+     appApi.getAnalysis(keyword)
+       .then((result) => {
+         setAnalysisContext(result)
+@@ -64,6 +69,30 @@ export function DeepInsightPage() {
+       })
+   }, [keyword])
+ 
++  if (!keyword) {
++    return (
++      <div className="di-shell page-wrap">
++        <div className="di-page-top">
++          <div>
++            <h1>AI Deep Insight Analysis</h1>
++            <p className="hint">Choose a keyword from Market Research first, then run deep insight here.</p>
++          </div>
++        </div>
++
++        <div className="card dashboard-empty-state analysis-empty-state">
++          <h2>No keyword selected</h2>
++          <p>
++            This page needs a tracked keyword from the Market Research workspace before AI can generate deep insight.
++          </p>
++          <div className="analysis-empty-actions">
++            <Link to={ROUTES.ANALYSIS} className="btn btn-primary">Go to Market Research</Link>
++            <Link to={ROUTES.HOME} className="btn btn-secondary">Go to Overview</Link>
++          </div>
++        </div>
++      </div>
++    )
++  }
++
+   const load = async () => {
+     setLoading(true)
+     try {
+diff --git a/FE/src/pages/Login/LoginPage.jsx b/FE/src/pages/Login/LoginPage.jsx
+index d8aef27..3c5682e 100644
+--- a/FE/src/pages/Login/LoginPage.jsx
++++ b/FE/src/pages/Login/LoginPage.jsx
+@@ -1,4 +1,4 @@
+-import { useEffect, useState } from 'react'
++?import { useEffect, useState } from 'react'
+ import { useNavigate } from 'react-router-dom'
+ import { Button } from '../../components/Button'
+ import { Card } from '../../components/Card'
+@@ -31,7 +31,7 @@ export function LoginPage() {
+         navigate(ROUTES.DASHBOARD)
+       }
+     } catch (err) {
+-      setError(err?.message ?? 'Ðang nh?p th?t b?i')
++      setError(err?.message ?? 'Dang nhap that bai')
+     } finally {
+       setIsSubmitting(false)
+     }
+@@ -88,7 +88,7 @@ export function LoginPage() {
+           {error ? <div className="error">{error}</div> : null}
+ 
+           <Button type="submit" disabled={isSubmitting}>
+-            {isSubmitting ? 'Signing in…' : 'Sign in'}
++            {isSubmitting ? 'Signing in...' : 'Sign in'}
+           </Button>
+ 
+           <div className="hint">
+@@ -101,3 +101,5 @@ export function LoginPage() {
+     </div>
+   )
+ }
++
++
+diff --git a/FE/src/pages/Pricing/PricingPage.jsx b/FE/src/pages/Pricing/PricingPage.jsx
+index 6caf0b4..df7452e 100644
+--- a/FE/src/pages/Pricing/PricingPage.jsx
++++ b/FE/src/pages/Pricing/PricingPage.jsx
+@@ -68,7 +68,10 @@ export function PricingPage() {
+       }
+       setNotice({ tone: 'info', text: result.message })
+     } catch (error) {
+-      setNotice({ tone: 'error', text: error.message || 'Unable to complete checkout right now.' })
++      const message = error?.status === 401
++        ? 'Please log in before starting checkout.'
++        : (error.message || 'Unable to complete checkout right now.')
++      setNotice({ tone: 'error', text: message })
+     } finally {
+       setSubmittingPlanId(null)
+     }
+@@ -97,7 +100,10 @@ export function PricingPage() {
+         note: '',
+       })
+     } catch (error) {
+-      setNotice({ tone: 'error', text: error.message || 'Unable to send sales request right now.' })
++      const message = error?.status === 401
++        ? 'Please log in before sending an enterprise request.'
++        : (error.message || 'Unable to send sales request right now.')
++      setNotice({ tone: 'error', text: message })
+     } finally {
+       setSubmittingPlanId(null)
+     }
+@@ -201,10 +207,13 @@ export function PricingPage() {
+       ) : null}
+ 
+       <div className="grid grid-4">
+-        {plans.map((plan) => (
++        {plans.map((plan) => {
++          const isCurrentForSelectedCycle =
++            Boolean(plan.current) && (plan.currentBillingCycle || 'monthly') === cycle
++          return (
+           <Card key={plan.id} title={plan.name}>
+             <div className="stack">
+-              {plan.current ? <span className="badge badge-success">Current plan</span> : null}
++              {isCurrentForSelectedCycle ? <span className="badge badge-success">Current plan</span> : null}
+               <div className="price">${plan[cycle]}</div>
+               <div className="hint">/{cycle === 'monthly' ? 'month' : 'year'}</div>
+               <ul className="list">
+@@ -213,17 +222,20 @@ export function PricingPage() {
+                 ))}
+               </ul>
+               <Button
+-                variant={plan.current ? 'secondary' : 'primary'}
++                variant={isCurrentForSelectedCycle ? 'secondary' : 'primary'}
+                 onClick={() => handleCheckout(plan)}
+-                disabled={Boolean(submittingPlanId) || plan.current}
++                disabled={Boolean(submittingPlanId) || isCurrentForSelectedCycle}
+               >
+                 {submittingPlanId === plan.id
+                   ? 'Processing...'
+-                  : plan.ctaLabel ?? (plan.id === 'enterprise' ? 'Contact sales' : 'Start now')}
++                  : isCurrentForSelectedCycle
++                    ? 'Current plan'
++                    : (plan.id === 'enterprise' ? 'Contact sales' : 'Start now')}
+               </Button>
+             </div>
+           </Card>
+-        ))}
++          )
++        })}
+       </div>
+     </div>
+   )
