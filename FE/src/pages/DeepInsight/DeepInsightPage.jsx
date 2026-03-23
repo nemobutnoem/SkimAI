@@ -30,6 +30,9 @@ function hasAiError(data) {
   return Boolean(data?.marketInsight?.toLowerCase().startsWith('unable to generate ai insight'))
 }
 
+const OPP_ICONS = ['🚀', '💡', '📊', '🎯']
+const SIGNAL_ICONS = ['📡', '💬', '⚔️']
+
 export function DeepInsightPage() {
   const [searchParams] = useSearchParams()
   const keyword = searchParams.get('keyword') || 'AI Agent'
@@ -133,23 +136,31 @@ export function DeepInsightPage() {
 
   return (
     <div className="di-shell page-wrap">
+      {/* Page Header */}
       <div className="di-page-top">
         <div>
-          <h1>AI Deep Insight Analysis</h1>
-          <p className="hint">Generate a deeper AI recommendation from the keyword you just searched.</p>
+          <p className="dashboard-kicker">Deep Analysis</p>
+          <h1>AI Deep Insight</h1>
+          <p className="hint">AI-powered recommendations from your collected market research data.</p>
         </div>
         <div className="header-actions">
           <Button variant="secondary" className="btn-sm">Export Report</Button>
-          <Link to={`${ROUTES.ANALYSIS}?keyword=${encodeURIComponent(keyword)}`} className="btn btn-primary btn-sm">Back to Analysis</Link>
+          <Link to={`${ROUTES.ANALYSIS}?keyword=${encodeURIComponent(keyword)}`} className="btn btn-primary btn-sm">← Back to Analysis</Link>
         </div>
       </div>
 
+      {/* AI Input Card */}
       <div className="di-data-input-card">
-        <h4>AI Input</h4>
+        <div className="di-card-header-row">
+          <h4>⚡ AI Input Configuration</h4>
+          <Button onClick={load} disabled={loading} className="btn-sm">
+            {loading ? '⏳ Analyzing...' : '🚀 Run Analysis'}
+          </Button>
+        </div>
         <div className="di-keyword-box">
-          <div className="di-input-label">Selected keyword</div>
+          <div className="di-input-label">Research keyword</div>
           <div className="di-keyword-value">{keyword}</div>
-          <div className="hint">This keyword was carried from the analysis page. Press Run Analysis to let AI generate the deep insight.</div>
+          <div className="hint">Carried from the analysis page. Select a source and press Run Analysis.</div>
         </div>
 
         <div className="di-input-label">Data Sources</div>
@@ -164,16 +175,11 @@ export function DeepInsightPage() {
             </button>
           ))}
         </div>
-
-        <div style={{ marginTop: 16, display: 'flex', justifyContent: 'flex-end' }}>
-          <Button onClick={load} disabled={loading} className="btn-sm">
-            {loading ? 'Analyzing...' : 'Run Analysis'}
-          </Button>
-        </div>
       </div>
 
+      {/* Market Insight */}
       <div className="di-section-card">
-        <div className="di-section-title">Market Insight</div>
+        <div className="di-section-title">📊 Market Insight</div>
         <div className="di-key-finding">
           <div className="di-kf-label">Key Finding</div>
           <p>{signalSummary ?? `Press "Run Analysis" to generate AI insight for "${keyword}".`}</p>
@@ -188,38 +194,52 @@ export function DeepInsightPage() {
         </div>
       </div>
 
+      {/* Search Trend Analysis */}
       <div className="di-section-card">
-        <div className="di-section-title">Search Trend Analysis</div>
-        <div style={{ fontSize: 13, color: 'var(--text-secondary)', marginBottom: 12, textAlign: 'right' }}>
-          {trendMessage}
+        <div className="di-section-title">📈 Search Trend Analysis</div>
+        <div className="di-trend-status">{trendMessage}</div>
+        <div className="di-trend-table">
+          <div className="di-trend-table-head">
+            <span className="di-tth di-tth-rank">#</span>
+            <span className="di-tth di-tth-name">Keyword</span>
+            <span className="di-tth di-tth-note">Metrics</span>
+            <span className="di-tth di-tth-bar">Momentum</span>
+          </div>
+          {trendPoints.map((point, idx) => (
+            <div className="di-trend-table-row" key={point.label}>
+              <span className="di-trend-rank">{idx + 1}</span>
+              <span className="di-trend-kw">{point.label}</span>
+              <span className="di-trend-note">{point.note}</span>
+              <span className="di-trend-bar-cell">
+                <div className="di-trend-bar-track">
+                  <div className="di-trend-bar-fill" style={{ width: `${point.value}%` }} />
+                </div>
+                <span className="di-trend-pct">{point.value}%</span>
+              </span>
+            </div>
+          ))}
         </div>
-        <div className="di-trend-panel">
-          {trendPoints.map((point) => (
-            <div className="di-trend-row" key={point.label}>
-              <div className="di-trend-head">
-                <span className="di-trend-label">{point.label}</span>
-                <span className="di-trend-note">{point.note}</span>
-              </div>
-              <div className="di-trend-track">
-                <div className="di-trend-fill" style={{ width: `${point.value}%` }} />
+      </div>
+
+      {/* Media & Industry Signals */}
+      <div className="di-section-card">
+        <div className="di-section-title">📡 Media & Industry Signals</div>
+        <div className="di-signal-grid">
+          {mediaSignals.map((sig, idx) => (
+            <div className="di-signal-card" key={sig.title}>
+              <div className="di-signal-icon">{SIGNAL_ICONS[idx % SIGNAL_ICONS.length]}</div>
+              <div>
+                <h5>{sig.title}</h5>
+                <p>{sig.desc}</p>
               </div>
             </div>
           ))}
         </div>
       </div>
 
+      {/* Estimated Audience Sentiment */}
       <div className="di-section-card">
-        <div className="di-section-title">Media & Industry Signals</div>
-        {mediaSignals.map((sig) => (
-          <div className="di-signal-item" key={sig.title}>
-            <h5>{sig.title}</h5>
-            <p>{sig.desc}</p>
-          </div>
-        ))}
-      </div>
-
-      <div className="di-section-card">
-        <div className="di-section-title">Estimated Audience Sentiment</div>
+        <div className="di-section-title">💬 Estimated Audience Sentiment</div>
         <div className="di-sentiment-two-col">
           <div className="di-sentiment-bars">
             {sentimentBars.map((bar) => (
@@ -234,23 +254,27 @@ export function DeepInsightPage() {
           </div>
 
           <div>
-            <h5 style={{ fontSize: 15, fontWeight: 600, marginBottom: 14 }}>Key Discussion Topics</h5>
-            <div className="hint" style={{ marginBottom: 10 }}>Estimated from engagement and keyword overlap, not direct NLP comment scoring.</div>
-            {discussionTopics.map((t) => (
-              <div className="di-discussion-topic" key={t.name}>
-                <span className="di-topic-name">{t.name}</span>
-                <span className="di-topic-change">{t.change}</span>
-              </div>
-            ))}
+            <h5 className="di-topics-title">Key Discussion Topics</h5>
+            <div className="hint" style={{ marginBottom: 10 }}>Estimated from engagement and keyword overlap.</div>
+            <div className="di-topics-list">
+              {discussionTopics.map((t) => (
+                <div className="di-discussion-topic" key={t.name}>
+                  <span className="di-topic-name">{t.name}</span>
+                  <span className="di-topic-change">{t.change}</span>
+                </div>
+              ))}
+            </div>
           </div>
         </div>
       </div>
 
+      {/* Market Opportunities */}
       <div className="di-section-card">
-        <div className="di-section-title">Market Opportunities</div>
+        <div className="di-section-title">🎯 Market Opportunities</div>
         <div className="di-opportunity-grid">
-          {opportunityCards.map((opp) => (
+          {opportunityCards.map((opp, idx) => (
             <div className={`di-opportunity-card di-opp-${opp.theme}`} key={opp.title}>
+              <div className="di-opp-icon">{OPP_ICONS[idx % OPP_ICONS.length]}</div>
               <h5>{opp.title}</h5>
               <p>{opp.desc}</p>
             </div>
@@ -258,8 +282,9 @@ export function DeepInsightPage() {
         </div>
       </div>
 
+      {/* Strategic Recommendation */}
       <div className="di-strategic-card">
-        <h4>Strategic Recommendation</h4>
+        <h4>✨ Strategic Recommendation</h4>
         <h5>{strategicRecommendation.title}</h5>
         <p>{strategicRecommendation.desc ?? recommendationSummary ?? `The AI model will generate a strategic recommendation for "${keyword}" after you press Run Analysis.`}</p>
         <div className="di-strategic-stats">
@@ -273,7 +298,7 @@ export function DeepInsightPage() {
       </div>
 
       <Link to={ROUTES.ASK_EXPERT} className="di-ask-expert-float">
-        <span className="di-expert-icon">Expert</span>
+        <span className="di-expert-icon">🧑‍🔬</span>
         Ask an expert
       </Link>
     </div>
