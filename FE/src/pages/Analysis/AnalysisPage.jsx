@@ -6,16 +6,37 @@ import { appApi } from '../../services/appApi'
 
 const INSIGHT_TRUNCATE = 120
 
-function InsightCard({ insight }) {
+const INSIGHT_ICONS = {
+  'social sentiment': '💬',
+  'keyword opportunity': '🔑',
+  'market trend': '📈',
+  'media pressure': '📰',
+  'competitor signal': '🎯',
+  'audience behavior': '👥',
+  default: '💡',
+}
+
+function getInsightIcon(label) {
+  const key = (label || '').toLowerCase()
+  for (const [k, v] of Object.entries(INSIGHT_ICONS)) {
+    if (key.includes(k)) return v
+  }
+  return INSIGHT_ICONS.default
+}
+
+function InsightCard({ insight, index }) {
   const [expanded, setExpanded] = useState(false)
   const text = insight?.text || ''
   const label = insight?.label || 'Insight'
   const needsTruncate = text.length > INSIGHT_TRUNCATE
 
+  const icon = getInsightIcon(label)
+
   return (
-    <div className="insight-item">
-      <div className="insight-label">
-        <span className="dot-indicator" /> {label}
+    <div className={`insight-item insight-item--${index % 4}`}>
+      <div className="insight-header">
+        <span className="insight-icon">{icon}</span>
+        <span className="insight-label">{label}</span>
       </div>
       <div className="insight-text">
         {needsTruncate && !expanded ? `${text.slice(0, INSIGHT_TRUNCATE)}...` : text}
@@ -260,28 +281,42 @@ export function AnalysisPage() {
 
         <div className="insight-grid">
           {(data?.insights ?? []).map((item, i) => (
-            <InsightCard key={i} insight={item} />
+            <InsightCard key={i} insight={item} index={i} />
           ))}
         </div>
 
         <div className="analysis-keyword-shelf">
-          <div className="analysis-subsection-title">Related keyword clusters</div>
-          <div className="keyword-list">
+          <div className="kw-shelf-header">
+            <div>
+              <div className="analysis-subsection-title">Related keyword clusters</div>
+              <p className="hint" style={{ margin: '4px 0 0' }}>Adjacent topics detected from market signals</p>
+            </div>
+            <span className="kw-count-badge">{(data?.relatedKeywords ?? []).length} keywords</span>
+          </div>
+          <div className="keyword-table">
+            <div className="kw-table-head">
+              <span className="kw-th kw-th-rank">#</span>
+              <span className="kw-th kw-th-name">Keyword</span>
+              <span className="kw-th kw-th-metric">Views</span>
+              <span className="kw-th kw-th-metric">Likes</span>
+              <span className="kw-th kw-th-metric">Comments</span>
+              <span className="kw-th kw-th-metric">Mentions</span>
+              <span className="kw-th kw-th-bar">Strength</span>
+            </div>
             {(data?.relatedKeywords ?? []).map((km, index) => {
               const maxMentions = Math.max(...(data?.relatedKeywords ?? []).map((k) => k.mentionCount || 1), 1)
               const barWidth = Math.max(15, ((km.mentionCount || 1) / maxMentions) * 100)
               return (
-                <div className="keyword-row" key={km.keyword || index}>
+                <div className="kw-table-row" key={km.keyword || index}>
+                  <span className="kw-rank">{index + 1}</span>
                   <span className="kw-name">{km.keyword}</span>
-                  <div className="kw-bar-wrap">
+                  <span className="kw-metric-val">{formatNumber(km.totalViews)}</span>
+                  <span className="kw-metric-val">{formatNumber(km.totalLikes)}</span>
+                  <span className="kw-metric-val">{formatNumber(km.totalComments)}</span>
+                  <span className="kw-metric-val kw-metric-mentions">{km.mentionCount}</span>
+                  <span className="kw-bar-cell">
                     <div className="kw-bar" style={{ width: `${barWidth}%` }} />
-                    <span className="kw-metrics">
-                      <span title="Views">Views {formatNumber(km.totalViews)}</span>
-                      <span title="Likes">Likes {formatNumber(km.totalLikes)}</span>
-                      <span title="Comments">Comments {formatNumber(km.totalComments)}</span>
-                      <span title="Mentions">Mentions {km.mentionCount}</span>
-                    </span>
-                  </div>
+                  </span>
                 </div>
               )
             })}
@@ -290,8 +325,8 @@ export function AnalysisPage() {
 
         <div className="ask-more">
           <Link to={`${ROUTES.DEEP_INSIGHT}?keyword=${encodeURIComponent(keyword)}`} className="ask-more-cta">
-            <span className="ask-more-icon">AI</span>
-            <span>Ask AI More {'->'}</span>
+            <span className="ask-more-icon">✨</span>
+            <span>Ask AI for deeper insights →</span>
           </Link>
         </div>
       </section>
