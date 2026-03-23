@@ -73,7 +73,7 @@ public class MarketTrendUpdater {
             upsertTrend(seed, items);
         }
     }
-
+//
     private void upsertTrend(MarketSeed seed, List<NormalizedSourceItem> items) {
         long views = 0L;
         long likes = 0L;
