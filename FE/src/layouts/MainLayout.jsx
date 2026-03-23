@@ -17,13 +17,6 @@ export function MainLayout() {
     { to: ROUTES.ACCOUNT, label: 'Billing' },
   ]
 
-  const adminLinks = [
-    { to: ROUTES.ADMIN_DASHBOARD, label: 'Admin Dashboard' },
-    { to: ROUTES.ADMIN_REPORTS, label: 'Reports' },
-    { to: ROUTES.ADMIN_USERS, label: 'Users' },
-    { to: ROUTES.ADMIN_REVENUE, label: 'Revenue' },
-  ]
-
   return (
     <div className="app-shell">
       <header className="app-header">
@@ -41,17 +34,14 @@ export function MainLayout() {
                 {link.label}
               </NavLink>
             ))}
-            {isAdmin
-              ? adminLinks.map((link) => (
-                  <NavLink
-                    key={link.to}
-                    className={({ isActive }) => ['app-link', isActive ? 'active' : ''].join(' ').trim()}
-                    to={link.to}
-                  >
-                    {link.label}
-                  </NavLink>
-                ))
-              : null}
+            {isAdmin ? (
+              <NavLink
+                className={({ isActive }) => ['app-link', isActive ? 'active' : ''].join(' ').trim()}
+                to={ROUTES.ADMIN_DASHBOARD}
+              >
+                Admin
+              </NavLink>
+            ) : null}
           </nav>
           <div className="app-header-right">
             <span className="app-user">{user?.email}</span>

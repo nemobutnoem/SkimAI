@@ -1,6 +1,7 @@
-import { useEffect, useState } from 'react'
+﻿import { useEffect, useState } from 'react'
 import { Card } from '../../components/Card'
 import { appApi } from '../../services/appApi'
+import { AdminSectionNav } from '../../components/AdminSectionNav'
 
 export function AdminRevenuePage() {
   const [data, setData] = useState(null)
@@ -11,7 +12,14 @@ export function AdminRevenuePage() {
 
   return (
     <div className="stack page-wrap">
-      <h1>Admin Revenue</h1>
+      <AdminSectionNav />
+
+      <div className="page-header">
+        <div>
+          <h1>Admin Revenue</h1>
+          <p className="hint">Finance operations view: monitor MRR, payment quality, and subscription events.</p>
+        </div>
+      </div>
 
       <div className="grid grid-4">
         {(data?.metrics ?? []).map((item) => (
@@ -36,6 +44,9 @@ export function AdminRevenuePage() {
         </Card>
 
         <Card title="Subscription Events">
+          <div className="hint" style={{ marginBottom: 12 }}>
+            Latest transactions from billing flow.
+          </div>
           <table className="table">
             <thead>
               <tr>

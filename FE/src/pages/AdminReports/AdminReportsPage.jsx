@@ -1,22 +1,20 @@
-import { useEffect, useMemo, useState } from 'react'
+﻿import { useEffect, useMemo, useState } from 'react'
 import { Button } from '../../components/Button'
 import { Card } from '../../components/Card'
 import { appApi } from '../../services/appApi'
+import { AdminSectionNav } from '../../components/AdminSectionNav'
 
-const STATUSES = ['all', 'draft', 'pending', 'published']
+const STATUSES = ['all', 'pending', 'draft', 'published', 'archived']
 
 export function AdminReportsPage() {
   const [status, setStatus] = useState('all')
+  const [query, setQuery] = useState('')
   const [reports, setReports] = useState([])
   const [selectedId, setSelectedId] = useState('')
 
   const loadReports = async (nextStatus = status) => {
     const data = await appApi.getAdminReports(nextStatus)
     setReports(data)
-    if (!selectedId && data[0]) setSelectedId(data[0].id)
-    if (selectedId && !data.some((item) => item.id === selectedId)) {
-      setSelectedId(data[0]?.id ?? '')
-    }
   }
 
   useEffect(() => {
@@ -24,7 +22,26 @@ export function AdminReportsPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [status])
 
-  const selected = useMemo(() => reports.find((item) => item.id === selectedId), [reports, selectedId])
+  const filteredReports = useMemo(() => {
+    const normalized = query.trim().toLowerCase()
+    if (!normalized) return reports
+    return reports.filter((report) =>
+      report.title?.toLowerCase().includes(normalized) ||
+      report.author?.toLowerCase().includes(normalized),
+    )
+  }, [query, reports])
+
+  useEffect(() => {
+    if (!selectedId && filteredReports[0]) {
+      setSelectedId(filteredReports[0].id)
+      return
+    }
+    if (selectedId && !filteredReports.some((item) => item.id === selectedId)) {
+      setSelectedId(filteredReports[0]?.id ?? '')
+    }
+  }, [filteredReports, selectedId])
+
+  const selected = useMemo(() => filteredReports.find((item) => item.id === selectedId), [filteredReports, selectedId])
 
   const moderate = async (nextStatus) => {
     if (!selectedId) return
@@ -34,8 +51,13 @@ export function AdminReportsPage() {
 
   return (
     <div className="stack page-wrap">
+      <AdminSectionNav />
+
       <div className="page-header">
-        <h1>Admin Reports</h1>
+        <div>
+          <h1>Admin Reports</h1>
+          <p className="hint">Moderation queue: filter, preview, approve, or archive report output.</p>
+        </div>
         <div className="tag-wrap">
           {STATUSES.map((item) => (
             <button
@@ -49,10 +71,23 @@ export function AdminReportsPage() {
         </div>
       </div>
 
+      <Card>
+        <div className="grid grid-2">
+          <input
+            value={query}
+            onChange={(event) => setQuery(event.target.value)}
+            placeholder="Search report title or author"
+          />
+          <div className="hint" style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end' }}>
+            Showing {filteredReports.length} report(s)
+          </div>
+        </div>
+      </Card>
+
       <div className="grid admin-columns">
         <Card title="Report List">
           <div className="stack">
-            {reports.map((report) => (
+            {filteredReports.map((report) => (
               <button
                 key={report.id}
                 className={['list-select', selectedId === report.id ? 'active' : ''].join(' ')}
@@ -84,7 +119,10 @@ export function AdminReportsPage() {
                   Request revision
                 </Button>
                 <Button variant="secondary" onClick={() => moderate('archived')}>
-                  Reject
+                  Archive
+                </Button>
+                <Button variant="secondary" onClick={() => moderate('pending')}>
+                  Move to pending
                 </Button>
               </div>
             </div>

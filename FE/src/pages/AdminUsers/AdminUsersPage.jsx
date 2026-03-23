@@ -1,18 +1,30 @@
-import { useEffect, useState } from 'react'
+﻿import { useEffect, useState } from 'react'
 import { Card } from '../../components/Card'
 import { appApi } from '../../services/appApi'
+import { AdminSectionNav } from '../../components/AdminSectionNav'
 
 export function AdminUsersPage() {
   const [filters, setFilters] = useState({ q: '', type: 'all', status: 'all' })
   const [users, setUsers] = useState([])
+  const [loading, setLoading] = useState(false)
 
   useEffect(() => {
-    appApi.getAdminUsers(filters).then(setUsers)
+    setLoading(true)
+    appApi.getAdminUsers(filters)
+      .then(setUsers)
+      .finally(() => setLoading(false))
   }, [filters])
 
   return (
     <div className="stack page-wrap">
-      <h1>Admin Users</h1>
+      <AdminSectionNav />
+
+      <div className="page-header">
+        <div>
+          <h1>Admin Users</h1>
+          <p className="hint">Track customer segments, plan mix, and usage quality in one table.</p>
+        </div>
+      </div>
 
       <Card>
         <div className="grid grid-3">
@@ -23,9 +35,11 @@ export function AdminUsersPage() {
           />
           <select value={filters.type} onChange={(e) => setFilters((prev) => ({ ...prev, type: e.target.value }))}>
             <option value="all">All types</option>
-            <option value="premium">Premium</option>
-            <option value="standard">Standard</option>
-            <option value="trial">Trial</option>
+            <option value="paid">Paid</option>
+            <option value="free">Free</option>
+            <option value="starter">Starter</option>
+            <option value="team">Team</option>
+            <option value="enterprise">Enterprise</option>
           </select>
           <select
             value={filters.status}
@@ -33,13 +47,13 @@ export function AdminUsersPage() {
           >
             <option value="all">All status</option>
             <option value="active">Active</option>
-            <option value="trial">Trial</option>
             <option value="suspended">Suspended</option>
           </select>
         </div>
       </Card>
 
       <Card title={`Users (${users.length})`}>
+        {loading ? <div className="hint">Loading users...</div> : null}
         <table className="table">
           <thead>
             <tr>
