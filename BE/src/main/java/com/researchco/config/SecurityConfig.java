@@ -47,6 +47,7 @@ public class SecurityConfig {
                                 "/api/deep-insight",
                                 "/api/experts/**",
                                 "/api/pricing",
+                                "/api/pricing/**",
                                 "/api/account/**",
                                 "/api/admin/**"
                         ).permitAll()

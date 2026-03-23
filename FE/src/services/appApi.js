@@ -1,13 +1,28 @@
 import { mockApi } from './mockApi'
+import { STORAGE_KEYS } from '../constants/storageKeys'
 
-const USE_MOCK_API = (import.meta.env.VITE_USE_MOCK_API ?? 'true') === 'true'
+const USE_MOCK_API = (import.meta.env.VITE_USE_MOCK_API ?? 'false') === 'true'
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:8080/api'
 
 async function request(path, { method = 'GET', body, headers } = {}) {
+  let authHeaders = {}
+  try {
+    const raw = localStorage.getItem(STORAGE_KEYS.AUTH)
+    if (raw) {
+      const session = JSON.parse(raw)
+      if (session?.token) {
+        authHeaders = { Authorization: `Bearer ${session.token}` }
+      }
+    }
+  } catch {
+    authHeaders = {}
+  }
+
   const response = await fetch(`${API_BASE_URL}${path}`, {
     method,
     headers: {
       'Content-Type': 'application/json',
+      ...authHeaders,
       ...headers,
     },
     body: body ? JSON.stringify(body) : undefined,
@@ -63,6 +78,18 @@ const realApi = {
   },
   getPricing() {
     return request('/pricing')
+  },
+  checkoutPricing(payload) {
+    return request('/pricing/checkout', { method: 'POST', body: payload })
+  },
+  contactSales(payload) {
+    return request('/pricing/contact-sales', { method: 'POST', body: payload })
+  },
+  confirmPricing(providerSessionId) {
+    return request('/pricing/confirm', {
+      method: 'POST',
+      body: { providerSessionId },
+    })
   },
   getAccountOverview() {
     return request('/account/overview')

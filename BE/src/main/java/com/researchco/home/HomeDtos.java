@@ -8,7 +8,10 @@ public class HomeDtos {
             String id,
             String name,
             String change,
-            String sentiment
+            String sentiment,
+            String market,
+            int sourceCount,
+            String updatedAt
     ) {
     }
 

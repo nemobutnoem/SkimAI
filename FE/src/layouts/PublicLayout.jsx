@@ -6,8 +6,8 @@ export function PublicLayout() {
   const { isAuthenticated, user } = useAuth()
 
   const navLinks = [
-    { to: ROUTES.HOME, label: 'Home' },
-    { to: ROUTES.ANALYSIS, label: 'Analytics' },
+    { to: ROUTES.HOME, label: 'Overview' },
+    { to: ROUTES.ANALYSIS, label: 'Market Research' },
     { to: ROUTES.ASK_EXPERT, label: 'Ask Expert' },
     { to: ROUTES.PRICING, label: 'Pricing' },
   ]
@@ -39,7 +39,7 @@ export function PublicLayout() {
               <>
                 <span className="site-user-pill">{user?.name ?? user?.email}</span>
                 <NavLink to={ROUTES.DASHBOARD} className="btn btn-secondary">
-                  App
+                  Workspace
                 </NavLink>
               </>
             ) : (

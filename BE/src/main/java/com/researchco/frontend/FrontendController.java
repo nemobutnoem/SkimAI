@@ -60,4 +60,19 @@ public class FrontendController {
     public List<FrontendDtos.PricingPlan> getPricing() {
         return frontendService.getPricing();
     }
+
+    @PostMapping("/pricing/checkout")
+    public FrontendDtos.PricingCheckoutResponse checkout(@RequestBody FrontendDtos.PricingCheckoutRequest request) {
+        return frontendService.checkout(request);
+    }
+
+    @PostMapping("/pricing/contact-sales")
+    public FrontendDtos.SalesContactResponse contactSales(@RequestBody FrontendDtos.SalesContactRequest request) {
+        return frontendService.contactSales(request);
+    }
+
+    @PostMapping("/pricing/confirm")
+    public FrontendDtos.PricingCheckoutResponse confirmCheckout(@RequestBody FrontendDtos.PricingCheckoutConfirmRequest request) {
+        return frontendService.confirmCheckout(request);
+    }
 }

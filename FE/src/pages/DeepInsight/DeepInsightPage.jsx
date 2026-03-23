@@ -4,17 +4,65 @@ import { Button } from '../../components/Button'
 import { ROUTES } from '../../constants/routes'
 import { appApi } from '../../services/appApi'
 
-const DATA_SOURCES = ['Search Trends', 'News Coverage', 'Social Sentiment', 'Testing Keywords']
+function buildOpportunityCards(data, keyword) {
+  if (data?.opportunityCards?.length) {
+    return data.opportunityCards
+  }
+
+  if (data?.opportunities?.length) {
+    return data.opportunities.map((opportunity, index) => ({
+      title: `AI Opportunity ${index + 1}`,
+      desc: opportunity,
+      theme: ['green', 'blue', 'orange', 'purple'][index % 4],
+    }))
+  }
+
+  return [
+    {
+      title: 'Awaiting AI output',
+      desc: `Press Run Analysis to generate actionable opportunities for "${keyword}".`,
+      theme: 'green',
+    },
+  ]
+}
+
+function hasAiError(data) {
+  return Boolean(data?.marketInsight?.toLowerCase().startsWith('unable to generate ai insight'))
+}
 
 export function DeepInsightPage() {
   const [searchParams] = useSearchParams()
-  const initialKeyword = searchParams.get('keyword') || 'Electric Bikes'
-
-  const [keyword, setKeyword] = useState(initialKeyword)
-  const [period, setPeriod] = useState('Last 30 Days')
-  const [activeSource, setActiveSource] = useState('Search Trends')
+  const keyword = searchParams.get('keyword') || 'AI Agent'
+  const [analysisContext, setAnalysisContext] = useState(null)
+  const [activeSource, setActiveSource] = useState('Cross-source synthesis')
   const [data, setData] = useState(null)
   const [loading, setLoading] = useState(false)
+
+  const availableSources = analysisContext?.dataSources?.length
+    ? analysisContext.dataSources
+    : ['Google Search', 'Google News', 'YouTube Signals', 'Cross-source synthesis']
+
+  useEffect(() => {
+    if (activeSource === 'Cross-source synthesis') {
+      return
+    }
+    if (!availableSources.includes(activeSource)) {
+      setActiveSource(availableSources[0] ?? 'Cross-source synthesis')
+    }
+  }, [activeSource, availableSources])
+
+  useEffect(() => {
+    appApi.getAnalysis(keyword)
+      .then((result) => {
+        setAnalysisContext(result)
+        if (result?.dataSources?.length && !result.dataSources.includes(activeSource)) {
+          setActiveSource(result.dataSources[0])
+        }
+      })
+      .catch(() => {
+        setAnalysisContext(null)
+      })
+  }, [keyword])
 
   const load = async () => {
     setLoading(true)
@@ -26,54 +74,87 @@ export function DeepInsightPage() {
     }
   }
 
-  useEffect(() => {
-    load()
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
+  const opportunityCards = buildOpportunityCards(data, keyword)
+  const aiFailed = hasAiError(data)
+  const aiStatus = !data ? 'Waiting' : aiFailed ? 'Needs key fix' : 'Generated'
+  const trendMessage = !data
+    ? 'Run AI to generate insight'
+    : aiFailed
+      ? 'AI could not generate insight with the current key'
+      : `AI generated from ${activeSource}`
+  const signalSummary = !data
+    ? `No AI result yet for "${keyword}".`
+    : data.marketInsight
+  const recommendationSummary = !data
+    ? 'Press Run Analysis to generate the strategic recommendation.'
+    : data.recommendation
+  const stats = data?.stats ?? [
+    { value: keyword, label: 'Current Keyword' },
+    { value: activeSource, label: 'AI Source' },
+    { value: aiStatus, label: 'AI Status' },
+  ]
+  const mediaSignals = data?.mediaSignals ?? [
+    {
+      title: 'AI summary state',
+      desc: signalSummary,
+    },
+    {
+      title: 'Selected source',
+      desc: `Current analysis source: ${activeSource}.`,
+    },
+    {
+      title: 'Recommendation status',
+      desc: recommendationSummary,
+    },
+  ]
+  const trendPoints = data?.trendPoints ?? [
+    { label: keyword, value: 52, note: 'Baseline trend signal' },
+  ]
+  const sentimentBars = data?.sentiment?.bars ?? [
+    { label: 'Positive', pct: data ? 70 : 0, color: 'var(--green)', cls: 'text-green' },
+    { label: 'Neutral', pct: data ? 20 : 0, color: 'var(--gray-500)', cls: '' },
+    { label: 'Negative', pct: data ? 10 : 0, color: 'var(--red)', cls: 'text-red' },
+  ]
+  const discussionTopics = data?.sentiment?.topics ?? [
+    { name: keyword, change: data ? 'active' : 'waiting' },
+    { name: activeSource, change: 'selected' },
+    { name: 'Market insight', change: data ? 'ready' : 'pending' },
+    { name: 'Recommendation', change: data ? 'ready' : 'pending' },
+  ]
+  const strategicRecommendation = data?.strategicRecommendation ?? {
+    title: data ? (aiFailed ? 'AI generation needs attention' : 'AI-generated direction') : 'Ready to generate recommendation',
+    desc: recommendationSummary,
+    stats: [
+      { value: keyword, label: 'Current Keyword' },
+      { value: activeSource, label: 'Current Source' },
+      { value: aiStatus, label: 'AI Status', highlight: Boolean(data) && !aiFailed },
+    ],
+  }
 
   return (
     <div className="di-shell page-wrap">
-      {/* Page Top */}
       <div className="di-page-top">
         <div>
           <h1>AI Deep Insight Analysis</h1>
-          <p className="hint">Advanced market intelligence powered by AI Analysis</p>
+          <p className="hint">Generate a deeper AI recommendation from the keyword you just searched.</p>
         </div>
         <div className="header-actions">
-          <Button variant="secondary" className="btn-sm">📤 Export Report</Button>
-          <Button className="btn-sm" onClick={() => window.location.href = '/'}>+ New Analysis</Button>
+          <Button variant="secondary" className="btn-sm">Export Report</Button>
+          <Link to={`${ROUTES.ANALYSIS}?keyword=${encodeURIComponent(keyword)}`} className="btn btn-primary btn-sm">Back to Analysis</Link>
         </div>
       </div>
 
-      {/* Data Input */}
       <div className="di-data-input-card">
-        <h4>Data Input for Analysis</h4>
-        <div className="di-input-row">
-          <div>
-            <div className="di-input-label">Keyword</div>
-            <input
-              className="di-input-field"
-              type="text"
-              value={keyword}
-              onChange={(e) => setKeyword(e.target.value)}
-            />
-          </div>
-          <div>
-            <div className="di-input-label">Analysis Period</div>
-            <select
-              className="di-input-field"
-              value={period}
-              onChange={(e) => setPeriod(e.target.value)}
-            >
-              <option>Last 30 Days</option>
-              <option>Last 7 Days</option>
-              <option>Last 90 Days</option>
-            </select>
-          </div>
+        <h4>AI Input</h4>
+        <div className="di-keyword-box">
+          <div className="di-input-label">Selected keyword</div>
+          <div className="di-keyword-value">{keyword}</div>
+          <div className="hint">This keyword was carried from the analysis page. Press Run Analysis to let AI generate the deep insight.</div>
         </div>
+
         <div className="di-input-label">Data Sources</div>
         <div className="di-data-source-tabs">
-          {DATA_SOURCES.map((src) => (
+          {availableSources.map((src) => (
             <button
               key={src}
               className={`di-data-source-tab${activeSource === src ? ' active' : ''}`}
@@ -83,49 +164,53 @@ export function DeepInsightPage() {
             </button>
           ))}
         </div>
+
         <div style={{ marginTop: 16, display: 'flex', justifyContent: 'flex-end' }}>
           <Button onClick={load} disabled={loading} className="btn-sm">
-            {loading ? 'Analyzing...' : '🔍 Run Analysis'}
+            {loading ? 'Analyzing...' : 'Run Analysis'}
           </Button>
         </div>
       </div>
 
-      {/* Market Insight */}
       <div className="di-section-card">
-        <div className="di-section-title"><span className="di-section-icon">📊</span> Market Insight</div>
+        <div className="di-section-title">Market Insight</div>
         <div className="di-key-finding">
           <div className="di-kf-label">Key Finding</div>
-          <p>{data?.keyFinding ?? 'Search interest for "Electric Bikes" increased by 47% over the last 30 days, with a significant spike on March 15th (+89% daily increase) coinciding with government sustainability announcements.'}</p>
+          <p>{signalSummary ?? `Press "Run Analysis" to generate AI insight for "${keyword}".`}</p>
         </div>
         <div className="di-stat-grid">
-          {(data?.stats ?? [
-            { value: '+47%', label: 'Monthly Growth' },
-            { value: '89%', label: 'Peak Day Spike' },
-            { value: '8.2k', label: 'Daily Searches' },
-          ]).map((s) => (
+          {stats.map((s) => (
             <div className="di-stat-box" key={s.label}>
-              <div className="di-stat-num">{s.value}</div>
+              <div className="di-stat-num di-stat-num-text">{s.value}</div>
               <div className="di-stat-desc">{s.label}</div>
             </div>
           ))}
         </div>
       </div>
 
-      {/* Search Trend Analysis */}
       <div className="di-section-card">
-        <div className="di-section-title"><span className="di-section-icon">📈</span> Search Trend Analysis</div>
-        <div style={{ fontSize: 13, color: 'var(--text-secondary)', marginBottom: 12, textAlign: 'right' }}>Search Interest Over Time</div>
-        <div className="chart-placeholder chart-lg" />
+        <div className="di-section-title">Search Trend Analysis</div>
+        <div style={{ fontSize: 13, color: 'var(--text-secondary)', marginBottom: 12, textAlign: 'right' }}>
+          {trendMessage}
+        </div>
+        <div className="di-trend-panel">
+          {trendPoints.map((point) => (
+            <div className="di-trend-row" key={point.label}>
+              <div className="di-trend-head">
+                <span className="di-trend-label">{point.label}</span>
+                <span className="di-trend-note">{point.note}</span>
+              </div>
+              <div className="di-trend-track">
+                <div className="di-trend-fill" style={{ width: `${point.value}%` }} />
+              </div>
+            </div>
+          ))}
+        </div>
       </div>
 
-      {/* Media & Industry Signals */}
       <div className="di-section-card">
-        <div className="di-section-title"><span className="di-section-icon">📰</span> Media & Industry Signals</div>
-        {(data?.mediaSignals ?? [
-          { title: 'Government Policy Support', desc: 'Recent coverage highlights $2B federal investment in electric transportation infrastructure, with specific focus on urban mobility solutions.' },
-          { title: 'Industry Expansion', desc: 'Major retailers like Walmart and Target announced electric bike partnerships, indicating mainstream market acceptance.' },
-          { title: 'Technology Advancement', desc: 'Battery technology breakthroughs featured in 10+ tech publications, emphasizing improved range and faster charging.' },
-        ]).map((sig) => (
+        <div className="di-section-title">Media & Industry Signals</div>
+        {mediaSignals.map((sig) => (
           <div className="di-signal-item" key={sig.title}>
             <h5>{sig.title}</h5>
             <p>{sig.desc}</p>
@@ -133,16 +218,11 @@ export function DeepInsightPage() {
         ))}
       </div>
 
-      {/* Social Sentiment */}
       <div className="di-section-card">
-        <div className="di-section-title"><span className="di-section-icon">💜</span> Social Sentiment</div>
+        <div className="di-section-title">Estimated Audience Sentiment</div>
         <div className="di-sentiment-two-col">
           <div className="di-sentiment-bars">
-            {(data?.sentiment?.bars ?? [
-              { label: 'Positive', pct: 69, color: 'var(--green)', cls: 'text-green' },
-              { label: 'Neutral', pct: 24, color: 'var(--gray-500)', cls: '' },
-              { label: 'Negative', pct: 8, color: 'var(--red)', cls: 'text-red' },
-            ]).map((bar) => (
+            {sentimentBars.map((bar) => (
               <div className="di-sentiment-bar-row" key={bar.label}>
                 <span className={`di-sentiment-bar-label ${bar.cls || ''}`}>{bar.label}</span>
                 <div className="di-sentiment-bar-track">
@@ -152,14 +232,11 @@ export function DeepInsightPage() {
               </div>
             ))}
           </div>
+
           <div>
             <h5 style={{ fontSize: 15, fontWeight: 600, marginBottom: 14 }}>Key Discussion Topics</h5>
-            {(data?.sentiment?.topics ?? [
-              { name: 'Affordability', change: '+34%' },
-              { name: 'Battery Life', change: '+28%' },
-              { name: 'Urban Commuting', change: '+22%' },
-              { name: 'Environmental Impact', change: '+19%' },
-            ]).map((t) => (
+            <div className="hint" style={{ marginBottom: 10 }}>Estimated from engagement and keyword overlap, not direct NLP comment scoring.</div>
+            {discussionTopics.map((t) => (
               <div className="di-discussion-topic" key={t.name}>
                 <span className="di-topic-name">{t.name}</span>
                 <span className="di-topic-change">{t.change}</span>
@@ -169,16 +246,10 @@ export function DeepInsightPage() {
         </div>
       </div>
 
-      {/* Market Opportunities */}
       <div className="di-section-card">
-        <div className="di-section-title"><span className="di-section-icon">🎯</span> Market Opportunities</div>
+        <div className="di-section-title">Market Opportunities</div>
         <div className="di-opportunity-grid">
-          {(data?.opportunityCards ?? [
-            { title: 'Budget Segment Growth', desc: 'Rising keywords: "cheap electric bike" (+185%), "affordable e-bike" (+160%) suggest strong demand in entry-level market.', theme: 'green' },
-            { title: 'Subscription Models', desc: '"Electric bike rental" (+152%) and "e-bike subscription" (+118%) show interest in alternative ownership models.', theme: 'blue' },
-            { title: 'Urban Commuter Focus', desc: '"Electric bike commuting" (+147%) and "e-bike city" (+85%) indicate opportunity in metropolitan markets.', theme: 'orange' },
-            { title: 'Cargo & Family Bikes', desc: '"Electric cargo bike" (+134%) and "family e-bike" (+86%) represent growing niche segments.', theme: 'purple' },
-          ]).map((opp) => (
+          {opportunityCards.map((opp) => (
             <div className={`di-opportunity-card di-opp-${opp.theme}`} key={opp.title}>
               <h5>{opp.title}</h5>
               <p>{opp.desc}</p>
@@ -187,17 +258,12 @@ export function DeepInsightPage() {
         </div>
       </div>
 
-      {/* Strategic Recommendation */}
       <div className="di-strategic-card">
-        <h4>🏆 Strategic Recommendation</h4>
-        <h5>{data?.strategicRecommendation?.title ?? 'Focus on Entry-Level Urban Market'}</h5>
-        <p>{data?.strategicRecommendation?.desc ?? 'Based on the analysis, brands should prioritize developing affordable electric bike models ($800-$1,500) specifically designed for urban commuters. The convergence of government support, positive sentiment around affordability, and rising budget-focused keywords creates a significant market opportunity.'}</p>
+        <h4>Strategic Recommendation</h4>
+        <h5>{strategicRecommendation.title}</h5>
+        <p>{strategicRecommendation.desc ?? recommendationSummary ?? `The AI model will generate a strategic recommendation for "${keyword}" after you press Run Analysis.`}</p>
         <div className="di-strategic-stats">
-          {(data?.strategicRecommendation?.stats ?? [
-            { value: '$1.2B', label: 'Estimated Market Size' },
-            { value: '18 Months', label: 'Optimal Entry Window' },
-            { value: '156%', label: 'Budget Keyword Growth', highlight: true },
-          ]).map((s) => (
+          {strategicRecommendation.stats.map((s) => (
             <div key={s.label}>
               <div className={`di-s-value${s.highlight ? ' green' : ''}`}>{s.value}</div>
               <div className="di-s-label">{s.label}</div>
@@ -206,9 +272,8 @@ export function DeepInsightPage() {
         </div>
       </div>
 
-      {/* Floating Ask Expert */}
       <Link to={ROUTES.ASK_EXPERT} className="di-ask-expert-float">
-        <span className="di-expert-icon">👨‍💼</span>
+        <span className="di-expert-icon">Expert</span>
         Ask an expert
       </Link>
     </div>

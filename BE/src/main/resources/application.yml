@@ -28,11 +28,27 @@ server:
     uri-encoding: UTF-8
 
 app:
+  frontend-base-url: ${FRONTEND_BASE_URL:http://localhost:5173}
   jwt:
     secret: 56737450-04d2-4593-922a-c5c29b528799
     expiration-ms: ${JWT_EXPIRATION_MS:86400000}
 
 integration:
+  serpapi:
+    api-key: ${SERPAPI_API_KEY:c61ab6a9243e1ae10e443e12785e12962c18b441aeb2c215554689fc650bf5d5}
+    google-max-results: ${SERPAPI_GOOGLE_MAX_RESULTS:5}
+    news-max-results: ${SERPAPI_NEWS_MAX_RESULTS:5}
+  stripe:
+    secret-key: sk_test_51TE5tTFPLOVqZ09p5aHfArf13WxrgrMhcgEISGszZBLnvSAvWWTvfXR30qXva6ZxfcEpu6DDE2MOp0yEJ31L7yx200t837c2a5
+  gemini:
+    api-key: ${GEMINI_API_KEY:}
+    model: ${GEMINI_MODEL:gemini-2.5-flash}
   youtube:
     api-key: ${YOUTUBE_API_KEY:AIzaSyCg6R0ttPTY7jBhWa5m3LrkqjpgXaAH_uk}
     max-results: ${YOUTUBE_MAX_RESULTS:5}
+
+home:
+  live-trends:
+    seed-keywords: ${HOME_LIVE_TRENDS_SEEDS:AI & Automation=AI Agent|Generative AI|AI automation;Mobility & Consumer=Electric bike|Urban mobility|EV commute;Commerce & Platforms=TikTok Shop trends|Social Commerce|Creator commerce;Food & Lifestyle=Pho|Vietnamese street food|Quick noodle recipes}
+    refresh-ms: ${HOME_LIVE_TRENDS_REFRESH_MS:3600000}
+

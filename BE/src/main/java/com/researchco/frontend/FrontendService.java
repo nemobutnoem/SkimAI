@@ -2,6 +2,9 @@ package com.researchco.frontend;
 
 import com.researchco.plan.PlanEntity;
 import com.researchco.plan.PlanRepository;
+import com.researchco.common.AppException;
+import com.researchco.payment.PaymentTransactionEntity;
+import com.researchco.payment.PaymentTransactionRepository;
 import com.researchco.provider.NormalizedSourceItem;
 import com.researchco.provider.ProviderOrchestrator;
 import com.researchco.provider.SearchProviderEntity;
@@ -11,6 +14,8 @@ import com.researchco.search.SearchQueryEntity;
 import com.researchco.search.SearchQueryRepository;
 import com.researchco.search.SourceItemEntity;
 import com.researchco.search.SourceItemRepository;
+import com.researchco.sales.SalesLeadEntity;
+import com.researchco.sales.SalesLeadRepository;
 import com.researchco.snapshot.AnalysisSnapshotEntity;
 import com.researchco.snapshot.AnalysisSnapshotRepository;
 import com.researchco.snapshot.SnapshotInsightRepository;
@@ -21,9 +26,22 @@ import com.researchco.subscription.UserSubscriptionRepository;
 import com.researchco.user.UserEntity;
 import com.researchco.user.UserRepository;
 import com.researchco.provider.ai.AiProvider;
+import com.researchco.security.SecurityUtils;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.HttpStatus;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+
+import java.net.URI;
+import java.net.URLEncoder;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
+import java.math.BigDecimal;
+import java.nio.charset.StandardCharsets;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -52,9 +70,15 @@ public class FrontendService {
     private final UserRepository userRepository;
     private final UserSubscriptionRepository userSubscriptionRepository;
     private final PlanRepository planRepository;
+    private final PaymentTransactionRepository paymentTransactionRepository;
     private final SearchProviderRepository searchProviderRepository;
+    private final SalesLeadRepository salesLeadRepository;
     private final ProviderOrchestrator providerOrchestrator;
     private final AiProvider aiProvider;
+    private final ObjectMapper objectMapper;
+    private final HttpClient httpClient = HttpClient.newHttpClient();
+    private final String stripeSecretKey;
+    private final String frontendBaseUrl;
     private final AtomicReference<Map<String, Boolean>> notificationSettings = new AtomicReference<>(
             new LinkedHashMap<>(Map.of(
                     "emailUpdates", true,
@@ -72,9 +96,14 @@ public class FrontendService {
                            UserRepository userRepository,
                            UserSubscriptionRepository userSubscriptionRepository,
                            PlanRepository planRepository,
+                           PaymentTransactionRepository paymentTransactionRepository,
                            SearchProviderRepository searchProviderRepository,
+                           SalesLeadRepository salesLeadRepository,
                            ProviderOrchestrator providerOrchestrator,
-                           AiProvider aiProvider) {
+                           AiProvider aiProvider,
+                           ObjectMapper objectMapper,
+                           @Value("${integration.stripe.secret-key:}") String stripeSecretKey,
+                           @Value("${app.frontend-base-url:http://localhost:5173}") String frontendBaseUrl) {
         this.searchQueryRepository = searchQueryRepository;
         this.analysisSnapshotRepository = analysisSnapshotRepository;
         this.snapshotInsightRepository = snapshotInsightRepository;
@@ -84,16 +113,19 @@ public class FrontendService {
         this.userRepository = userRepository;
         this.userSubscriptionRepository = userSubscriptionRepository;
         this.planRepository = planRepository;
+        this.paymentTransactionRepository = paymentTransactionRepository;
         this.searchProviderRepository = searchProviderRepository;
+        this.salesLeadRepository = salesLeadRepository;
         this.providerOrchestrator = providerOrchestrator;
         this.aiProvider = aiProvider;
+        this.objectMapper = objectMapper;
+        this.stripeSecretKey = stripeSecretKey;
+        this.frontendBaseUrl = frontendBaseUrl;
     }
 
     public FrontendDtos.DashboardResponse getDashboard() {
-        List<SearchQueryEntity> recentQueries = searchQueryRepository.findAll().stream()
-                .sorted(Comparator.comparing(SearchQueryEntity::getCreatedAt, Comparator.nullsLast(Comparator.naturalOrder())).reversed())
-                .limit(3)
-                .toList();
+        UserEntity user = preferredUser();
+        List<SearchQueryEntity> recentQueries = searchQueryRepository.findTop10ByUserOrderByCreatedAtDesc(user);
 
         return new FrontendDtos.DashboardResponse(
                 List.of(
@@ -120,18 +152,39 @@ public class FrontendService {
 
         long queryCount = searchQueryRepository.countByUser(user);
         long reportCount = reportRepository.countByUserId(user.getId());
+        List<FrontendDtos.InvoiceItem> invoices = paymentTransactionRepository.findByUserOrderByCreatedAtDesc(user).stream()
+                .limit(3)
+                .map(tx -> new FrontendDtos.InvoiceItem(
+                        "inv_" + tx.getId().toString().substring(0, 8),
+                        tx.getCreatedAt() != null ? tx.getCreatedAt().toLocalDate().toString() : LocalDateTime.now().toLocalDate().toString(),
+                        "$" + tx.getAmount().intValue(),
+                        displayPaymentStatus(tx.getStatus())
+                ))
+                .toList();
+        UserSubscriptionEntity currentSubscription = subscription.orElse(null);
+        String renewsAt = currentSubscription != null && currentSubscription.getEndDate() != null
+                ? currentSubscription.getEndDate().toString()
+                : null;
+        String billingCycle = currentSubscription != null && currentSubscription.getEndDate() != null && currentSubscription.getStartDate() != null
+                && currentSubscription.getEndDate().isAfter(currentSubscription.getStartDate().plusMonths(11))
+                ? "yearly"
+                : "monthly";
 
         return new FrontendDtos.AccountOverviewResponse(
                 new FrontendDtos.Profile(user.getFullName(), user.getEmail(), "SkimAI Labs"),
+                new FrontendDtos.CurrentSubscription(
+                        plan != null ? plan.getName().toLowerCase(Locale.ROOT) : "free",
+                        titleCase(plan != null ? plan.getName() : "FREE"),
+                        currentSubscription != null ? currentSubscription.getStatus() : "ACTIVE",
+                        billingCycle,
+                        renewsAt
+                ),
                 List.of(
                         new FrontendDtos.UsageItem("API Calls", Math.min(95, (int) queryCount * 18 + 24)),
                         new FrontendDtos.UsageItem("Storage", Math.min(95, (int) reportCount * 22 + 18)),
-                        new FrontendDtos.UsageItem("Team Seats", "BUSINESS".equalsIgnoreCase(plan != null ? plan.getName() : "") ? 80 : 30)
+                        new FrontendDtos.UsageItem("Team Seats", "ENTERPRISE".equalsIgnoreCase(plan != null ? plan.getName() : "") ? 80 : 30)
                 ),
-                List.of(
-                        new FrontendDtos.InvoiceItem("inv_031", "2026-03-01", money(plan), "paid"),
-                        new FrontendDtos.InvoiceItem("inv_030", "2026-02-01", money(plan), "paid")
-                ),
+                invoices,
                 new LinkedHashMap<>(notificationSettings.get())
         );
     }
@@ -146,13 +199,16 @@ public class FrontendService {
         return normalized;
     }
 
+    @Transactional
     public FrontendDtos.AnalysisResponse getAnalysis(String keyword) {
+        LocaleProfile localeProfile = resolveLocaleProfile(keyword);
+        SearchQueryEntity trackedQuery = recordSearchActivity(keyword, localeProfile);
         List<NormalizedSourceItem> liveItems = fetchLiveSources(keyword);
         if (!liveItems.isEmpty()) {
-            return buildLiveAnalysis(keyword, liveItems);
+            return buildLiveAnalysis(trackedQuery, keyword, liveItems);
         }
 
-        SearchQueryEntity query = findQueryByKeyword(keyword).orElseGet(() -> fallbackQuery(keyword));
+        SearchQueryEntity query = trackedQuery != null ? trackedQuery : findQueryByKeyword(keyword).orElseGet(() -> fallbackQuery(keyword));
         AnalysisSnapshotEntity snapshot = analysisSnapshotRepository.findBySearchQueryId(query.getId()).orElse(null);
 
         List<FrontendDtos.KeywordMetric> keywords = snapshot != null
@@ -181,13 +237,9 @@ public class FrontendService {
                 kw,
                 query.getId().toString(),
                 snapshot != null ? snapshot.getId().toString() : null,
+                availableAnalysisSources(),
                 fallbackInsights,
-                keywords.isEmpty() ? List.of(
-                        new FrontendDtos.KeywordMetric("agent workflow", 0, 0L, 0L, 0L, 0.0),
-                        new FrontendDtos.KeywordMetric("marketing automation", 0, 0L, 0L, 0L, 0.0),
-                        new FrontendDtos.KeywordMetric("insight dashboard", 0, 0L, 0L, 0L, 0.0),
-                        new FrontendDtos.KeywordMetric("keyword trend", 0, 0L, 0L, 0L, 0.0)
-                ) : keywords,
+                keywords,
                 news.isEmpty() ? List.of(
                         "Recent public content is still limited for this keyword.",
                         "Expand source coverage to improve depth."
@@ -219,22 +271,183 @@ public class FrontendService {
     }
 
     public List<FrontendDtos.PricingPlan> getPricing() {
+        UserEntity user = preferredUser();
+        String currentPlanId = userSubscriptionRepository.findFirstByUserAndStatusOrderByStartDateDesc(user, "ACTIVE")
+                .map(UserSubscriptionEntity::getPlan)
+                .map(PlanEntity::getName)
+                .map(name -> name.toLowerCase(Locale.ROOT))
+                .orElse("free");
+
         return planRepository.findAll().stream()
+                .filter(plan -> List.of("FREE", "STARTER", "TEAM", "ENTERPRISE").contains(plan.getName().toUpperCase(Locale.ROOT)))
+                .sorted(Comparator.comparingInt(plan -> planTier(plan.getName())))
                 .map(plan -> new FrontendDtos.PricingPlan(
                         plan.getName().toLowerCase(Locale.ROOT),
                         titleCase(plan.getName()),
-                        plan.getPrice() != null ? plan.getPrice().intValue() : 0,
-                        plan.getPrice() != null ? plan.getPrice().multiply(java.math.BigDecimal.TEN).intValue() : 0,
-                        List.of(
-                                (plan.getSearchLimit() != null && plan.getSearchLimit() >= 9999 ? "Unlimited" : plan.getSearchLimit()) + " searches/month",
-                                (plan.getExportLimit() != null && plan.getExportLimit() >= 999 ? "Unlimited" : plan.getExportLimit()) + " exports/month",
-                                plan.getDescription() != null ? plan.getDescription() : "Flexible plan"
-                        )
+                        priceLabel(plan.getPrice()),
+                        priceLabel(plan.getPrice() != null ? plan.getPrice().multiply(new BigDecimal("10")) : BigDecimal.ZERO),
+                        pricingFeatures(plan),
+                        plan.getName().equalsIgnoreCase(currentPlanId),
+                        plan.getName().equalsIgnoreCase(currentPlanId) ? "Current plan" :
+                                "ENTERPRISE".equalsIgnoreCase(plan.getName()) ? "Contact sales" : "Start now"
                 ))
                 .toList();
     }
 
+    @Transactional
+    public FrontendDtos.PricingCheckoutResponse checkout(FrontendDtos.PricingCheckoutRequest request) {
+        String planId = request.planId() == null ? "" : request.planId().trim().toUpperCase(Locale.ROOT);
+        String cycle = normalizeBillingCycle(request.billingCycle());
+        PlanEntity plan = planRepository.findByName(planId)
+                .orElseThrow(() -> new AppException(HttpStatus.NOT_FOUND, "Plan not found"));
+
+        if ("ENTERPRISE".equalsIgnoreCase(plan.getName())) {
+            return new FrontendDtos.PricingCheckoutResponse(
+                    "redirect_to_sales",
+                    "Enterprise plan requires a sales consultation before activation.",
+                    plan.getName().toLowerCase(Locale.ROOT),
+                    titleCase(plan.getName()),
+                    cycle,
+                    null,
+                    moneyForCycle(plan, cycle),
+                    null,
+                    null,
+                    null
+            );
+        }
+
+        if (stripeSecretKey == null || stripeSecretKey.isBlank()) {
+            throw new AppException(HttpStatus.BAD_REQUEST, "Stripe secret key is missing. Add STRIPE_SECRET_KEY before using checkout.");
+        }
+
+        UserEntity user = preferredUser();
+        PaymentTransactionEntity payment = PaymentTransactionEntity.builder()
+                .user(user)
+                .plan(plan)
+                .billingCycle(cycle)
+                .provider("STRIPE")
+                .amount(resolveAmount(plan, cycle))
+                .status("PENDING")
+                .build();
+        payment = paymentTransactionRepository.save(payment);
+
+        StripeCheckoutSession session = createStripeCheckoutSession(payment);
+        payment.setProviderSessionId(session.id());
+        payment.setCheckoutUrl(session.url());
+        paymentTransactionRepository.save(payment);
+
+        return new FrontendDtos.PricingCheckoutResponse(
+                "pending_payment",
+                "Checkout session created. Redirecting to secure payment.",
+                plan.getName().toLowerCase(Locale.ROOT),
+                titleCase(plan.getName()),
+                cycle,
+                "inv_" + payment.getId().toString().substring(0, 8),
+                moneyForCycle(plan, cycle),
+                null,
+                session.url(),
+                session.id()
+        );
+    }
+
+    public FrontendDtos.SalesContactResponse contactSales(FrontendDtos.SalesContactRequest request) {
+        if (request.contactName() == null || request.contactName().isBlank()
+                || request.workEmail() == null || request.workEmail().isBlank()
+                || request.companyName() == null || request.companyName().isBlank()) {
+            throw new AppException(HttpStatus.BAD_REQUEST, "Please complete contact name, work email, and company name.");
+        }
+
+        String cycle = normalizeBillingCycle(request.billingCycle());
+        SalesLeadEntity lead = salesLeadRepository.save(SalesLeadEntity.builder()
+                .contactName(request.contactName().trim())
+                .workEmail(request.workEmail().trim().toLowerCase(Locale.ROOT))
+                .companyName(request.companyName().trim())
+                .teamSize(request.teamSize())
+                .billingCycle(cycle)
+                .planName("ENTERPRISE")
+                .note(request.note())
+                .status("NEW")
+                .build());
+
+        String leadId = "lead_" + System.currentTimeMillis();
+        return new FrontendDtos.SalesContactResponse(
+                "queued",
+                leadId,
+                "Enterprise sales request received for the " + cycle + " billing cycle. Our team will contact you shortly.",
+                "Enterprise",
+                lead.getCompanyName()
+        );
+    }
+
+    @Transactional
+    public FrontendDtos.PricingCheckoutResponse confirmCheckout(FrontendDtos.PricingCheckoutConfirmRequest request) {
+        if (request.providerSessionId() == null || request.providerSessionId().isBlank()) {
+            throw new AppException(HttpStatus.BAD_REQUEST, "Missing provider session id");
+        }
+        PaymentTransactionEntity payment = paymentTransactionRepository.findByProviderSessionId(request.providerSessionId())
+                .orElseThrow(() -> new AppException(HttpStatus.NOT_FOUND, "Payment session not found"));
+
+        StripeSessionStatus session = fetchStripeSessionStatus(request.providerSessionId());
+        if (!"paid".equalsIgnoreCase(session.paymentStatus())) {
+            payment.setStatus("CANCELLED".equalsIgnoreCase(payment.getStatus()) ? payment.getStatus() : "PENDING");
+            paymentTransactionRepository.save(payment);
+            return new FrontendDtos.PricingCheckoutResponse(
+                    "pending_payment",
+                    "Payment has not been completed yet.",
+                    payment.getPlan().getName().toLowerCase(Locale.ROOT),
+                    titleCase(payment.getPlan().getName()),
+                    payment.getBillingCycle(),
+                "inv_" + payment.getId().toString().substring(0, 8),
+                "$" + priceLabel(payment.getAmount()),
+                null,
+                null,
+                payment.getProviderSessionId()
+            );
+        }
+
+        if (!"PAID".equalsIgnoreCase(payment.getStatus())) {
+            LocalDateTime now = LocalDateTime.now();
+            List<UserSubscriptionEntity> activeSubscriptions = userSubscriptionRepository.findByUserAndStatus(payment.getUser(), "ACTIVE");
+            for (UserSubscriptionEntity active : activeSubscriptions) {
+                active.setStatus("ENDED");
+                active.setEndDate(now);
+            }
+            userSubscriptionRepository.saveAll(activeSubscriptions);
+
+            LocalDateTime renewsAt = "yearly".equals(payment.getBillingCycle()) ? now.plusYears(1) : now.plusMonths(1);
+            UserSubscriptionEntity nextSubscription = UserSubscriptionEntity.builder()
+                    .user(payment.getUser())
+                    .plan(payment.getPlan())
+                    .status("ACTIVE")
+                    .startDate(now)
+                    .endDate(renewsAt)
+                    .build();
+            userSubscriptionRepository.save(nextSubscription);
+
+            payment.setStatus("PAID");
+            payment.setCompletedAt(now);
+            paymentTransactionRepository.save(payment);
+        }
+
+        LocalDateTime renewsAt = "yearly".equals(payment.getBillingCycle())
+                ? payment.getCompletedAt().plusYears(1)
+                : payment.getCompletedAt().plusMonths(1);
+        return new FrontendDtos.PricingCheckoutResponse(
+                "success",
+                titleCase(payment.getPlan().getName()) + " plan activated successfully.",
+                payment.getPlan().getName().toLowerCase(Locale.ROOT),
+                titleCase(payment.getPlan().getName()),
+                payment.getBillingCycle(),
+                "inv_" + payment.getId().toString().substring(0, 8),
+                "$" + priceLabel(payment.getAmount()),
+                renewsAt.toString(),
+                null,
+                payment.getProviderSessionId()
+        );
+    }
+
     private List<NormalizedSourceItem> fetchLiveSources(String keyword) {
+        LocaleProfile localeProfile = resolveLocaleProfile(keyword);
         List<SearchProviderEntity> activeProviders = searchProviderRepository.findByIsActiveTrue();
         Set<String> activeCodes = activeProviders.stream()
                 .map(SearchProviderEntity::getProviderCode)
@@ -244,12 +457,19 @@ public class FrontendService {
             System.out.println("[DEBUG] No active providers found!");
             return List.of();
         }
-        List<NormalizedSourceItem> results = providerOrchestrator.aggregate(activeCodes, keyword, "US", "en", "7d");
-        System.out.println("[DEBUG] YouTube returned " + results.size() + " items for keyword=\"" + keyword + "\"");
+        List<NormalizedSourceItem> results = providerOrchestrator.aggregate(
+                activeCodes,
+                keyword,
+                localeProfile.countryCode(),
+                localeProfile.languageCode(),
+                "7d"
+        );
+        System.out.println("[DEBUG] Aggregated " + results.size() + " items for keyword=\"" + keyword + "\" with locale "
+                + localeProfile.countryCode() + "/" + localeProfile.languageCode());
         return results;
     }
 
-    private FrontendDtos.AnalysisResponse buildLiveAnalysis(String keyword, List<NormalizedSourceItem> items) {
+    private FrontendDtos.AnalysisResponse buildLiveAnalysis(SearchQueryEntity trackedQuery, String keyword, List<NormalizedSourceItem> items) {
         String kw = keyword == null || keyword.isBlank() ? "AI Agent" : keyword;
 
         // Aggregate total metrics across all items
@@ -398,18 +618,63 @@ public class FrontendService {
 
         return new FrontendDtos.AnalysisResponse(
                 kw,
+                trackedQuery != null ? trackedQuery.getId().toString() : null,
                 null,
-                null,
+                availableAnalysisSources(),
                 insights,
-                relatedKeywords.isEmpty() ? List.of(
-                        new FrontendDtos.KeywordMetric("demand", 0, 0L, 0L, 0L, 0.0),
-                        new FrontendDtos.KeywordMetric("review", 0, 0L, 0L, 0L, 0.0),
-                        new FrontendDtos.KeywordMetric("trend", 0, 0L, 0L, 0L, 0.0),
-                        new FrontendDtos.KeywordMetric("comparison", 0, 0L, 0L, 0L, 0.0)
-                ) : relatedKeywords,
+                relatedKeywords,
                 news.isEmpty() ? List.of("No recent public content found for this keyword.") : news,
                 suggestedActions.stream().distinct().limit(4).toList()
         );
+    }
+
+    private SearchQueryEntity recordSearchActivity(String keyword, LocaleProfile localeProfile) {
+        UserEntity user = preferredUser();
+        String normalizedKeyword = (keyword == null || keyword.isBlank()) ? "AI Agent" : keyword.trim();
+        return searchQueryRepository.save(SearchQueryEntity.builder()
+                .user(user)
+                .keyword(normalizedKeyword)
+                .countryCode(localeProfile.countryCode())
+                .languageCode(localeProfile.languageCode())
+                .timeRange("7d")
+                .status("COMPLETED")
+                .build());
+    }
+
+    private List<String> availableAnalysisSources() {
+        List<String> labels = searchProviderRepository.findByIsActiveTrue().stream()
+                .map(SearchProviderEntity::getProviderCode)
+                .map(this::providerLabel)
+                .distinct()
+                .toList();
+        if (labels.isEmpty()) {
+            return List.of("Cross-source synthesis");
+        }
+        List<String> withSynthesis = new ArrayList<>(labels);
+        withSynthesis.add("Cross-source synthesis");
+        return withSynthesis.stream().distinct().toList();
+    }
+
+    private String providerLabel(String providerCode) {
+        return switch (providerCode == null ? "" : providerCode.trim().toUpperCase(Locale.ROOT)) {
+            case "SERPAPI_GOOGLE" -> "Google Search";
+            case "SERPAPI_NEWS" -> "Google News";
+            case "YOUTUBE_API" -> "YouTube Signals";
+            default -> titleCase(providerCode == null ? "Research Source" : providerCode.replace('_', ' '));
+        };
+    }
+
+    private LocaleProfile resolveLocaleProfile(String keyword) {
+        String value = keyword == null ? "" : keyword.trim().toLowerCase(Locale.ROOT);
+        boolean hasNonAscii = value.chars().anyMatch(ch -> ch > 127);
+        boolean vietnameseHint = hasNonAscii
+                || value.contains("pho")
+                || value.contains("viet")
+                || value.contains("banh")
+                || value.contains("shopee")
+                || value.contains("tiki")
+                || value.contains("zalo");
+        return vietnameseHint ? new LocaleProfile("VN", "vi") : new LocaleProfile("US", "en");
     }
 
     private List<String> tokenize(String value) {
@@ -467,6 +732,13 @@ public class FrontendService {
     }
 
     private UserEntity preferredUser() {
+        java.util.UUID currentUserId = SecurityUtils.currentUserId();
+        if (currentUserId != null) {
+            Optional<UserEntity> currentUser = userRepository.findById(currentUserId);
+            if (currentUser.isPresent()) {
+                return currentUser.get();
+            }
+        }
         return userRepository.findByEmail("demo@skimai.local")
                 .or(() -> userRepository.findByEmail("user@test.com"))
                 .orElseGet(() -> userRepository.findAll().stream().findFirst().orElseGet(() ->
@@ -481,8 +753,12 @@ public class FrontendService {
     }
 
     private String money(PlanEntity plan) {
-        int amount = plan != null && plan.getPrice() != null ? plan.getPrice().intValue() : 0;
-        return "$" + amount;
+        return "$" + priceLabel(plan != null ? plan.getPrice() : BigDecimal.ZERO);
+    }
+
+    private String moneyForCycle(PlanEntity plan, String cycle) {
+        BigDecimal amount = resolveAmount(plan, cycle);
+        return "$" + priceLabel(amount);
     }
 
     private String titleCase(String value) {
@@ -521,5 +797,166 @@ public class FrontendService {
             return String.format("%.1fK", value / 1_000.0);
         }
         return String.valueOf(value);
+    }
+
+    private String normalizeBillingCycle(String value) {
+        return "yearly".equalsIgnoreCase(value) ? "yearly" : "monthly";
+    }
+
+    private record LocaleProfile(String countryCode, String languageCode) {
+    }
+
+    private BigDecimal resolveAmount(PlanEntity plan, String cycle) {
+        if (plan == null || plan.getPrice() == null) {
+            return BigDecimal.ZERO;
+        }
+        return "yearly".equals(cycle) ? plan.getPrice().multiply(BigDecimal.TEN) : plan.getPrice();
+    }
+
+    private StripeCheckoutSession createStripeCheckoutSession(PaymentTransactionEntity payment) {
+        try {
+            Map<String, String> params = new LinkedHashMap<>();
+            params.put("mode", "payment");
+            params.put("success_url", frontendBaseUrl + "/pricing?payment=success&session_id={CHECKOUT_SESSION_ID}");
+            params.put("cancel_url", frontendBaseUrl + "/pricing?payment=cancelled");
+            params.put("client_reference_id", payment.getId().toString());
+            params.put("metadata[userId]", payment.getUser().getId().toString());
+            params.put("metadata[planId]", payment.getPlan().getName().toLowerCase(Locale.ROOT));
+            params.put("metadata[billingCycle]", payment.getBillingCycle());
+            params.put("metadata[paymentTransactionId]", payment.getId().toString());
+            params.put("line_items[0][price_data][currency]", "usd");
+            params.put("line_items[0][price_data][product_data][name]", "SkimAI " + titleCase(payment.getPlan().getName()) + " Plan");
+            params.put("line_items[0][price_data][product_data][description]", payment.getBillingCycle() + " billing cycle for market insight access");
+            params.put("line_items[0][price_data][unit_amount]", String.valueOf(payment.getAmount().movePointRight(2).intValue()));
+            params.put("line_items[0][quantity]", "1");
+
+            HttpRequest request = HttpRequest.newBuilder()
+                    .uri(URI.create("https://api.stripe.com/v1/checkout/sessions"))
+                    .header("Authorization", "Bearer " + stripeSecretKey)
+                    .header("Content-Type", "application/x-www-form-urlencoded")
+                    .POST(HttpRequest.BodyPublishers.ofString(toFormBody(params)))
+                    .build();
+
+            HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
+            if (response.statusCode() >= 300) {
+                throw new AppException(HttpStatus.BAD_GATEWAY, stripeErrorMessage(response.body()));
+            }
+            JsonNode root = objectMapper.readTree(response.body());
+            return new StripeCheckoutSession(root.path("id").asText(), root.path("url").asText());
+        } catch (AppException ex) {
+            throw ex;
+        } catch (Exception ex) {
+            throw new AppException(HttpStatus.BAD_GATEWAY, "Unable to create Stripe checkout session");
+        }
+    }
+
+    private StripeSessionStatus fetchStripeSessionStatus(String providerSessionId) {
+        try {
+            HttpRequest request = HttpRequest.newBuilder()
+                    .uri(URI.create("https://api.stripe.com/v1/checkout/sessions/" + providerSessionId))
+                    .header("Authorization", "Bearer " + stripeSecretKey)
+                    .GET()
+                    .build();
+            HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
+            if (response.statusCode() >= 300) {
+                throw new AppException(HttpStatus.BAD_GATEWAY, stripeErrorMessage(response.body()));
+            }
+            JsonNode root = objectMapper.readTree(response.body());
+            return new StripeSessionStatus(root.path("id").asText(), root.path("status").asText(), root.path("payment_status").asText());
+        } catch (AppException ex) {
+            throw ex;
+        } catch (Exception ex) {
+            throw new AppException(HttpStatus.BAD_GATEWAY, "Unable to verify Stripe checkout session");
+        }
+    }
+
+    private String toFormBody(Map<String, String> params) {
+        return params.entrySet().stream()
+                .map(entry -> URLEncoder.encode(entry.getKey(), StandardCharsets.UTF_8) + "=" +
+                        URLEncoder.encode(entry.getValue(), StandardCharsets.UTF_8))
+                .collect(Collectors.joining("&"));
+    }
+
+    private String stripeErrorMessage(String body) {
+        try {
+            JsonNode root = objectMapper.readTree(body);
+            String message = root.path("error").path("message").asText();
+            return message == null || message.isBlank() ? "Stripe request failed" : message;
+        } catch (Exception ignored) {
+            return "Stripe request failed";
+        }
+    }
+
+    private String displayPaymentStatus(String status) {
+        if (status == null) {
+            return "pending";
+        }
+        return switch (status.toUpperCase(Locale.ROOT)) {
+            case "PAID" -> "paid";
+            case "PENDING" -> "pending";
+            case "CANCELLED" -> "failed";
+            default -> status.toLowerCase(Locale.ROOT);
+        };
+    }
+
+    private record StripeCheckoutSession(String id, String url) {}
+
+    private record StripeSessionStatus(String id, String status, String paymentStatus) {}
+
+    private int planTier(String name) {
+        if (name == null) {
+            return 99;
+        }
+        return switch (name.toUpperCase(Locale.ROOT)) {
+            case "FREE" -> 0;
+            case "STARTER" -> 1;
+            case "TEAM" -> 2;
+            case "ENTERPRISE" -> 3;
+            default -> 99;
+        };
+    }
+
+    private List<String> pricingFeatures(PlanEntity plan) {
+        if (plan == null || plan.getName() == null) {
+            return List.of("Flexible plan");
+        }
+        return switch (plan.getName().toUpperCase(Locale.ROOT)) {
+            case "FREE" -> List.of(
+                    "10 searches/month",
+                    "Community access",
+                    "No exports"
+            );
+            case "STARTER" -> List.of(
+                    "100 searches/month",
+                    "Basic market analysis",
+                    "AI Summary",
+                    "Export PDF"
+            );
+            case "TEAM" -> List.of(
+                    "500 searches/month",
+                    "Advanced AI Deep Insight",
+                    "Competitor view",
+                    "Priority processing"
+            );
+            case "ENTERPRISE" -> List.of(
+                    "Unlimited searches",
+                    "Unlimited exports",
+                    "Team usage",
+                    "Admin dashboard",
+                    "Priority support"
+            );
+            default -> List.of(
+                    (plan.getSearchLimit() != null && plan.getSearchLimit() >= 9999 ? "Unlimited" : plan.getSearchLimit()) + " searches/month",
+                    (plan.getExportLimit() != null && plan.getExportLimit() >= 999 ? "Unlimited" : plan.getExportLimit()) + " exports/month",
+                    plan.getDescription() != null ? plan.getDescription() : "Flexible plan"
+            );
+        };
+    }
+
+    private String priceLabel(BigDecimal amount) {
+        if (amount == null) {
+            return "0";
+        }
+        return amount.stripTrailingZeros().toPlainString();
     }
 }

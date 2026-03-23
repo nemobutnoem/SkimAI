@@ -7,6 +7,7 @@ export const accountMockApi = {
 
     return DB.plans.map((plan) => {
       const yearly = Number((plan.price * 10).toFixed(0))
+      const currentPlan = getPlanForUser('11111111-1111-1111-1111-111111111111')
       return {
         id: plan.id,
         name: plan.name,
@@ -17,8 +18,26 @@ export const accountMockApi = {
           `${plan.export_limit >= 999 ? 'Unlimited' : plan.export_limit} exports/month`,
           plan.description,
         ],
+        current: currentPlan?.id === plan.id,
+        ctaLabel: currentPlan?.id === plan.id ? 'Current plan' : plan.id === 'enterprise' ? 'Contact sales' : 'Start now',
       }
     })
+  },
+
+  async checkoutPricing(payload) {
+    await sleep(300)
+    return {
+      status: 'success',
+      message: `Mock checkout completed for ${payload?.planId ?? 'selected'} plan.`,
+    }
+  },
+
+  async contactSales(payload) {
+    await sleep(240)
+    return {
+      status: 'queued',
+      message: `Mock sales request created for ${payload?.planId ?? 'enterprise'} plan.`,
+    }
   },
 
   async getAccountOverview() {
@@ -38,6 +57,13 @@ export const accountMockApi = {
 
     return {
       profile: { name: user?.full_name ?? 'Demo User', email: user?.email ?? '', company: 'SkimAI Labs' },
+      subscription: {
+        planId: plan?.id ?? 'free',
+        planName: plan?.name ?? 'Free',
+        status: 'ACTIVE',
+        billingCycle: 'monthly',
+        renewsAt: '2026-04-01T00:00:00',
+      },
       usage: [
         { label: 'API Calls', value: apiUsage },
         { label: 'Storage', value: storageUsage },

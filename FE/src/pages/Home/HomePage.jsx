@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { ROUTES } from '../../constants/routes'
 import { appApi } from '../../services/appApi'
@@ -6,8 +6,20 @@ import { Button } from '../../components/Button'
 
 export function HomePage() {
   const navigate = useNavigate()
-  const [keyword, setKeyword] = useState('AI Agent')
+  const [keyword, setKeyword] = useState('')
   const [trends, setTrends] = useState([])
+
+  const visibleTrends = useMemo(() => {
+    const seen = new Set()
+    return trends.filter((trend) => {
+      const key = trend?.id || `${trend?.name}-${trend?.market}`
+      if (!key || seen.has(key)) {
+        return false
+      }
+      seen.add(key)
+      return true
+    })
+  }, [trends])
 
   useEffect(() => {
     appApi.getHomeTrends().then(setTrends)
@@ -27,7 +39,7 @@ export function HomePage() {
           <input
             value={keyword}
             onChange={(e) => setKeyword(e.target.value)}
-            placeholder="Enter keyword or paste product link..."
+            placeholder="Enter a market keyword or paste a product link..."
           />
           <Button onClick={() => navigate(`${ROUTES.ANALYSIS}?keyword=${encodeURIComponent(keyword)}`)}>
             Analyze
@@ -38,9 +50,9 @@ export function HomePage() {
       </section>
 
       <section className="stack">
-        <h2>Live Trends</h2>
+        <h2>Hot Trends</h2>
         <div className="grid trend-grid">
-          {trends.map((trend) => (
+          {visibleTrends.map((trend) => (
             <button
               key={trend.id}
               className="trend-card"
@@ -48,8 +60,16 @@ export function HomePage() {
                 navigate(`${ROUTES.ANALYSIS}?keyword=${encodeURIComponent(trend.name)}`)
               }
             >
+              <div className="trend-card-top">
+                <span className="trend-badge">Hot trend</span>
+                <strong className={['trend-change', trend.sentiment].join(' ')}>{trend.change}</strong>
+              </div>
               <span className="trend-name">{trend.name}</span>
-              <strong className={['trend-change', trend.sentiment].join(' ')}>{trend.change}</strong>
+              <p className="trend-signal">{trend.market}</p>
+              <div className="trend-meta">
+                <span>{trend.sourceCount} sources</span>
+                <span>{trend.updatedAt}</span>
+              </div>
             </button>
           ))}
         </div>

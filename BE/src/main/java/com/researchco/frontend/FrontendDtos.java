@@ -23,8 +23,18 @@ public class FrontendDtos {
     public record InvoiceItem(String id, String date, String amount, String status) {
     }
 
+    public record CurrentSubscription(
+            String planId,
+            String planName,
+            String status,
+            String billingCycle,
+            String renewsAt
+    ) {
+    }
+
     public record AccountOverviewResponse(
             Profile profile,
+            CurrentSubscription subscription,
             List<UsageItem> usage,
             List<InvoiceItem> invoices,
             Map<String, Boolean> notifications
@@ -48,6 +58,7 @@ public class FrontendDtos {
             String keyword,
             String searchQueryId,
             String snapshotId,
+            List<String> dataSources,
             List<InsightItem> insights,
             List<KeywordMetric> relatedKeywords,
             List<String> news,
@@ -58,12 +69,42 @@ public class FrontendDtos {
     public record DeepInsightRequest(String keyword, String source) {
     }
 
+    public record StatItem(String value, String label) {
+    }
+
+    public record SignalItem(String title, String desc) {
+    }
+
+    public record TrendPoint(String label, int value, String note) {
+    }
+
+    public record SentimentBar(String label, int pct, String color, String cls) {
+    }
+
+    public record TopicItem(String name, String change) {
+    }
+
+    public record SentimentBlock(List<SentimentBar> bars, List<TopicItem> topics) {
+    }
+
+    public record OpportunityCard(String title, String desc, String theme) {
+    }
+
+    public record StrategicRecommendation(String title, String desc, List<StatItem> stats) {
+    }
+
     public record DeepInsightResponse(
             String keyword,
             String source,
             String marketInsight,
             List<String> opportunities,
-            String recommendation
+            String recommendation,
+            List<StatItem> stats,
+            List<SignalItem> mediaSignals,
+            List<TrendPoint> trendPoints,
+            SentimentBlock sentiment,
+            List<OpportunityCard> opportunityCards,
+            StrategicRecommendation strategicRecommendation
     ) {
     }
 
@@ -79,9 +120,54 @@ public class FrontendDtos {
     public record PricingPlan(
             String id,
             String name,
-            int monthly,
-            int yearly,
-            List<String> features
+            String monthly,
+            String yearly,
+            List<String> features,
+            boolean current,
+            String ctaLabel
     ) {
+    }
+
+    public record PricingCheckoutRequest(
+            String planId,
+            String billingCycle
+    ) {
+    }
+
+    public record PricingCheckoutResponse(
+            String status,
+            String message,
+            String planId,
+            String planName,
+            String billingCycle,
+            String invoiceId,
+            String amount,
+            String renewsAt,
+            String checkoutUrl,
+            String providerSessionId
+    ) {
+    }
+
+    public record SalesContactRequest(
+            String planId,
+            String billingCycle,
+            String contactName,
+            String workEmail,
+            String companyName,
+            Integer teamSize,
+            String note
+    ) {
+    }
+
+    public record SalesContactResponse(
+            String status,
+            String leadId,
+            String message,
+            String planName,
+            String companyName
+    ) {
+    }
+
+    public record PricingCheckoutConfirmRequest(String providerSessionId) {
     }
 }
