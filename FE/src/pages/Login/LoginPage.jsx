@@ -7,7 +7,7 @@ import { useAuth } from '../../hooks/useAuth'
 
 export function LoginPage() {
   const navigate = useNavigate()
-  const { login, isAuthenticated } = useAuth()
+  const { login, isAuthenticated, user } = useAuth()
 
   const [email, setEmail] = useState('demo@skimai.local')
   const [password, setPassword] = useState('123456')
@@ -15,8 +15,10 @@ export function LoginPage() {
   const [isSubmitting, setIsSubmitting] = useState(false)
 
   useEffect(() => {
-    if (isAuthenticated) navigate(ROUTES.DASHBOARD, { replace: true })
-  }, [isAuthenticated, navigate])
+    if (isAuthenticated) {
+      navigate(user?.role === 'admin' ? ROUTES.ADMIN_DASHBOARD : ROUTES.DASHBOARD, { replace: true })
+    }
+  }, [isAuthenticated, user, navigate])
 
   const onSubmit = async (e) => {
     e.preventDefault()
