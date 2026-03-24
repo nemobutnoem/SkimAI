@@ -1,7 +1,7 @@
 import { NavLink, useNavigate, useLocation } from 'react-router-dom'
+import { useState, useRef, useEffect } from 'react'
 import { ROUTES } from '../constants/routes'
 import { useAuth } from '../hooks/useAuth'
-import { Button } from './Button'
 
 /* ─── Route configs for each context ─── */
 
@@ -36,6 +36,64 @@ function getInitials(user) {
     return user.email.slice(0, 2).toUpperCase()
   }
   return 'AD'
+}
+
+/* ─── Avatar Dropdown ─── */
+function AvatarDropdown({ user, isAdmin, isOnAdminPage, onLogout }) {
+  const [open, setOpen] = useState(false)
+  const ref = useRef(null)
+  const navigate = useNavigate()
+
+  /* Close on outside click */
+  useEffect(() => {
+    const handler = (e) => {
+      if (ref.current && !ref.current.contains(e.target)) setOpen(false)
+    }
+    document.addEventListener('mousedown', handler)
+    return () => document.removeEventListener('mousedown', handler)
+  }, [])
+
+  return (
+    <div className="avatar-dropdown" ref={ref}>
+      <button className="avatar-btn" onClick={() => setOpen(!open)}>
+        <div className="avatar">{getInitials(user)}</div>
+        <span className="avatar-caret">{open ? '▲' : '▼'}</span>
+      </button>
+
+      {open && (
+        <div className="dropdown-menu">
+          <div className="dropdown-header">
+            <strong>{user?.name || user?.email || 'User'}</strong>
+            {user?.email && <span className="dropdown-email">{user.email}</span>}
+          </div>
+          <div className="dropdown-divider" />
+
+          {isAdmin && isOnAdminPage && (
+            <button className="dropdown-item" onClick={() => { navigate(ROUTES.ADMIN_SETTINGS); setOpen(false) }}>
+              ⚙️ Settings
+            </button>
+          )}
+
+          {isAdmin && !isOnAdminPage && (
+            <button className="dropdown-item" onClick={() => { navigate(ROUTES.ACCOUNT); setOpen(false) }}>
+              👤 Account
+            </button>
+          )}
+
+          {!isAdmin && (
+            <button className="dropdown-item" onClick={() => { navigate(ROUTES.ACCOUNT); setOpen(false) }}>
+              👤 Account
+            </button>
+          )}
+
+          <div className="dropdown-divider" />
+          <button className="dropdown-item dropdown-item-danger" onClick={() => { onLogout(); setOpen(false) }}>
+            🚪 Logout
+          </button>
+        </div>
+      )}
+    </div>
+  )
 }
 
 /* ─── Navbar Component ─── */
@@ -84,14 +142,6 @@ export function Navbar() {
                 {link.label}
               </NavLink>
             ))}
-            <NavLink
-              to={ROUTES.ADMIN_SETTINGS}
-              className={({ isActive }) =>
-                ['app-link', isActive ? 'active' : ''].join(' ').trim()
-              }
-            >
-              Settings
-            </NavLink>
           </nav>
 
           <div className="app-header-right">
@@ -100,8 +150,7 @@ export function Navbar() {
             </NavLink>
             <button className="icon-btn" title="Search">🔍</button>
             <button className="icon-btn" title="Notifications">🔔</button>
-            <div className="avatar">{getInitials(user)}</div>
-            <button className="icon-btn" title="Logout" onClick={handleLogout}>🚪</button>
+            <AvatarDropdown user={user} isAdmin={isAdmin} isOnAdminPage={isOnAdminPage} onLogout={handleLogout} />
           </div>
         </div>
       </header>
@@ -148,8 +197,7 @@ export function Navbar() {
 
           <div className="app-header-right">
             <button className="icon-btn" title="Notifications">🔔</button>
-            <div className="avatar">{getInitials(user)}</div>
-            <button className="icon-btn" title="Logout" onClick={handleLogout}>🚪</button>
+            <AvatarDropdown user={user} isAdmin={isAdmin} isOnAdminPage={isOnAdminPage} onLogout={handleLogout} />
           </div>
         </div>
       </header>
