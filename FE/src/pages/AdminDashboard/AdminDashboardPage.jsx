@@ -185,6 +185,7 @@ export function AdminDashboardPage() {
           </div>
         </Card>
       </div>
+
     </div>
   )
 }
