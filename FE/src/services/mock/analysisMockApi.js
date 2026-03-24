@@ -84,6 +84,13 @@ export const analysisMockApi = {
     }
   },
 
+  async getAnalysisProject(keyword = '') { await sleep(200); return [] },
+  async getAnalysisAlerts(keyword = '') { await sleep(200); return [] },
+  async getAnalysisCompetitor(keyword = '') { await sleep(200); return [] },
+  async getAnalysisEvidence(keyword = '') { await sleep(200); return [] },
+  async getAnalysisCompare(keyword = '') { await sleep(200); return [] },
+  async getAnalysisTimeline(keyword = '') { await sleep(200); return [] },
+
   async getDeepInsight({ keyword, source }) {
     await sleep(260)
 
