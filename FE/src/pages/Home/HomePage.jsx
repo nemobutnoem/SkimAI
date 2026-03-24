@@ -75,7 +75,7 @@ export function HomePage() {
         </div>
       </section>
 
-      <section className="card usp-showcase">
+      {/* <section className="card usp-showcase">
         <div className="usp-head">
           <p className="dashboard-kicker">USP Snapshot</p>
           <h2>Why teams choose AISKIM</h2>
@@ -98,7 +98,7 @@ export function HomePage() {
             <p>Free trial quota, paid plan limits, and upgrade path when users need more capacity.</p>
           </article>
         </div>
-      </section>
+      </section> */}
     </div>
   )
 }
