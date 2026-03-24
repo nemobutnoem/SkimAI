@@ -40,6 +40,8 @@ export function DeepInsightPage() {
   const [activeSource, setActiveSource] = useState('Cross-source synthesis')
   const [data, setData] = useState(null)
   const [loading, setLoading] = useState(false)
+  const [showUpgradeModal, setShowUpgradeModal] = useState(false)
+  const [upgradeMessage, setUpgradeMessage] = useState('')
 
   const availableSources = analysisContext?.dataSources?.length
     ? analysisContext.dataSources
@@ -72,6 +74,16 @@ export function DeepInsightPage() {
     try {
       const result = await appApi.getDeepInsight({ keyword, source: activeSource })
       setData(result)
+    } catch (error) {
+      if (error?.status === 403) {
+        setUpgradeMessage(
+          error?.message ||
+            'AI quota reached. Upgrade plan or buy additional AI capacity to continue.'
+        )
+        setShowUpgradeModal(true)
+        return
+      }
+      throw error
     } finally {
       setLoading(false)
     }
@@ -301,6 +313,23 @@ export function DeepInsightPage() {
         <span className="di-expert-icon">🧑‍🔬</span>
         Ask an expert
       </Link>
+
+      {showUpgradeModal ? (
+        <div className="upgrade-modal-overlay" onClick={() => setShowUpgradeModal(false)}>
+          <div className="upgrade-modal" onClick={(e) => e.stopPropagation()}>
+            <h3>AI Usage Limit Reached</h3>
+            <p>{upgradeMessage || 'You have reached your AI usage limit for this period.'}</p>
+            <div className="upgrade-modal-actions">
+              <Link to={ROUTES.PRICING} className="btn btn-primary" onClick={() => setShowUpgradeModal(false)}>
+                Upgrade or Buy Capacity
+              </Link>
+              <button type="button" className="btn btn-secondary" onClick={() => setShowUpgradeModal(false)}>
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
     </div>
   )
 }
