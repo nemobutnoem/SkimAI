@@ -69,17 +69,44 @@ public class AuthService {
 
         AuthUser authUser = new AuthUser(user.getId(), user.getEmail(), user.getPasswordHash(), user.getRole(), user.getStatus());
         String token = jwtTokenService.generateToken(authUser);
-        return new AuthDtos.AuthResponse(token, "Bearer", user.getId().toString(), user.getEmail(), user.getFullName(), user.getRole());
+        return new AuthDtos.AuthResponse(
+                token,
+                "Bearer",
+                user.getId().toString(),
+                user.getEmail(),
+                user.getFullName(),
+                user.getRole(),
+                new AuthDtos.UserSummary(
+                        user.getId().toString(),
+                        user.getFullName(),
+                        user.getEmail(),
+                        user.getRole().toLowerCase()
+                )
+        );
     }
 
     public AuthDtos.AuthResponse login(AuthDtos.LoginRequest request) {
+        String normalizedEmail = request.email().toLowerCase();
         authenticationManager.authenticate(
-                new UsernamePasswordAuthenticationToken(request.email(), request.password())
+                new UsernamePasswordAuthenticationToken(normalizedEmail, request.password())
         );
-        UserEntity user = userRepository.findByEmail(request.email())
+        UserEntity user = userRepository.findByEmail(normalizedEmail)
                 .orElseThrow(() -> new AppException(HttpStatus.UNAUTHORIZED, "Invalid credentials"));
         AuthUser authUser = new AuthUser(user.getId(), user.getEmail(), user.getPasswordHash(), user.getRole(), user.getStatus());
         String token = jwtTokenService.generateToken(authUser);
-        return new AuthDtos.AuthResponse(token, "Bearer", user.getId().toString(), user.getEmail(), user.getFullName(), user.getRole());
+        return new AuthDtos.AuthResponse(
+                token,
+                "Bearer",
+                user.getId().toString(),
+                user.getEmail(),
+                user.getFullName(),
+                user.getRole(),
+                new AuthDtos.UserSummary(
+                        user.getId().toString(),
+                        user.getFullName(),
+                        user.getEmail(),
+                        user.getRole().toLowerCase()
+                )
+        );
     }
 }

@@ -10,4 +10,6 @@ public interface SearchQueryRepository extends JpaRepository<SearchQueryEntity, 
     List<SearchQueryEntity> findByUserOrderByCreatedAtDesc(UserEntity user);
 
     long countByUser(UserEntity user);
+
+    List<SearchQueryEntity> findTop10ByUserOrderByCreatedAtDesc(UserEntity user);
 }

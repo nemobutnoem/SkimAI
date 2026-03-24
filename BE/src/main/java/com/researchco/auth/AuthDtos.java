@@ -6,6 +6,14 @@ import jakarta.validation.constraints.Size;
 
 public class AuthDtos {
 
+    public record UserSummary(
+            String id,
+            String name,
+            String email,
+            String role
+    ) {
+    }
+
     public record RegisterRequest(
             @NotBlank String fullName,
             @NotBlank @Email String email,
@@ -25,7 +33,8 @@ public class AuthDtos {
             String userId,
             String email,
             String fullName,
-            String role
+            String role,
+            UserSummary user
     ) {
     }
 }
