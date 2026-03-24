@@ -23,6 +23,8 @@ import com.researchco.snapshot.SnapshotKeywordEntity;
 import com.researchco.snapshot.SnapshotKeywordRepository;
 import com.researchco.subscription.UserSubscriptionEntity;
 import com.researchco.subscription.UserSubscriptionRepository;
+import com.researchco.usage.AiUsageEntity;
+import com.researchco.usage.AiUsageRepository;
 import com.researchco.user.UserEntity;
 import com.researchco.user.UserRepository;
 import com.researchco.provider.ai.AiProvider;
@@ -43,6 +45,7 @@ import java.net.http.HttpResponse;
 import java.math.BigDecimal;
 import java.nio.charset.StandardCharsets;
 import java.time.LocalDateTime;
+import java.time.YearMonth;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
@@ -73,6 +76,7 @@ public class FrontendService {
     private final PaymentTransactionRepository paymentTransactionRepository;
     private final SearchProviderRepository searchProviderRepository;
     private final SalesLeadRepository salesLeadRepository;
+    private final AiUsageRepository aiUsageRepository;
     private final ProviderOrchestrator providerOrchestrator;
     private final AiProvider aiProvider;
     private final ObjectMapper objectMapper;
@@ -99,6 +103,7 @@ public class FrontendService {
                            PaymentTransactionRepository paymentTransactionRepository,
                            SearchProviderRepository searchProviderRepository,
                            SalesLeadRepository salesLeadRepository,
+                           AiUsageRepository aiUsageRepository,
                            ProviderOrchestrator providerOrchestrator,
                            AiProvider aiProvider,
                            ObjectMapper objectMapper,
@@ -116,6 +121,7 @@ public class FrontendService {
         this.paymentTransactionRepository = paymentTransactionRepository;
         this.searchProviderRepository = searchProviderRepository;
         this.salesLeadRepository = salesLeadRepository;
+        this.aiUsageRepository = aiUsageRepository;
         this.providerOrchestrator = providerOrchestrator;
         this.aiProvider = aiProvider;
         this.objectMapper = objectMapper;
@@ -279,7 +285,13 @@ public class FrontendService {
         );
     }
 
+    @Transactional
     public FrontendDtos.DeepInsightResponse getDeepInsight(FrontendDtos.DeepInsightRequest request) {
+        UserEntity user = preferredUser();
+        UserSubscriptionEntity subscription = userSubscriptionRepository
+                .findFirstByUserAndStatusOrderByStartDateDesc(user, "ACTIVE")
+                .orElse(null);
+
         FrontendDtos.AnalysisResponse analysis = getAnalysis(request.keyword());
         if (analysis.researchGuard() != null && !analysis.researchGuard().deepInsightEnabled()) {
             String keyword = analysis.keyword() == null || analysis.keyword().isBlank() ? "this keyword" : analysis.keyword();
@@ -330,7 +342,10 @@ public class FrontendService {
                     )
             );
         }
-        return aiProvider.generateDeepInsight(analysis, request.source());
+        enforceDeepInsightQuota(user, subscription);
+        FrontendDtos.DeepInsightResponse response = aiProvider.generateDeepInsight(analysis, request.source());
+        consumeDeepInsightQuota(user);
+        return response;
     }
 
     public FrontendDtos.ProjectWorkflowResponse getProjectWorkflow(String keyword) {
@@ -453,7 +468,8 @@ public class FrontendService {
                     "Cross-source synthesis",
                     "No direct source item available",
                     "0 views",
-                    "Expand sources or try another keyword."
+                    "Expand sources or try another keyword.",
+                    null
             ));
         }
 
@@ -472,7 +488,8 @@ public class FrontendService {
                             item.sourceName() == null || item.sourceName().isBlank() ? "Research source" : item.sourceName(),
                             firstMeaningfulText(item.title(), "Untitled source"),
                             String.format("Views %s | Likes %s | Comments %s", formatCompact(views), formatCompact(likes), formatCompact(comments)),
-                            cleanSnippet(item.snippet(), item.title())
+                            cleanSnippet(item.snippet(), item.title()),
+                            extractEvidenceUrl(item)
                     );
                 })
                 .toList();
@@ -1094,6 +1111,72 @@ public class FrontendService {
         return null;
     }
 
+    private String extractEvidenceUrl(NormalizedSourceItem item) {
+        if (item == null) {
+            return null;
+        }
+        if (item.rawPayload() instanceof Map<?, ?> payload) {
+            String[] candidates = new String[]{"url", "link", "sourceUrl", "videoUrl", "newsUrl"};
+            for (String key : candidates) {
+                Object value = payload.get(key);
+                String normalized = normalizeUrl(value == null ? null : String.valueOf(value));
+                if (normalized != null) {
+                    return normalized;
+                }
+            }
+        }
+        String fromTitle = extractFirstUrl(item.title());
+        if (fromTitle != null) {
+            return fromTitle;
+        }
+        return extractFirstUrl(item.snippet());
+    }
+
+    private String extractFirstUrl(String text) {
+        if (text == null || text.isBlank()) {
+            return null;
+        }
+        int httpsIndex = text.indexOf("https://");
+        int httpIndex = text.indexOf("http://");
+        int start = -1;
+        if (httpsIndex >= 0 && httpIndex >= 0) {
+            start = Math.min(httpsIndex, httpIndex);
+        } else if (httpsIndex >= 0) {
+            start = httpsIndex;
+        } else if (httpIndex >= 0) {
+            start = httpIndex;
+        }
+        if (start < 0) {
+            return null;
+        }
+        int end = text.length();
+        for (int i = start; i < text.length(); i++) {
+            char ch = text.charAt(i);
+            if (Character.isWhitespace(ch) || ch == ')' || ch == '>' || ch == '"' || ch == '\'') {
+                end = i;
+                break;
+            }
+        }
+        return normalizeUrl(text.substring(start, end));
+    }
+
+    private String normalizeUrl(String url) {
+        if (url == null) {
+            return null;
+        }
+        String value = url.trim();
+        if (value.isBlank()) {
+            return null;
+        }
+        if (value.endsWith("...")) {
+            value = value.substring(0, value.length() - 3);
+        }
+        if (!value.startsWith("http://") && !value.startsWith("https://")) {
+            return null;
+        }
+        return value;
+    }
+
     private Optional<SearchQueryEntity> findQueryByKeyword(String keyword) {
         String normalized = keyword == null ? "" : keyword.trim().toLowerCase(Locale.ROOT);
         return searchQueryRepository.findAll().stream()
@@ -1128,6 +1211,78 @@ public class FrontendService {
                                 .status("ACTIVE")
                                 .build()
                 ));
+    }
+
+    private void enforceDeepInsightQuota(UserEntity user, UserSubscriptionEntity subscription) {
+        String planName = resolvePlanName(subscription);
+        int baseQuota = resolveDeepInsightQuota(subscription);
+        AiUsageEntity usage = aiUsageRecord(user);
+        int addonCredits = usage.getAddonCredits() == null ? 0 : usage.getAddonCredits();
+        int usedCount = usage.getUsedCount() == null ? 0 : usage.getUsedCount();
+        int maxQuota = baseQuota + Math.max(0, addonCredits);
+
+        if (usedCount < maxQuota) {
+            return;
+        }
+
+        if ("FREE".equals(planName)) {
+            throw new AppException(
+                    HttpStatus.FORBIDDEN,
+                    "Free plan includes 2 AI runs/month. You used all 2. Please upgrade to continue."
+            );
+        }
+
+        throw new AppException(
+                HttpStatus.FORBIDDEN,
+                "You used all " + maxQuota + " AI runs for this month on plan "
+                        + titleCase(planName) + ". Please buy additional AI capacity."
+        );
+    }
+
+    private void consumeDeepInsightQuota(UserEntity user) {
+        AiUsageEntity usage = aiUsageRecord(user);
+        int usedCount = usage.getUsedCount() == null ? 0 : usage.getUsedCount();
+        usage.setUsedCount(usedCount + 1);
+        aiUsageRepository.save(usage);
+    }
+
+    private AiUsageEntity aiUsageRecord(UserEntity user) {
+        String periodKey = YearMonth.now().toString();
+        return aiUsageRepository.findByUserAndFeatureAndPeriodKey(user, "DEEP_INSIGHT", periodKey)
+                .orElseGet(() -> aiUsageRepository.save(
+                        AiUsageEntity.builder()
+                                .user(user)
+                                .feature("DEEP_INSIGHT")
+                                .periodKey(periodKey)
+                                .usedCount(0)
+                                .addonCredits(0)
+                                .build()
+                ));
+    }
+
+    private int resolveDeepInsightQuota(UserSubscriptionEntity subscription) {
+        String planName = resolvePlanName(subscription);
+        if ("FREE".equals(planName)) {
+            return 2;
+        }
+        if (subscription == null || subscription.getPlan() == null) {
+            return 2;
+        }
+        Integer searchLimit = subscription.getPlan().getSearchLimit();
+        if (searchLimit == null || searchLimit <= 0) {
+            return 50;
+        }
+        if (searchLimit >= 9999) {
+            return 3000;
+        }
+        return searchLimit;
+    }
+
+    private String resolvePlanName(UserSubscriptionEntity subscription) {
+        if (subscription == null || subscription.getPlan() == null || subscription.getPlan().getName() == null) {
+            return "FREE";
+        }
+        return subscription.getPlan().getName().trim().toUpperCase(Locale.ROOT);
     }
 
     private String money(PlanEntity plan) {

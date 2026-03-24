@@ -65,6 +65,17 @@ function formatNumber(num) {
   return String(num)
 }
 
+function normalizeSourceName(value) {
+  const input = (value || '').trim()
+  if (!input) return 'Unknown source'
+  const lower = input.toLowerCase()
+  const directMatch = lower.match(/https?:\/\/([^/\s]+)/)
+  if (directMatch?.[1]) return directMatch[1].replace(/^www\./, '')
+  const token = lower.split(/\s+/).find((part) => part.includes('.') && !part.includes('•'))
+  if (token) return token.replace(/^www\./, '').replace(/[>,|]+$/g, '')
+  return input.length > 48 ? `${input.slice(0, 48)}...` : input
+}
+
 export function AnalysisPage() {
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
@@ -240,7 +251,7 @@ export function AnalysisPage() {
   const sourceMix = useMemo(() => {
     const grouped = new Map()
     ;(evidenceItems ?? []).forEach((item) => {
-      const key = (item?.source || 'Unknown source').trim()
+      const key = normalizeSourceName(item?.source)
       grouped.set(key, (grouped.get(key) || 0) + 1)
     })
     const rows = Array.from(grouped.entries())
@@ -248,9 +259,11 @@ export function AnalysisPage() {
       .sort((a, b) => b.count - a.count)
       .slice(0, 6)
     const maxCount = Math.max(...rows.map((item) => item.count), 1)
+    const totalCount = rows.reduce((sum, item) => sum + item.count, 0) || 1
     return rows.map((item) => ({
       ...item,
       width: Math.max(12, (item.count / maxCount) * 100),
+      sharePct: Math.round((item.count / totalCount) * 100),
     }))
   }, [evidenceItems])
 
@@ -508,16 +521,16 @@ export function AnalysisPage() {
             <p className="hint">Distribution of evidence items by source to assess concentration risk.</p>
           </div>
         </div>
-        <div className="stack">
+        <div className="source-coverage-list">
           {sourceMix.length ? (
             sourceMix.map((row) => (
-              <div key={row.source} className="list-item">
-                <div className="list-select-row">
-                  <strong>{row.source}</strong>
-                  <span>{row.count} items</span>
+              <div key={row.source} className="source-coverage-row">
+                <div className="source-coverage-top">
+                  <strong className="source-coverage-name">{row.source}</strong>
+                  <span className="source-coverage-meta">{row.count} items • {row.sharePct}%</span>
                 </div>
-                <div className="kw-bar-wrap">
-                  <div className="kw-bar" style={{ width: `${row.width}%` }} />
+                <div className="source-coverage-track">
+                  <div className="source-coverage-fill" style={{ width: `${row.width}%` }} />
                 </div>
               </div>
             ))
@@ -688,7 +701,13 @@ export function AnalysisPage() {
                 <strong>{item.source}</strong>
                 <span className="hint">{item.metric}</span>
               </div>
-              <div>{item.title}</div>
+              {item.url ? (
+                <a href={item.url} target="_blank" rel="noreferrer noopener" className="evidence-link">
+                  {item.title}
+                </a>
+              ) : (
+                <div>{item.title}</div>
+              )}
               <span className="hint">{item.signal}</span>
             </div>
           ))}
