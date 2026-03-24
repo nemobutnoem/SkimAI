@@ -1,7 +1,6 @@
-﻿import { useEffect, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Card } from '../../components/Card'
 import { appApi } from '../../services/appApi'
-import { AdminSectionNav } from '../../components/AdminSectionNav'
 
 export function AdminUsersPage() {
   const [filters, setFilters] = useState({ q: '', type: 'all', status: 'all' })
@@ -17,8 +16,6 @@ export function AdminUsersPage() {
 
   return (
     <div className="stack page-wrap">
-      <AdminSectionNav />
-
       <div className="page-header">
         <div>
           <h1>Admin Users</h1>

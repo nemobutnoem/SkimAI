@@ -11,6 +11,7 @@ const ADMIN_LINKS = [
 export function AdminSectionNav() {
   return (
     <div className="admin-section-nav">
+      <span className="admin-section-badge">Admin</span>
       {ADMIN_LINKS.map((link) => (
         <NavLink
           key={link.to}

@@ -41,7 +41,7 @@ integration:
   stripe:
     secret-key: sk_test_51TE5tTFPLOVqZ09p5aHfArf13WxrgrMhcgEISGszZBLnvSAvWWTvfXR30qXva6ZxfcEpu6DDE2MOp0yEJ31L7yx200t837c2a5
   gemini:
-    api-key: ${GEMINI_API_KEY:}
+    api-key: ${GEMINI_API_KEY:AIzaSyC2Ft90bO2auKp-1Z6YhrMPv7Af5ZkHrKo}
     model: ${GEMINI_MODEL:gemini-2.5-flash}
   youtube:
     api-key: ${YOUTUBE_API_KEY:AIzaSyCg6R0ttPTY7jBhWa5m3LrkqjpgXaAH_uk}

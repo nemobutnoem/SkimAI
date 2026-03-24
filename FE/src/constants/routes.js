@@ -11,4 +11,5 @@ export const ROUTES = {
   ADMIN_REPORTS: '/admin/reports',
   ADMIN_USERS: '/admin/users',
   ADMIN_REVENUE: '/admin/revenue',
+  ADMIN_SETTINGS: '/admin/settings',
 }

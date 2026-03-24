@@ -1,8 +1,7 @@
-﻿import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { Button } from '../../components/Button'
 import { Card } from '../../components/Card'
 import { appApi } from '../../services/appApi'
-import { AdminSectionNav } from '../../components/AdminSectionNav'
 
 const STATUSES = ['all', 'pending', 'draft', 'published', 'archived']
 
@@ -51,8 +50,6 @@ export function AdminReportsPage() {
 
   return (
     <div className="stack page-wrap">
-      <AdminSectionNav />
-
       <div className="page-header">
         <div>
           <h1>Admin Reports</h1>
