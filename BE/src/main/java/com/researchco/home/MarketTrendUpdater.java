@@ -1,9 +1,6 @@
 package com.researchco.home;
 
-import com.researchco.provider.NormalizedSourceItem;
-import com.researchco.provider.ProviderOrchestrator;
-import com.researchco.provider.SearchProviderEntity;
-import com.researchco.provider.SearchProviderRepository;
+import com.researchco.provider.ai.AiProvider;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.context.event.ApplicationReadyEvent;
 import org.springframework.context.event.EventListener;
@@ -11,29 +8,23 @@ import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.LinkedHashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
-import java.util.Map;
-import java.util.Set;
-import java.util.stream.Collectors;
+import java.util.UUID;
 
 @Component
 public class MarketTrendUpdater {
 
     private final MarketTrendRepository marketTrendRepository;
-    private final SearchProviderRepository searchProviderRepository;
-    private final ProviderOrchestrator providerOrchestrator;
+    private final AiProvider aiProvider;
     private final String seedKeywords;
 
     public MarketTrendUpdater(MarketTrendRepository marketTrendRepository,
-                              SearchProviderRepository searchProviderRepository,
-                              ProviderOrchestrator providerOrchestrator,
+                              AiProvider aiProvider,
                               @Value("${home.live-trends.seed-keywords:AI & Automation=AI Agent|Generative AI|AI automation;Mobility & Consumer=Electric bike|Urban mobility|EV commute;Commerce & Platforms=TikTok Shop trends|Social Commerce|Creator commerce;Food & Lifestyle=Pho|Vietnamese street food|Quick noodle recipes}") String seedKeywords) {
         this.marketTrendRepository = marketTrendRepository;
-        this.searchProviderRepository = searchProviderRepository;
-        this.providerOrchestrator = providerOrchestrator;
+        this.aiProvider = aiProvider;
         this.seedKeywords = seedKeywords;
     }
 
@@ -52,74 +43,56 @@ public class MarketTrendUpdater {
             initialDelayString = "${home.live-trends.refresh-ms:3600000}"
     )
     public void refresh() {
-        Set<String> activeCodes = searchProviderRepository.findByIsActiveTrue().stream()
-                .map(SearchProviderEntity::getProviderCode)
-                .collect(Collectors.toSet());
-
         List<MarketSeed> seeds = parseSeeds(seedKeywords);
-
-        if (activeCodes.isEmpty() || seeds.isEmpty()) {
+        if (seeds.isEmpty()) {
             seedFallbackTrends();
             return;
         }
 
         marketTrendRepository.deleteByMarketNotIn(seeds.stream().map(MarketSeed::market).toList());
 
-        for (MarketSeed seed : seeds) {
-            List<NormalizedSourceItem> items = new ArrayList<>();
-            for (String query : seed.queries()) {
-                items.addAll(providerOrchestrator.aggregate(activeCodes, query, "US", "en", "24h"));
-            }
-            upsertTrend(seed, items);
+        LinkedHashMap<String, List<String>> seedMap = new LinkedHashMap<>();
+        seeds.forEach(seed -> seedMap.put(seed.market(), seed.queries()));
+
+        List<AiProvider.LiveTrendSignal> signals = aiProvider.generateLiveTrends(seedMap);
+        if (signals.isEmpty()) {
+            seedFallbackTrends();
+            return;
+        }
+
+        for (AiProvider.LiveTrendSignal signal : signals) {
+            upsertTrend(signal, seedMap.getOrDefault(signal.market(), List.of(signal.keyword())));
         }
     }
-//
-    private void upsertTrend(MarketSeed seed, List<NormalizedSourceItem> items) {
-        long views = 0L;
-        long likes = 0L;
-        long comments = 0L;
-        int positive = 0;
-        int negative = 0;
 
-        Set<String> uniqueSources = new LinkedHashSet<>();
-        for (NormalizedSourceItem item : items) {
-            if (item.sourceName() != null && !item.sourceName().isBlank()) {
-                uniqueSources.add(item.sourceName());
-            }
-            if (item.rawPayload() instanceof Map<?, ?> payload) {
-                views += toLong(payload.get("viewCount"));
-                likes += toLong(payload.get("likeCount"));
-                comments += toLong(payload.get("commentCount"));
-            }
-            if ("POSITIVE".equalsIgnoreCase(item.sentimentLabel())) {
-                positive++;
-            } else if ("NEGATIVE".equalsIgnoreCase(item.sentimentLabel())) {
-                negative++;
-            }
+    private void upsertTrend(AiProvider.LiveTrendSignal signal, List<String> seedKeywords) {
+        String market = signal.market() == null || signal.market().isBlank() ? "Emerging Market" : signal.market();
+        String resolvedKeyword = signal.keyword();
+        if (resolvedKeyword == null || resolvedKeyword.isBlank()) {
+            resolvedKeyword = seedKeywords.isEmpty() ? market : seedKeywords.get(0);
         }
+        final String keyword = resolvedKeyword;
 
-        long score = Math.max(1L,
-                items.size() * 12L
-                        + uniqueSources.size() * 8L
-                        + Math.round(Math.log10(Math.max(views, 1L)) * 20)
-                        + Math.round(Math.log10(Math.max(likes + comments, 1L)) * 12));
-
-        MarketTrendEntity trend = marketTrendRepository.findByMarket(seed.market())
-                .or(() -> marketTrendRepository.findByKeyword(seed.primaryQuery()))
+        MarketTrendEntity trend = marketTrendRepository.findByMarket(market)
+                .or(() -> marketTrendRepository.findByKeyword(keyword))
                 .orElseGet(() -> MarketTrendEntity.builder()
-                        .keyword(seed.primaryQuery())
-                        .market(seed.market())
+                        .keyword(keyword)
+                        .market(market)
                         .previousScore(0L)
                         .build());
 
+        String uniqueKeyword = ensureUniqueKeyword(keyword, market, trend.getId(), seedKeywords);
+
         long previous = trend.getTrendScore();
-        trend.setKeyword(seed.primaryQuery());
-        trend.setMarket(seed.market());
+        long score = Math.max(50L, signal.trendScore());
+        trend.setKeyword(uniqueKeyword);
+        trend.setMarket(market);
         trend.setPreviousScore(previous);
         trend.setTrendScore(score);
-        trend.setSourceCount(Math.max(items.size(), uniqueSources.size()));
-        trend.setChangePct(computeChangePct(previous, score));
-        trend.setSentiment(resolveSentiment(positive, negative));
+        trend.setSourceCount(Math.max(1, signal.sourceCount()));
+        int aiChangePct = signal.changePct();
+        trend.setChangePct(aiChangePct == 0 ? computeChangePct(previous, score) : clamp(aiChangePct, -99, 250));
+        trend.setSentiment(normalizeSentiment(signal.sentiment()));
         marketTrendRepository.save(trend);
     }
 
@@ -163,27 +136,48 @@ public class MarketTrendUpdater {
         return Math.max(-99, Math.min(rounded, 250));
     }
 
-    private String resolveSentiment(int positive, int negative) {
-        if (positive > negative) {
-            return "positive";
-        }
-        if (negative > positive) {
+    private String normalizeSentiment(String sentiment) {
+        if ("negative".equalsIgnoreCase(sentiment)) {
             return "negative";
+        }
+        if ("positive".equalsIgnoreCase(sentiment)) {
+            return "positive";
         }
         return "neutral";
     }
 
-    private long toLong(Object value) {
-        if (value instanceof Number n) {
-            return n.longValue();
+    private int clamp(int value, int min, int max) {
+        return Math.max(min, Math.min(max, value));
+    }
+
+    private String ensureUniqueKeyword(String candidate,
+                                       String market,
+                                       UUID currentId,
+                                       List<String> seedKeywords) {
+        String base = (candidate == null || candidate.isBlank()) ? market : candidate.trim();
+        if (!isKeywordTakenByOtherRow(base, currentId)) {
+            return base;
         }
-        if (value instanceof String s) {
-            try {
-                return Long.parseLong(s);
-            } catch (NumberFormatException ignored) {
-            }
+
+        String seedFallback = (seedKeywords == null || seedKeywords.isEmpty())
+                ? market + " Signal"
+                : seedKeywords.get(0).trim();
+        if (!isKeywordTakenByOtherRow(seedFallback, currentId)) {
+            return seedFallback;
         }
-        return 0L;
+
+        String marketFallback = market + " Signal";
+        if (!isKeywordTakenByOtherRow(marketFallback, currentId)) {
+            return marketFallback;
+        }
+
+        return market + " Signal " + System.currentTimeMillis();
+    }
+
+    private boolean isKeywordTakenByOtherRow(String keyword, UUID currentId) {
+        return marketTrendRepository.findByKeyword(keyword)
+                .map(existing -> currentId == null || !existing.getId().equals(currentId))
+                .orElse(false);
     }
 
     private List<MarketSeed> parseSeeds(String rawSeeds) {

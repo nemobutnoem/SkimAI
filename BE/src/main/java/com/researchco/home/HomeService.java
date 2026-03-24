@@ -68,9 +68,9 @@ public class HomeService {
 
     private String formatSignalLabel(String keyword) {
         if (keyword == null || keyword.isBlank()) {
-            return "Market-wide signal";
+            return "AI-generated market signal";
         }
-        return "Signals from " + keyword;
+        return "AI signals from " + keyword;
     }
 
     private String safeMarketLabel(String market, String keyword) {

@@ -13,9 +13,11 @@ import org.springframework.web.client.RestTemplate;
 
 import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Locale;
+import java.util.Random;
 import java.util.stream.Collectors;
 
 @Service
@@ -166,6 +168,132 @@ public class DefaultAiProvider implements AiProvider {
         } catch (Exception e) {
             e.printStackTrace();
             return blueprint.toResponse();
+        }
+    }
+
+    @Override
+    public List<LiveTrendSignal> generateLiveTrends(Map<String, List<String>> marketSeeds) {
+        if (marketSeeds == null || marketSeeds.isEmpty()) {
+            return List.of();
+        }
+
+        LinkedHashMap<String, List<String>> normalizedSeeds = new LinkedHashMap<>();
+        marketSeeds.forEach((market, keywords) -> {
+            if (market == null || market.isBlank()) {
+                return;
+            }
+            List<String> cleanKeywords = keywords == null
+                    ? List.of(market)
+                    : keywords.stream()
+                            .filter(value -> value != null && !value.isBlank())
+                            .distinct()
+                            .toList();
+            normalizedSeeds.put(market.trim(), cleanKeywords.isEmpty() ? List.of(market.trim()) : cleanKeywords);
+        });
+
+        if (normalizedSeeds.isEmpty()) {
+            return List.of();
+        }
+
+        if (apiKey.isBlank()) {
+            return fallbackLiveTrends(normalizedSeeds);
+        }
+
+        String seedsText = normalizedSeeds.entrySet().stream()
+                .map(entry -> entry.getKey() + " => " + String.join(", ", entry.getValue()))
+                .collect(Collectors.joining("\n- ", "- ", ""));
+
+        String prompt = String.format(
+                """
+                You are generating LIVE market hot trends for a market-research homepage.
+
+                Important:
+                - The output is AI-generated trend intelligence (not direct raw API metrics).
+                - Keep it realistic and business-oriented.
+                - Return exactly one trend per market provided.
+
+                Market seeds:
+                %s
+
+                Return only valid JSON:
+                {
+                  "trends": [
+                    {
+                      "market": "AI & Automation",
+                      "keyword": "AI Agent",
+                      "trendScore": 160,
+                      "changePct": 22,
+                      "sentiment": "positive",
+                      "sourceCount": 28
+                    }
+                  ]
+                }
+
+                Constraints:
+                - trendScore: integer from 50 to 320
+                - changePct: integer from -35 to 80
+                - sentiment: one of positive, neutral, negative
+                - sourceCount: integer from 6 to 60
+                - keyword should be one of the seed keywords for that market
+                """,
+                seedsText);
+
+        Map<String, Object> requestBody = Map.of(
+                "contents", List.of(Map.of("parts", List.of(Map.of("text", prompt)))),
+                "generationConfig", Map.of("responseMimeType", "application/json"));
+
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.APPLICATION_JSON);
+        HttpEntity<Map<String, Object>> requestEntity = new HttpEntity<>(requestBody, headers);
+        String url = "https://generativelanguage.googleapis.com/v1beta/models/" + model
+                + ":generateContent?key=" + apiKey;
+
+        try {
+            ResponseEntity<String> response = restTemplate.postForEntity(url, requestEntity, String.class);
+            JsonNode root = mapper.readTree(response.getBody());
+            String responseText = root.path("candidates").get(0).path("content").path("parts").get(0).path("text")
+                    .asText();
+
+            if (responseText.startsWith("```json")) {
+                responseText = responseText.substring(7);
+            }
+            if (responseText.endsWith("```")) {
+                responseText = responseText.substring(0, responseText.length() - 3);
+            }
+
+            JsonNode jsonResult = mapper.readTree(responseText);
+            JsonNode trendsNode = jsonResult.path("trends");
+            if (!trendsNode.isArray() || trendsNode.isEmpty()) {
+                return fallbackLiveTrends(normalizedSeeds);
+            }
+
+            List<LiveTrendSignal> trends = new ArrayList<>();
+            for (JsonNode node : trendsNode) {
+                String market = node.path("market").asText("");
+                if (!normalizedSeeds.containsKey(market)) {
+                    continue;
+                }
+
+                List<String> seedKeywords = normalizedSeeds.get(market);
+                String keyword = node.path("keyword").asText(seedKeywords.get(0));
+                if (!seedKeywords.contains(keyword)) {
+                    keyword = seedKeywords.get(0);
+                }
+
+                long trendScore = clampLong(node.path("trendScore").asLong(120), 50, 320);
+                int changePct = clamp(node.path("changePct").asInt(0), -35, 80);
+                String sentiment = normalizeSentiment(node.path("sentiment").asText("neutral"));
+                int sourceCount = clamp(node.path("sourceCount").asInt(18), 6, 60);
+
+                trends.add(new LiveTrendSignal(market, keyword, trendScore, changePct, sentiment, sourceCount));
+            }
+
+            if (trends.isEmpty()) {
+                return fallbackLiveTrends(normalizedSeeds);
+            }
+            return trends;
+        } catch (Exception ignored) {
+            return fallbackLiveTrends(normalizedSeeds);
         }
     }
 
@@ -360,6 +488,39 @@ public class DefaultAiProvider implements AiProvider {
 
     private int clamp(int value, int min, int max) {
         return Math.max(min, Math.min(max, value));
+    }
+
+    private long clampLong(long value, long min, long max) {
+        return Math.max(min, Math.min(max, value));
+    }
+
+    private String normalizeSentiment(String sentiment) {
+        if ("positive".equalsIgnoreCase(sentiment)) {
+            return "positive";
+        }
+        if ("negative".equalsIgnoreCase(sentiment)) {
+            return "negative";
+        }
+        return "neutral";
+    }
+
+    private List<LiveTrendSignal> fallbackLiveTrends(LinkedHashMap<String, List<String>> seeds) {
+        long hourSeed = System.currentTimeMillis() / (1000L * 60L * 60L);
+        Random random = new Random(hourSeed);
+        List<LiveTrendSignal> list = new ArrayList<>();
+
+        for (Map.Entry<String, List<String>> entry : seeds.entrySet()) {
+            String market = entry.getKey();
+            List<String> keywords = entry.getValue();
+            String keyword = keywords.get(random.nextInt(keywords.size()));
+            long score = 90 + random.nextInt(140);
+            int change = -10 + random.nextInt(42);
+            int sourceCount = 10 + random.nextInt(30);
+            String sentiment = change > 8 ? "positive" : (change < -5 ? "negative" : "neutral");
+            list.add(new LiveTrendSignal(market, keyword, score, change, sentiment, sourceCount));
+        }
+
+        return list;
     }
 
     private record DeepInsightBlueprint(
