@@ -386,6 +386,52 @@ a {
 .trend-change.down { color: var(--red); }
 .trend-change.neutral { color: var(--primary-dark); }
 
+.usp-showcase {
+  background:
+    radial-gradient(circle at top right, rgba(108, 92, 231, 0.14), transparent 42%),
+    linear-gradient(180deg, #ffffff 0%, #faf9ff 100%);
+}
+
+.usp-head h2 {
+  margin: 0 0 8px;
+  font-size: clamp(26px, 3.5vw, 34px);
+}
+
+.usp-grid {
+  margin-top: 14px;
+}
+
+.usp-card {
+  padding: 16px;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-lg);
+  background: var(--white);
+}
+
+.usp-card h3 {
+  margin: 10px 0 8px;
+  color: var(--text-primary);
+}
+
+.usp-card p {
+  margin: 0;
+  color: var(--text-secondary);
+  line-height: 1.6;
+}
+
+.usp-tag {
+  display: inline-flex;
+  align-items: center;
+  padding: 5px 10px;
+  border-radius: var(--radius-full);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--primary-dark);
+  background: var(--primary-bg);
+}
+
 .form {
   display: grid;
   gap: 12px;

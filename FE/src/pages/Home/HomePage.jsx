@@ -74,6 +74,31 @@ export function HomePage() {
           ))}
         </div>
       </section>
+
+      <section className="card usp-showcase">
+        <div className="usp-head">
+          <p className="dashboard-kicker">USP Snapshot</p>
+          <h2>Why teams choose AISKIM</h2>
+          <p className="hint">Use this block directly for your presentation slide.</p>
+        </div>
+        <div className="grid grid-3 usp-grid">
+          <article className="usp-card">
+            <span className="usp-tag">Signal + AI</span>
+            <h3>Evidence-backed insights</h3>
+            <p>AI summaries are tied to source evidence, confidence score, and data-quality checks.</p>
+          </article>
+          <article className="usp-card">
+            <span className="usp-tag">Research Flow</span>
+            <h3>From keyword to decision</h3>
+            <p>Compare keywords, monitor timeline, read market signals, then run deep insight.</p>
+          </article>
+          <article className="usp-card">
+            <span className="usp-tag">Monetization-ready</span>
+            <h3>Tiered plans + AI quota</h3>
+            <p>Free trial quota, paid plan limits, and upgrade path when users need more capacity.</p>
+          </article>
+        </div>
+      </section>
     </div>
   )
 }
