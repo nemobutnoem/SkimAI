@@ -31,15 +31,23 @@ function InsightCard({ insight, index }) {
   const needsTruncate = text.length > INSIGHT_TRUNCATE
 
   const icon = getInsightIcon(label)
+  const confidence = Number.isFinite(insight?.confidence) ? insight.confidence : null
+  const evidenceSource = insight?.evidenceSource || 'Cross-source synthesis'
+  const evidenceSignal = insight?.evidenceSignal || ''
 
   return (
     <div className={`insight-item insight-item--${index % 4}`}>
       <div className="insight-header">
         <span className="insight-icon">{icon}</span>
         <span className="insight-label">{label}</span>
+        {confidence !== null ? <span className="insight-confidence">{confidence}% confidence</span> : null}
       </div>
       <div className="insight-text">
         {needsTruncate && !expanded ? `${text.slice(0, INSIGHT_TRUNCATE)}...` : text}
+      </div>
+      <div className="insight-evidence">
+        <span>{evidenceSource}</span>
+        {evidenceSignal ? <span>{evidenceSignal}</span> : null}
       </div>
       {needsTruncate ? (
         <button className="see-more-btn" onClick={() => setExpanded(!expanded)}>
@@ -64,13 +72,33 @@ export function AnalysisPage() {
   const [draftKeyword, setDraftKeyword] = useState('')
 
   const [data, setData] = useState(null)
+  const [projectFlow, setProjectFlow] = useState(null)
+  const [alerts, setAlerts] = useState([])
+  const [competitorSignals, setCompetitorSignals] = useState([])
+  const [evidenceItems, setEvidenceItems] = useState([])
+  const [compareItems, setCompareItems] = useState([])
+  const [timelinePoints, setTimelinePoints] = useState([])
   const [loading, setLoading] = useState(false)
 
   const load = async () => {
     setLoading(true)
     try {
-      const result = await appApi.getAnalysis(keyword)
+      const [result, project, alertList, competitor, evidence, compare, timeline] = await Promise.all([
+        appApi.getAnalysis(keyword),
+        appApi.getAnalysisProject(keyword).catch(() => null),
+        appApi.getAnalysisAlerts(keyword).catch(() => []),
+        appApi.getAnalysisCompetitor(keyword).catch(() => []),
+        appApi.getAnalysisEvidence(keyword).catch(() => []),
+        appApi.getAnalysisCompare(keyword).catch(() => []),
+        appApi.getAnalysisTimeline(keyword).catch(() => []),
+      ])
       setData(result)
+      setProjectFlow(project)
+      setAlerts(alertList)
+      setCompetitorSignals(competitor)
+      setEvidenceItems(evidence)
+      setCompareItems(compare)
+      setTimelinePoints(timeline)
     } finally {
       setLoading(false)
     }
@@ -79,6 +107,12 @@ export function AnalysisPage() {
   useEffect(() => {
     if (!keyword) {
       setData(null)
+      setProjectFlow(null)
+      setAlerts([])
+      setCompetitorSignals([])
+      setEvidenceItems([])
+      setCompareItems([])
+      setTimelinePoints([])
       return
     }
     load()
@@ -200,7 +234,27 @@ export function AnalysisPage() {
     ]
   }, [data, keyword])
 
-  const competitorSignals = [
+  const researchGuard = data?.researchGuard ?? null
+  const canRunDeepInsight = researchGuard ? Boolean(researchGuard.deepInsightEnabled) : true
+
+  const sourceMix = useMemo(() => {
+    const grouped = new Map()
+    ;(evidenceItems ?? []).forEach((item) => {
+      const key = (item?.source || 'Unknown source').trim()
+      grouped.set(key, (grouped.get(key) || 0) + 1)
+    })
+    const rows = Array.from(grouped.entries())
+      .map(([source, count]) => ({ source, count }))
+      .sort((a, b) => b.count - a.count)
+      .slice(0, 6)
+    const maxCount = Math.max(...rows.map((item) => item.count), 1)
+    return rows.map((item) => ({
+      ...item,
+      width: Math.max(12, (item.count / maxCount) * 100),
+    }))
+  }, [evidenceItems])
+
+  const competitorSnapshotCards = [
     {
       title: 'Demand concentration',
       desc: topThemes.length
@@ -271,6 +325,59 @@ export function AnalysisPage() {
         ))}
       </div>
 
+      <section className="card">
+        <div className="analysis-section-heading">
+          <div>
+            <div className="card-title">Data Quality</div>
+            <p className="hint">Confidence and evidence coverage behind this analysis result.</p>
+          </div>
+        </div>
+        <div className="grid grid-4">
+          <div className="opportunity-item">
+            <strong>Confidence band</strong>
+            <p className="hint">{data?.dataQuality?.confidenceBand ?? 'Unknown'}</p>
+          </div>
+          <div className="opportunity-item">
+            <strong>Evidence coverage</strong>
+            <p className="hint">{Number(data?.dataQuality?.evidenceCoveragePct ?? 0)}%</p>
+          </div>
+          <div className="opportunity-item">
+            <strong>Source diversity</strong>
+            <p className="hint">{Number(data?.dataQuality?.sourceDiversity ?? 0)} active sources</p>
+          </div>
+          <div className="opportunity-item">
+            <strong>Freshness</strong>
+            <p className="hint">Updated within {Number(data?.dataQuality?.freshnessMinutes ?? 0)} min</p>
+          </div>
+        </div>
+      </section>
+
+      {researchGuard ? (
+        <section className={`card research-guard-card ${canRunDeepInsight ? 'guard-ok' : 'guard-low'}`}>
+          <div className="analysis-section-heading">
+            <div>
+              <div className="card-title">Keyword Validation</div>
+              <p className="hint">{researchGuard.message}</p>
+            </div>
+            <div className="guard-score">{researchGuard.intentScore}/100</div>
+          </div>
+          <div className="grid grid-2">
+            <div className="opportunity-item">
+              <strong>Status: {researchGuard.status}</strong>
+              <p className="hint">
+                {canRunDeepInsight
+                  ? 'This keyword is valid for market analysis and deep insight.'
+                  : 'Deep insight is temporarily blocked until keyword intent improves.'}
+              </p>
+            </div>
+            <div className="opportunity-item">
+              <strong>Try these market-intent keywords</strong>
+              <p className="hint">{(researchGuard.suggestedKeywords ?? []).slice(0, 5).join(' | ')}</p>
+            </div>
+          </div>
+        </section>
+      ) : null}
+
       <section className="card ai-summary">
         <div className="analysis-section-heading">
           <div>
@@ -304,8 +411,9 @@ export function AnalysisPage() {
               <span className="kw-th kw-th-bar">Strength</span>
             </div>
             {(data?.relatedKeywords ?? []).map((km, index) => {
-              const maxMentions = Math.max(...(data?.relatedKeywords ?? []).map((k) => k.mentionCount || 1), 1)
-              const barWidth = Math.max(15, ((km.mentionCount || 1) / maxMentions) * 100)
+              const score = (km.mentionCount || 0) * 100 + Math.log10(Math.max(1, (km.totalViews || 0) + ((km.totalLikes || 0) * 2) + ((km.totalComments || 0) * 3))) * 100
+              const maxScore = Math.max(...(data?.relatedKeywords ?? []).map((k) => (k.mentionCount || 0) * 100 + Math.log10(Math.max(1, (k.totalViews || 0) + ((k.totalLikes || 0) * 2) + ((k.totalComments || 0) * 3))) * 100), 1)
+              const barWidth = Math.max(15, (score / maxScore) * 100)
               return (
                 <div className="kw-table-row" key={km.keyword || index}>
                   <span className="kw-rank">{index + 1}</span>
@@ -324,10 +432,98 @@ export function AnalysisPage() {
         </div>
 
         <div className="ask-more">
-          <Link to={`${ROUTES.DEEP_INSIGHT}?keyword=${encodeURIComponent(keyword)}`} className="ask-more-cta">
-            <span className="ask-more-icon">✨</span>
-            <span>Ask AI for deeper insights →</span>
-          </Link>
+          {canRunDeepInsight ? (
+            <Link to={`${ROUTES.DEEP_INSIGHT}?keyword=${encodeURIComponent(keyword)}`} className="ask-more-cta">
+              <span className="ask-more-icon">AI</span>
+              <span>Ask AI for deeper insights {'->'}</span>
+            </Link>
+          ) : (
+            <button type="button" className="ask-more-cta ask-more-cta-disabled" disabled>
+              <span className="ask-more-icon">AI</span>
+              <span>Refine keyword to unlock deep insight</span>
+            </button>
+          )}
+        </div>
+      </section>
+
+      <section className="card">
+        <div className="analysis-section-heading">
+          <div>
+            <div className="card-title">Keyword Compare</div>
+            <p className="hint">Compare tracked keyword and adjacent clusters on core metrics.</p>
+          </div>
+        </div>
+        <div className="keyword-table compare-table">
+          <div className="kw-table-head">
+            <span className="kw-th kw-th-name">Keyword</span>
+            <span className="kw-th kw-th-metric">Views</span>
+            <span className="kw-th kw-th-metric">Mentions</span>
+            <span className="kw-th kw-th-metric">Comments</span>
+            <span className="kw-th kw-th-metric">Avg engagement</span>
+          </div>
+          {(compareItems ?? []).map((item, idx) => (
+            <div className="kw-table-row" key={`${item.keyword}-${idx}`}>
+              <span className="kw-name">{item.keyword}</span>
+              <span className="kw-metric-val">{formatNumber(item.observedViews)}</span>
+              <span className="kw-metric-val">{item.mentions}</span>
+              <span className="kw-metric-val">{formatNumber(item.comments)}</span>
+              <span className="kw-metric-val">{((item.avgEngagement || 0) * 100).toFixed(2)}%</span>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      <section className="card">
+        <div className="analysis-section-heading">
+          <div>
+            <div className="card-title">Signal Timeline</div>
+            <p className="hint">Weekly progression of market signal volume for this tracked keyword.</p>
+          </div>
+        </div>
+        <div className="stack">
+          {(() => {
+            const maxValue = Math.max(...(timelinePoints ?? []).map((point) => point.value || 0), 1)
+            return (timelinePoints ?? []).map((point, idx) => {
+              const width = Math.max(12, ((point.value || 0) / maxValue) * 100)
+              return (
+                <div key={`${point.label}-${idx}`} className="list-item">
+                  <div className="list-select-row">
+                    <strong>{point.label}</strong>
+                    <span>{formatNumber(point.value)}</span>
+                  </div>
+                  <div className="kw-bar-wrap">
+                    <div className="kw-bar" style={{ width: `${width}%` }} />
+                  </div>
+                </div>
+              )
+            })
+          })()}
+        </div>
+      </section>
+
+      <section className="card">
+        <div className="analysis-section-heading">
+          <div>
+            <div className="card-title">Source Coverage Chart</div>
+            <p className="hint">Distribution of evidence items by source to assess concentration risk.</p>
+          </div>
+        </div>
+        <div className="stack">
+          {sourceMix.length ? (
+            sourceMix.map((row) => (
+              <div key={row.source} className="list-item">
+                <div className="list-select-row">
+                  <strong>{row.source}</strong>
+                  <span>{row.count} items</span>
+                </div>
+                <div className="kw-bar-wrap">
+                  <div className="kw-bar" style={{ width: `${row.width}%` }} />
+                </div>
+              </div>
+            ))
+          ) : (
+            <p className="hint">No source evidence yet. Run refresh to collect data.</p>
+          )}
         </div>
       </section>
 
@@ -406,10 +602,94 @@ export function AnalysisPage() {
         </div>
 
         <div className="grid grid-3">
-          {competitorSignals.map((signal) => (
+          {competitorSnapshotCards.map((signal) => (
             <div key={signal.title} className="opportunity-item">
               <strong>{signal.title}</strong>
               <p className="hint">{signal.desc}</p>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      <section className="card">
+        <div className="analysis-section-heading">
+          <div>
+            <div className="card-title">Project Workflow</div>
+            <p className="hint">Track this keyword as a research project, compare adjacent terms, and keep a decision timeline.</p>
+          </div>
+        </div>
+        {projectFlow ? (
+          <div className="grid grid-2">
+            <div className="opportunity-item">
+              <strong>{projectFlow.projectName}</strong>
+              <p className="hint">Current keyword: {projectFlow.currentKeyword}</p>
+              <p className="hint">Compare set: {(projectFlow.compareKeywords ?? []).join(', ') || 'No compare keywords yet'}</p>
+            </div>
+            <div className="stack">
+              {(projectFlow.timeline ?? []).map((point, idx) => (
+                <div key={`${point.label}-${idx}`} className="list-item">
+                  <strong>{point.label}</strong>
+                  <span>{point.value}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        ) : (
+          <p className="hint">Project flow is loading.</p>
+        )}
+      </section>
+
+      <section className="card">
+        <div className="analysis-section-heading">
+          <div>
+            <div className="card-title">Action Alerts</div>
+            <p className="hint">Auto-detected warnings and next actions from current market signals.</p>
+          </div>
+        </div>
+        <div className="stack">
+          {(alerts ?? []).map((alert) => (
+            <div key={alert.id} className="opportunity-item">
+              <strong>{alert.title}</strong>
+              <p className="hint">Severity: {alert.severity} • Status: {alert.status}</p>
+              <p className="hint">{alert.action}</p>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      <section className="card">
+        <div className="analysis-section-heading">
+          <div>
+            <div className="card-title">Competitor Signals</div>
+            <p className="hint">Share-of-voice proxy, keyword gap, and engagement edge from current data.</p>
+          </div>
+        </div>
+        <div className="grid grid-3">
+          {(competitorSignals ?? []).map((signal, idx) => (
+            <div className="opportunity-item" key={`${signal.label}-${idx}`}>
+              <strong>{signal.label}: {signal.value}</strong>
+              <p className="hint">{signal.note}</p>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      <section className="card">
+        <div className="analysis-section-heading">
+          <div>
+            <div className="card-title">Evidence Drill-down</div>
+            <p className="hint">Raw evidence behind the insights: source item, metric, and signal snippet.</p>
+          </div>
+        </div>
+        <div className="stack">
+          {(evidenceItems ?? []).map((item, idx) => (
+            <div key={`${item.source}-${idx}`} className="list-select">
+              <div className="list-select-row">
+                <strong>{item.source}</strong>
+                <span className="hint">{item.metric}</span>
+              </div>
+              <div>{item.title}</div>
+              <span className="hint">{item.signal}</span>
             </div>
           ))}
         </div>

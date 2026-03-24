@@ -903,10 +903,28 @@ textarea { resize: vertical; }
   letter-spacing: 0.01em;
 }
 
+.insight-confidence {
+  margin-left: auto;
+  padding: 4px 8px;
+  border-radius: var(--radius-full);
+  background: rgba(108, 92, 231, 0.12);
+  color: var(--primary-dark);
+  font-size: 11px;
+  font-weight: 700;
+}
+
 .insight-text {
   font-size: 14px;
   color: var(--text-secondary);
   line-height: 1.55;
+}
+
+.insight-evidence {
+  margin-top: 8px;
+  display: grid;
+  gap: 2px;
+  font-size: 12px;
+  color: var(--text-secondary);
 }
 
 .see-more-btn {
@@ -1335,6 +1353,11 @@ textarea { resize: vertical; }
 .kw-table-row:last-child { border-bottom: none; }
 .kw-table-row:hover { background: var(--gray-50); }
 
+.compare-table .kw-table-head,
+.compare-table .kw-table-row {
+  grid-template-columns: 1.8fr repeat(4, 120px);
+}
+
 .kw-rank {
   width: 24px;
   height: 24px;
@@ -1380,6 +1403,36 @@ textarea { resize: vertical; }
   background: var(--primary-gradient);
   min-width: 12px;
   transition: width 0.4s ease;
+}
+
+.kw-bar-wrap {
+  margin-top: 8px;
+  width: 100%;
+  height: 8px;
+  border-radius: var(--radius-full);
+  background: var(--gray-200);
+  overflow: hidden;
+}
+
+.research-guard-card.guard-ok {
+  border-left: 4px solid #10b981;
+}
+
+.research-guard-card.guard-low {
+  border-left: 4px solid #ef4444;
+}
+
+.guard-score {
+  padding: 6px 12px;
+  border-radius: var(--radius-full);
+  background: var(--primary-bg);
+  color: var(--primary-dark);
+  font-weight: 700;
+}
+
+.ask-more-cta-disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
 }
 
 .sentiment-container {

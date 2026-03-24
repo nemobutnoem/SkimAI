@@ -44,6 +44,7 @@ public class SecurityConfig {
                         .requestMatchers(
                                 "/api/dashboard",
                                 "/api/analysis",
+                                "/api/analysis/**",
                                 "/api/deep-insight",
                                 "/api/experts/**",
                                 "/api/pricing",

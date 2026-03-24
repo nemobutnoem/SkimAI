@@ -67,6 +67,30 @@ const realApi = {
     const query = new URLSearchParams({ keyword: keyword ?? '' }).toString()
     return request(`/analysis?${query}`)
   },
+  getAnalysisProject(keyword) {
+    const query = new URLSearchParams({ keyword: keyword ?? '' }).toString()
+    return request(`/analysis/project?${query}`)
+  },
+  getAnalysisAlerts(keyword) {
+    const query = new URLSearchParams({ keyword: keyword ?? '' }).toString()
+    return request(`/analysis/alerts?${query}`)
+  },
+  getAnalysisCompetitor(keyword) {
+    const query = new URLSearchParams({ keyword: keyword ?? '' }).toString()
+    return request(`/analysis/competitor?${query}`)
+  },
+  getAnalysisEvidence(keyword) {
+    const query = new URLSearchParams({ keyword: keyword ?? '' }).toString()
+    return request(`/analysis/evidence?${query}`)
+  },
+  getAnalysisCompare(keyword) {
+    const query = new URLSearchParams({ keyword: keyword ?? '' }).toString()
+    return request(`/analysis/compare?${query}`)
+  },
+  getAnalysisTimeline(keyword) {
+    const query = new URLSearchParams({ keyword: keyword ?? '' }).toString()
+    return request(`/analysis/timeline?${query}`)
+  },
   getDeepInsight(payload) {
     return request('/deep-insight', { method: 'POST', body: payload })
   },

@@ -51,7 +51,13 @@ public class FrontendDtos {
     ) {
     }
 
-    public record InsightItem(String label, String text) {
+    public record InsightItem(
+            String label,
+            String text,
+            String evidenceSource,
+            int confidence,
+            String evidenceSignal
+    ) {
     }
 
     public record AnalysisResponse(
@@ -62,7 +68,79 @@ public class FrontendDtos {
             List<InsightItem> insights,
             List<KeywordMetric> relatedKeywords,
             List<String> news,
-            List<String> suggestedActions
+            List<String> suggestedActions,
+            DataQuality dataQuality,
+            ResearchGuard researchGuard
+    ) {
+    }
+
+    public record DataQuality(
+            int freshnessMinutes,
+            int sourceDiversity,
+            int evidenceCoveragePct,
+            String confidenceBand
+    ) {
+    }
+
+    public record ResearchGuard(
+            int intentScore,
+            String status,
+            String message,
+            List<String> suggestedKeywords,
+            boolean deepInsightEnabled
+    ) {
+    }
+
+    public record ProjectSnapshotPoint(
+            String label,
+            String value
+    ) {
+    }
+
+    public record ProjectWorkflowResponse(
+            String projectName,
+            String currentKeyword,
+            List<String> compareKeywords,
+            List<ProjectSnapshotPoint> timeline
+    ) {
+    }
+
+    public record AlertItem(
+            String id,
+            String severity,
+            String title,
+            String status,
+            String action
+    ) {
+    }
+
+    public record CompetitorSignal(
+            String label,
+            String value,
+            String note
+    ) {
+    }
+
+    public record EvidenceItem(
+            String source,
+            String title,
+            String metric,
+            String signal
+    ) {
+    }
+
+    public record CompareItem(
+            String keyword,
+            long observedViews,
+            int mentions,
+            long comments,
+            double avgEngagement
+    ) {
+    }
+
+    public record TimeSeriesPoint(
+            String label,
+            long value
     ) {
     }
 
