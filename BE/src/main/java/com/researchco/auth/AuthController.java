@@ -28,4 +28,9 @@ public class AuthController {
     public AuthDtos.AuthResponse login(@Valid @RequestBody AuthDtos.LoginRequest request) {
         return authService.login(request);
     }
+
+    @PostMapping("/google")
+    public AuthDtos.AuthResponse google(@Valid @RequestBody AuthDtos.GoogleLoginRequest request) {
+        return authService.loginWithGoogle(request);
+    }
 }

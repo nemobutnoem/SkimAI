@@ -98,9 +98,14 @@ public class SecurityConfig {
         if (!allowedOrigins.contains("http://127.0.0.1:5173")) {
             allowedOrigins.add("http://127.0.0.1:5173");
         }
+        if (!allowedOrigins.contains("http://localhost:5174")) {
+            allowedOrigins.add("http://localhost:5174");
+        }
+        if (!allowedOrigins.contains("http://127.0.0.1:5174")) {
+            allowedOrigins.add("http://127.0.0.1:5174");
+        }
 
         configuration.setAllowedOrigins(allowedOrigins);
-951d1ee5930764308a7651ff6cb0578b5e71014c
         configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
         configuration.setAllowedHeaders(List.of("Authorization", "Content-Type"));
         configuration.setAllowCredentials(true);

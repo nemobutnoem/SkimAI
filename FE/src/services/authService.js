@@ -8,6 +8,12 @@ export const authService = {
     return result
   },
 
+  async loginWithGoogle({ credential }) {
+    const result = await appApi.loginWithGoogle({ credential })
+    localStorage.setItem(STORAGE_KEYS.AUTH, JSON.stringify(result))
+    return result
+  },
+
   logout() {
     localStorage.removeItem(STORAGE_KEYS.AUTH)
   },

@@ -19,6 +19,11 @@ export function AuthProvider({ children }) {
         setSession(result)
         return result
       },
+      async loginWithGoogle({ credential }) {
+        const result = await authService.loginWithGoogle({ credential })
+        setSession(result)
+        return result
+      },
       logout() {
         authService.logout()
         setSession(null)

@@ -57,6 +57,9 @@ const realApi = {
   login(payload) {
     return request('/auth/login', { method: 'POST', body: payload })
   },
+  loginWithGoogle(payload) {
+    return request('/auth/google', { method: 'POST', body: payload })
+  },
   getDashboard() {
     return request('/dashboard')
   },

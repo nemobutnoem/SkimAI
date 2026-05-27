@@ -2370,6 +2370,43 @@ code {
   font-size: 15px;
 }
 
+.login-mode-toggle {
+  display: flex;
+  gap: 10px;
+  justify-content: center;
+  margin: 0 0 18px;
+}
+
+.login-mode-toggle button {
+  background: var(--gray-50);
+  border: 1px solid var(--border-color);
+  padding: 10px 14px;
+  border-radius: 999px;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.login-mode-toggle button.active {
+  background: var(--white);
+  border-color: var(--primary);
+  color: var(--text-primary);
+}
+
+.login-google {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  align-items: center;
+}
+
+.login-google-hint {
+  font-size: 13px;
+  color: var(--text-muted);
+}
+
 .login-form { display: flex; flex-direction: column; gap: 20px; }
 .login-field { display: flex; flex-direction: column; gap: 8px; }
 .login-field label { font-size: 14px; font-weight: 600; color: var(--text-primary); }

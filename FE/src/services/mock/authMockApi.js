@@ -22,4 +22,25 @@ export const authMockApi = {
       },
     }
   },
+
+  async loginWithGoogle({ credential }) {
+    await sleep(350)
+
+    if (!credential) {
+      const error = new Error('Google credential không hợp lệ')
+      error.status = 401
+      throw error
+    }
+
+    const user = DB.users.find((u) => String(u.role).toUpperCase() !== 'ADMIN') ?? DB.users[0]
+    return {
+      token: createToken(user),
+      user: {
+        id: user.id,
+        name: user.full_name,
+        email: user.email,
+        role: toViewRole(user.role),
+      },
+    }
+  },
 }
