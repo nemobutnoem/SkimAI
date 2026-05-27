@@ -63,8 +63,14 @@ public class AdminService {
         LocalDateTime prevStart = prevMonth.atDay(1).atStartOfDay();
         LocalDateTime prevEnd = prevMonth.plusMonths(1).atDay(1).atStartOfDay();
 
-        long usersCurrent = userRepository.countByCreatedAtBetween(currentStart, currentEnd);
-        long usersPrev = userRepository.countByCreatedAtBetween(prevStart, prevEnd);
+        long usersCurrent = userRepository.findAll().stream()
+                .filter(u -> !"ADMIN".equalsIgnoreCase(u.getRole()))
+                .filter(u -> u.getCreatedAt() != null && u.getCreatedAt().isAfter(currentStart) && u.getCreatedAt().isBefore(currentEnd))
+                .count();
+        long usersPrev = userRepository.findAll().stream()
+                .filter(u -> !"ADMIN".equalsIgnoreCase(u.getRole()))
+                .filter(u -> u.getCreatedAt() != null && u.getCreatedAt().isAfter(prevStart) && u.getCreatedAt().isBefore(prevEnd))
+                .count();
 
         long searchesCurrent = searchQueryRepository.countByCreatedAtBetween(currentStart, currentEnd);
         long searchesPrev = searchQueryRepository.countByCreatedAtBetween(prevStart, prevEnd);
@@ -91,12 +97,13 @@ public class AdminService {
 
         AdminDtos.ChartSeries userGrowth = buildMonthlyCountSeries(
                 7,
-                (start, end) -> userRepository.countByCreatedAtBetween(start, end)
+                (start, end) -> countNonAdminUsersBetween(start, end)
         );
 
         AdminDtos.ChartSeries revenue = buildMonthlyAmountSeries(6);
 
         List<AdminDtos.ActivityItem> activities = adminActionRepository.findTop10ByOrderByCreatedAtDesc().stream()
+                .filter(action -> action.getAdminUser() != null && "USER".equalsIgnoreCase(action.getAdminUser().getRole()))
                 .map(this::toActivityItem)
                 .toList();
 
@@ -106,7 +113,7 @@ public class AdminService {
 
         return new AdminDtos.DashboardResponse(
                 List.of(
-                        stat("Users", userRepository.count(), usersCurrent, usersPrev),
+                        stat("Users", countAllNonAdminUsers(), usersCurrent, usersPrev),
                         stat("Searches", searchQueryRepository.count(), searchesCurrent, searchesPrev),
                         stat("Reports", reportRepository.count(), reportsCurrent, reportsPrev),
                         stat("Subscriptions", userSubscriptionRepository.count(), subscriptionsCurrent, subscriptionsPrev),
@@ -400,6 +407,19 @@ public class AdminService {
                         return min;
                 }
                 return Math.min(value, max);
+        }
+
+        private long countNonAdminUsersBetween(LocalDateTime start, LocalDateTime end) {
+                return userRepository.findAll().stream()
+                        .filter(u -> !"ADMIN".equalsIgnoreCase(u.getRole()))
+                        .filter(u -> u.getCreatedAt() != null && u.getCreatedAt().isAfter(start) && u.getCreatedAt().isBefore(end))
+                        .count();
+        }
+
+        private long countAllNonAdminUsers() {
+                return userRepository.findAll().stream()
+                        .filter(u -> !"ADMIN".equalsIgnoreCase(u.getRole()))
+                        .count();
         }
 
         private interface CountProvider {

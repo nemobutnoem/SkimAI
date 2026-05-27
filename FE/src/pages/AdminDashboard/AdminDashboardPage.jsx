@@ -14,6 +14,50 @@ const STAT_CONFIG = {
   Subscriptions: { icon: '💎', bg: 'var(--primary-bg, #f0edff)', color: 'var(--primary)' },
 }
 
+/* ─── Donut chart with animation ─── */
+function DonutChart({ premiumPct, loading }) {
+  const [animatedPct, setAnimatedPct] = useState(0)
+
+  useEffect(() => {
+    if (loading) return
+    if (!Number.isFinite(premiumPct)) return
+
+    const durationMs = 650
+    const start = performance.now()
+    const from = animatedPct
+
+    let rafId = 0
+    const tick = (now) => {
+      const t = Math.min(1, (now - start) / durationMs)
+      const eased = 1 - Math.pow(1 - t, 3)
+      const current = from + (premiumPct - from) * eased
+      setAnimatedPct(current)
+      if (t < 1) rafId = requestAnimationFrame(tick)
+    }
+
+    rafId = requestAnimationFrame(tick)
+    return () => cancelAnimationFrame(rafId)
+  }, [premiumPct, loading, animatedPct])
+
+  const primaryColor = 'var(--primary, #5f3dc4)'
+  const secondaryColor = '#CED4DA'
+
+  return (
+    <div className="admin-donut">
+      <div
+        className="admin-donut-ring"
+        style={{
+          background: `conic-gradient(${primaryColor} 0% ${animatedPct}%, ${secondaryColor} ${animatedPct}% 100%)`,
+        }}
+      />
+      <div className="admin-donut-center">
+        <strong>{Math.round(animatedPct)}%</strong>
+        <span>Premium</span>
+      </div>
+    </div>
+  )
+}
+
 /* ─── Chart bar helper ─── */
 function MiniBarChart({ data, color }) {
   const safe = Array.isArray(data) ? data : []
@@ -200,28 +244,13 @@ export function AdminDashboardPage() {
         </Card>
         <Card title="Account Distribution">
           <div className="admin-donut-wrap">
-            <div className="admin-donut">
-              <div className="admin-donut-ring" />
-              <div className="admin-donut-center">
-                {loading ? (
-                  <>
-                    <strong>—</strong>
-                    <span>Loading</span>
-                  </>
-                ) : (
-                  <>
-                    <strong>{computedDistribution.premiumPct ?? 0}%</strong>
-                    <span>Premium</span>
-                  </>
-                )}
-              </div>
-            </div>
+            <DonutChart premiumPct={computedDistribution.premiumPct ?? 0} loading={loading} />
             <div className="admin-donut-legend">
               {loading ? (
                 <span className="hint">Loading distribution...</span>
               ) : (
                 <>
-                  <span><i style={{ background: '#CED4DA' }} /> Standard — {computedDistribution.standardPct ?? 0}%</span>
+                  <span><i style={{ background: '#CED4DA' }} /> Standard — {Math.round(100 - (computedDistribution.premiumPct ?? 0))}%</span>
                   <span><i style={{ background: 'var(--primary)' }} /> Premium — {computedDistribution.premiumPct ?? 0}%</span>
                 </>
               )}
