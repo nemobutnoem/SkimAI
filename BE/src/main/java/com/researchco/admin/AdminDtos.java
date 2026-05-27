@@ -3,13 +3,46 @@ package com.researchco.admin;
 public class AdminDtos {
     public record StatItem(
             String label,
-            String value
+            String value,
+            String change,
+            Boolean negative
+    ) {
+    }
+
+    public record ChartSeries(
+            java.util.List<String> labels,
+            java.util.List<Double> values
+    ) {
+    }
+
+    public record PendingRequest(
+            String id,
+            String user,
+            String type,
+            String status
+    ) {
+    }
+
+    public record Distribution(
+            int premiumPct,
+            int standardPct
+    ) {
+    }
+
+    public record ActivityItem(
+            String label,
+            String description,
+            String createdAt
     ) {
     }
 
     public record DashboardResponse(
             java.util.List<StatItem> stats,
-            java.util.List<String> activities
+            java.util.List<ActivityItem> activities,
+            ChartSeries userGrowth,
+            ChartSeries revenue,
+            Distribution distribution,
+            java.util.List<PendingRequest> pendingRequests
     ) {
     }
 
