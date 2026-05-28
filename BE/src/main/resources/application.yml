@@ -31,7 +31,7 @@ app:
   frontend-base-url: ${FRONTEND_BASE_URL:http://localhost:5173}
   auth:
     google:
-      client-id: ${GOOGLE_CLIENT_ID:}
+      client-id: ${GOOGLE_CLIENT_ID:84486682480-d2n9j94neqp1stuti5i4of7koont41hq.apps.googleusercontent.com}
   jwt:
     secret: 56737450-04d2-4593-922a-c5c29b528799
     expiration-ms: ${JWT_EXPIRATION_MS:86400000}
