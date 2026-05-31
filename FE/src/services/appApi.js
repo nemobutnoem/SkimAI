@@ -1,7 +1,5 @@
-import { mockApi } from './mockApi'
 import { STORAGE_KEYS } from '../constants/storageKeys'
 
-const USE_MOCK_API = (import.meta.env.VITE_USE_MOCK_API ?? 'false') === 'true'
 const API_BASE_URL = import.meta.env.VITE_API_URL ?? 'http://localhost:8080/api';
 
 async function request(path, { method = 'GET', body, headers } = {}) {
@@ -97,12 +95,6 @@ const realApi = {
   getDeepInsight(payload) {
     return request('/deep-insight', { method: 'POST', body: payload })
   },
-  getExperts() {
-    return request('/experts')
-  },
-  submitExpertQuestion(payload) {
-    return request('/experts/questions', { method: 'POST', body: payload })
-  },
   getPricing() {
     return request('/pricing')
   },
@@ -148,6 +140,9 @@ const realApi = {
   },
   getAdminRevenue() {
     return request('/admin/revenue')
+  },
+  getAdminUsersMetrics() {
+    return request('/admin/users/metrics')
   },
 
   // DB-aligned helpers for upcoming backend rollout
@@ -214,9 +209,8 @@ const realApi = {
   },
 }
 
-export const appApi = USE_MOCK_API ? mockApi : realApi
+export const appApi = realApi
 
 export const apiRuntimeConfig = {
-  useMockApi: USE_MOCK_API,
   baseUrl: API_BASE_URL,
 }

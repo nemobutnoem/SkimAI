@@ -13,7 +13,6 @@ import { AnalysisPage } from '../pages/Analysis/AnalysisPage'
 import { DashboardPage } from '../pages/Dashboard/DashboardPage'
 import { DeepInsightPage } from '../pages/DeepInsight/DeepInsightPage'
 import { HomePage } from '../pages/Home/HomePage'
-import { AskExpertPage } from '../pages/AskExpert/AskExpertPage'
 import { LoginPage } from '../pages/Login/LoginPage'
 import { NotFoundPage } from '../pages/NotFound/NotFoundPage'
 import { PricingPage } from '../pages/Pricing/PricingPage'
@@ -43,7 +42,6 @@ export function AppRouter() {
       <Route element={<SharedLayout />}>
         <Route path={ROUTES.ANALYSIS} element={<AnalysisPage />} />
         <Route path={ROUTES.DEEP_INSIGHT} element={<DeepInsightPage />} />
-        <Route path={ROUTES.ASK_EXPERT} element={<AskExpertPage />} />
       </Route>
 
       {/* Login (no layout) */}

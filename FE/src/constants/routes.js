@@ -4,7 +4,6 @@ export const ROUTES = {
   DASHBOARD: '/dashboard',
   ANALYSIS: '/analysis',
   DEEP_INSIGHT: '/deep-insight',
-  ASK_EXPERT: '/ask-expert',
   PRICING: '/pricing',
   ACCOUNT: '/account',
   ADMIN_DASHBOARD: '/admin/dashboard',

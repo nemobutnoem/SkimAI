@@ -8,15 +8,14 @@ import { useAuth } from '../hooks/useAuth'
 const PUBLIC_LINKS = [
   { to: ROUTES.HOME, label: 'Overview' },
   { to: ROUTES.ANALYSIS, label: 'Market Research' },
-  { to: ROUTES.ASK_EXPERT, label: 'Ask Expert' },
   { to: ROUTES.PRICING, label: 'Pricing' },
 ]
 
 const USER_LINKS = [
+  { to: ROUTES.HOME, label: 'Overview' },
   { to: ROUTES.DASHBOARD, label: 'Workspace' },
   { to: ROUTES.ANALYSIS, label: 'Market Research' },
   { to: ROUTES.DEEP_INSIGHT, label: 'Deep Insight' },
-  { to: ROUTES.ASK_EXPERT, label: 'Ask Expert' },
   { to: ROUTES.ACCOUNT, label: 'Billing' },
 ]
 
@@ -206,19 +205,24 @@ export function Navbar() {
 
   /* ── Public navbar (guest) ── */
   return (
-    <header className="site-header">
-      <div className="site-header-inner">
-        <NavLink to={ROUTES.HOME} className="site-brand">
+    <header className="app-header">
+      <div className="app-header-inner">
+        <div
+          className="app-brand"
+          role="button"
+          tabIndex={0}
+          onClick={() => navigate(ROUTES.HOME)}
+        >
           AISKIM
-        </NavLink>
+        </div>
 
-        <nav className="site-nav">
+        <nav className="app-nav">
           {links.map((link) => (
             <NavLink
               key={link.to}
               to={link.to}
               className={({ isActive }) =>
-                ['site-link', isActive ? 'active' : ''].join(' ').trim()
+                ['app-link', isActive ? 'active' : ''].join(' ').trim()
               }
             >
               {link.label}
@@ -226,7 +230,7 @@ export function Navbar() {
           ))}
         </nav>
 
-        <div className="site-actions">
+        <div className="app-header-right">
           <NavLink to={ROUTES.LOGIN} className="btn btn-primary">
             Login
           </NavLink>

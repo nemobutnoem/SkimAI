@@ -67,7 +67,6 @@ Public:
 Shared (guest hoặc logged-in đều vào được):
 - `/analysis`
 - `/deep-insight`
-- `/ask-expert`
 
 Private (cần login):
 - `/dashboard`

@@ -106,43 +106,7 @@ export const adminMockApi = {
       })
   },
 
-  async getAdminRevenue() {
-    await sleep(210)
 
-    const activeSubs = DB.user_subscriptions.filter((sub) => sub.status === 'ACTIVE')
-    const mrr = activeSubs.reduce((sum, sub) => {
-      const plan = DB.plans.find((p) => p.id === sub.plan_id)
-      return sum + Number(plan?.price ?? 0)
-    }, 0)
-
-    const successEvents = DB.report_exports.length + DB.saved_searches.length
-    const failedEvents = DB.users.filter((u) => u.status === 'SUSPENDED').length
-
-    return {
-      metrics: [
-        { label: 'MRR', value: `$${mrr}` },
-        { label: 'ARR', value: `$${mrr * 12}` },
-        {
-          label: 'Upgrade Rate',
-          value: `${((DB.admin_actions.filter((a) => a.action_type.includes('PLAN')).length / Math.max(1, activeSubs.length)) * 100).toFixed(1)}%`,
-        },
-        {
-          label: 'Failed Payments',
-          value: `${((failedEvents / Math.max(1, successEvents + failedEvents)) * 100).toFixed(1)}%`,
-        },
-      ],
-      channels: [
-        { name: 'Direct', amount: `$${Math.round(mrr * 0.38)}`, pct: 38 },
-        { name: 'Referrals', amount: `$${Math.round(mrr * 0.22)}`, pct: 22 },
-        { name: 'Partner', amount: `$${Math.round(mrr * 0.19)}`, pct: 19 },
-      ],
-      events: [
-        { id: 'rev-1', user: 'Bao Do', event: 'Upgrade', plan: 'Basic -> Pro', amount: '$30', status: 'success' },
-        { id: 'rev-2', user: 'Demo User', event: 'Renewal', plan: 'Pro', amount: '$49', status: 'success' },
-        { id: 'rev-3', user: 'Chi Vu', event: 'Payment Failed', plan: 'Free', amount: '$0', status: 'failed' },
-      ],
-    }
-  },
 
   async getAdminActions(params = {}) {
     await sleep(100)

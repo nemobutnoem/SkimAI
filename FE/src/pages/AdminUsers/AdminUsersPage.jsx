@@ -6,6 +6,11 @@ export function AdminUsersPage() {
   const [filters, setFilters] = useState({ q: '', type: 'all', status: 'all' })
   const [users, setUsers] = useState([])
   const [loading, setLoading] = useState(false)
+  const [metrics, setMetrics] = useState(null)
+
+  useEffect(() => {
+    appApi.getAdminUsersMetrics().then(setMetrics)
+  }, [])
 
   useEffect(() => {
     setLoading(true)
@@ -21,6 +26,14 @@ export function AdminUsersPage() {
           <h1>Admin Users</h1>
           <p className="hint">Track customer segments, plan mix, and usage quality in one table.</p>
         </div>
+      </div>
+
+      <div className="grid grid-4">
+        {(metrics?.metrics ?? []).map((item) => (
+          <Card key={item.label} title={item.label}>
+            <div className="kpi">{item.value}</div>
+          </Card>
+        ))}
       </div>
 
       <Card>
