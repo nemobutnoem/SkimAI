@@ -29,6 +29,7 @@ public class MarketTrendUpdater {
     }
 
     @EventListener(ApplicationReadyEvent.class)
+    @Transactional
     public void warmUp() {
         boolean needsBackfill = marketTrendRepository.findAll().stream()
                 .anyMatch(trend -> trend.getMarket() == null || trend.getMarket().isBlank());
