@@ -46,7 +46,7 @@ public class HomeService {
         }
 
         List<HomeDtos.TrendItem> fallback = List.of(
-                new HomeDtos.TrendItem("trend-ai-automation", "AI & Automation", "+34%", "positive", "Signals from AI Agent", 3, "Updated moments ago"),
+            new HomeDtos.TrendItem("trend-market-research", "Market Research", "+34%", "positive", "Signals from public source coverage", 3, "Updated moments ago"),
                 new HomeDtos.TrendItem("trend-mobility-consumer", "Mobility & Consumer", "+21%", "positive", "Signals from Electric bike", 3, "Updated moments ago"),
                 new HomeDtos.TrendItem("trend-commerce-platforms", "Commerce & Platforms", "+18%", "neutral", "Signals from TikTok Shop trends", 3, "Updated moments ago"),
                 new HomeDtos.TrendItem("trend-food-lifestyle", "Food & Lifestyle", "-6%", "negative", "Signals from Pho", 2, "Updated moments ago")
@@ -68,9 +68,9 @@ public class HomeService {
 
     private String formatSignalLabel(String keyword) {
         if (keyword == null || keyword.isBlank()) {
-            return "AI-generated market signal";
+            return "Market signal";
         }
-        return "AI signals from " + keyword;
+        return "Signals from " + keyword;
     }
 
     private String safeMarketLabel(String market, String keyword) {

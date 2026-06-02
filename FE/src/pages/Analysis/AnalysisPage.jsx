@@ -164,7 +164,7 @@ export function AnalysisPage() {
             <input
               value={draftKeyword}
               onChange={(e) => setDraftKeyword(e.target.value)}
-              placeholder="Try: phở, electric bike, AI agent, TikTok Shop trends..."
+              placeholder="Try: phở, electric bike, TikTok Shop trends, consumer demand..."
             />
             <Button
               onClick={() => {
@@ -379,7 +379,7 @@ export function AnalysisPage() {
               <strong>Status: {researchGuard.status}</strong>
               <p className="hint">
                 {canRunDeepInsight
-                  ? 'This keyword is valid for market analysis and deep insight.'
+                  ? 'This keyword is ready for market analysis and deep insight.'
                   : 'Deep insight is temporarily blocked until keyword intent improves.'}
               </p>
             </div>
@@ -394,53 +394,68 @@ export function AnalysisPage() {
       <section className="card ai-summary">
         <div className="analysis-section-heading">
           <div>
-            <div className="card-title">Keyword Overview</div>
-            <p className="hint">Core insights and adjacent keyword opportunities for this topic.</p>
+            <div className="card-title">Research Evidence</div>
+            <p className="hint">Current evidence, related keywords, and source signals for this topic.</p>
           </div>
         </div>
 
-        <div className="insight-grid">
-          {(data?.insights ?? []).map((item, i) => (
-            <InsightCard key={i} insight={item} index={i} />
-          ))}
-        </div>
+        {(data?.insights ?? []).length ? (
+          <div className="insight-grid">
+            {(data?.insights ?? []).map((item, i) => (
+              <InsightCard key={i} insight={item} index={i} />
+            ))}
+          </div>
+        ) : (
+          <div className="analysis-empty-state" style={{ marginTop: 16 }}>
+            No evidence summary was generated for this keyword yet.
+            <div className="hint" style={{ marginTop: 6 }}>
+              Run analysis with a stronger keyword or wait for more source coverage.
+            </div>
+          </div>
+        )}
 
         <div className="analysis-keyword-shelf">
           <div className="kw-shelf-header">
             <div>
-              <div className="analysis-subsection-title">Related keyword clusters</div>
-              <p className="hint" style={{ margin: '4px 0 0' }}>Adjacent topics detected from market signals</p>
+              <div className="analysis-subsection-title">Related keyword phrases</div>
+              <p className="hint" style={{ margin: '4px 0 0' }}>Adjacent terms detected from the current evidence set</p>
             </div>
-            <span className="kw-count-badge">{(data?.relatedKeywords ?? []).length} keywords</span>
+            <span className="kw-count-badge">{(data?.relatedKeywords ?? []).length} phrases</span>
           </div>
           <div className="keyword-table">
             <div className="kw-table-head">
               <span className="kw-th kw-th-rank">#</span>
-              <span className="kw-th kw-th-name">Keyword</span>
+              <span className="kw-th kw-th-name">Phrase</span>
               <span className="kw-th kw-th-metric">Views</span>
               <span className="kw-th kw-th-metric">Likes</span>
               <span className="kw-th kw-th-metric">Comments</span>
               <span className="kw-th kw-th-metric">Mentions</span>
               <span className="kw-th kw-th-bar">Strength</span>
             </div>
-            {(data?.relatedKeywords ?? []).map((km, index) => {
-              const score = (km.mentionCount || 0) * 100 + Math.log10(Math.max(1, (km.totalViews || 0) + ((km.totalLikes || 0) * 2) + ((km.totalComments || 0) * 3))) * 100
-              const maxScore = Math.max(...(data?.relatedKeywords ?? []).map((k) => (k.mentionCount || 0) * 100 + Math.log10(Math.max(1, (k.totalViews || 0) + ((k.totalLikes || 0) * 2) + ((k.totalComments || 0) * 3))) * 100), 1)
-              const barWidth = Math.max(15, (score / maxScore) * 100)
-              return (
-                <div className="kw-table-row" key={km.keyword || index}>
-                  <span className="kw-rank">{index + 1}</span>
-                  <span className="kw-name">{km.keyword}</span>
-                  <span className="kw-metric-val">{formatNumber(km.totalViews)}</span>
-                  <span className="kw-metric-val">{formatNumber(km.totalLikes)}</span>
-                  <span className="kw-metric-val">{formatNumber(km.totalComments)}</span>
-                  <span className="kw-metric-val kw-metric-mentions">{km.mentionCount}</span>
-                  <span className="kw-bar-cell">
-                    <div className="kw-bar" style={{ width: `${barWidth}%` }} />
-                  </span>
-                </div>
-              )
-            })}
+            {(data?.relatedKeywords ?? []).length ? (
+              (data?.relatedKeywords ?? []).map((km, index) => {
+                const score = (km.mentionCount || 0) * 100 + Math.log10(Math.max(1, (km.totalViews || 0) + ((km.totalLikes || 0) * 2) + ((km.totalComments || 0) * 3))) * 100
+                const maxScore = Math.max(...(data?.relatedKeywords ?? []).map((k) => (k.mentionCount || 0) * 100 + Math.log10(Math.max(1, (k.totalViews || 0) + ((k.totalLikes || 0) * 2) + ((k.totalComments || 0) * 3))) * 100), 1)
+                const barWidth = Math.max(15, (score / maxScore) * 100)
+                return (
+                  <div className="kw-table-row" key={km.keyword || index}>
+                    <span className="kw-rank">{index + 1}</span>
+                    <span className="kw-name">{km.keyword}</span>
+                    <span className="kw-metric-val">{formatNumber(km.totalViews)}</span>
+                    <span className="kw-metric-val">{formatNumber(km.totalLikes)}</span>
+                    <span className="kw-metric-val">{formatNumber(km.totalComments)}</span>
+                    <span className="kw-metric-val kw-metric-mentions">{km.mentionCount}</span>
+                    <span className="kw-bar-cell">
+                      <div className="kw-bar" style={{ width: `${barWidth}%` }} />
+                    </span>
+                  </div>
+                )
+              })
+            ) : (
+              <div className="analysis-empty-state" style={{ marginTop: 16 }}>
+                No related terms were detected yet.
+              </div>
+            )}
           </div>
         </div>
 
@@ -448,12 +463,12 @@ export function AnalysisPage() {
           {canRunDeepInsight ? (
             <Link to={`${ROUTES.DEEP_INSIGHT}?keyword=${encodeURIComponent(keyword)}`} className="ask-more-cta">
               <span className="ask-more-icon">AI</span>
-              <span>Ask AI for deeper insights {'->'}</span>
+              <span>Open deeper insights {'->'}</span>
             </Link>
           ) : (
             <button type="button" className="ask-more-cta ask-more-cta-disabled" disabled>
               <span className="ask-more-icon">AI</span>
-              <span>Refine keyword to unlock deep insight</span>
+              <span>Refine keyword to unlock deeper insights</span>
             </button>
           )}
         </div>

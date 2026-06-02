@@ -35,7 +35,7 @@ const SIGNAL_ICONS = ['📡', '💬', '⚔️']
 
 export function DeepInsightPage() {
   const [searchParams] = useSearchParams()
-  const keyword = searchParams.get('keyword') || 'AI Agent'
+  const keyword = searchParams.get('keyword') || ''
   const [analysisContext, setAnalysisContext] = useState(null)
   const [activeSource, setActiveSource] = useState('Cross-source synthesis')
   const [data, setData] = useState(null)
@@ -93,24 +93,24 @@ export function DeepInsightPage() {
   const aiFailed = hasAiError(data)
   const aiStatus = !data ? 'Waiting' : aiFailed ? 'Needs key fix' : 'Generated'
   const trendMessage = !data
-    ? 'Run AI to generate insight'
+    ? (!keyword ? 'Select a keyword on the Analysis page' : 'Run AI to generate insight')
     : aiFailed
       ? 'AI could not generate insight with the current key'
       : `AI generated from ${activeSource}`
   const signalSummary = !data
-    ? `No AI result yet for "${keyword}".`
+    ? (!keyword ? 'No keyword selected. Please choose a keyword on the Analysis page.' : `No AI result yet for "${keyword}".`)
     : data.marketInsight
   const recommendationSummary = !data
-    ? 'Press Run Analysis to generate the strategic recommendation.'
+    ? (!keyword ? 'No keyword selected.' : 'Press Run Analysis to generate the strategic recommendation.')
     : data.recommendation
   const stats = data?.stats ?? [
-    { value: keyword, label: 'Current Keyword' },
+    { value: keyword || '—', label: 'Current Keyword' },
     { value: activeSource, label: 'AI Source' },
     { value: aiStatus, label: 'AI Status' },
   ]
   const mediaSignals = data?.mediaSignals ?? [
     {
-      title: 'AI summary state',
+      title: 'Evidence summary state',
       desc: signalSummary,
     },
     {
@@ -153,11 +153,11 @@ export function DeepInsightPage() {
         <div>
           <p className="dashboard-kicker">Deep Analysis</p>
           <h1>AI Deep Insight</h1>
-          <p className="hint">AI-powered recommendations from your collected market research data.</p>
+          <p className="hint">Recommendations built from your collected market research data.</p>
         </div>
         <div className="header-actions">
           <Button variant="secondary" className="btn-sm">Export Report</Button>
-          <Link to={`${ROUTES.ANALYSIS}?keyword=${encodeURIComponent(keyword)}`} className="btn btn-primary btn-sm">← Back to Analysis</Link>
+          <Link to={keyword ? `${ROUTES.ANALYSIS}?keyword=${encodeURIComponent(keyword)}` : ROUTES.ANALYSIS} className="btn btn-primary btn-sm">← Back to Analysis</Link>
         </div>
       </div>
 
@@ -165,14 +165,14 @@ export function DeepInsightPage() {
       <div className="di-data-input-card">
         <div className="di-card-header-row">
           <h4>⚡ AI Input Configuration</h4>
-          <Button onClick={load} disabled={loading} className="btn-sm">
+          <Button onClick={load} disabled={loading || !keyword} className="btn-sm">
             {loading ? '⏳ Analyzing...' : '🚀 Run Analysis'}
           </Button>
         </div>
         <div className="di-keyword-box">
           <div className="di-input-label">Research keyword</div>
-          <div className="di-keyword-value">{keyword}</div>
-          <div className="hint">Carried from the analysis page. Select a source and press Run Analysis.</div>
+          <div className="di-keyword-value">{keyword || '— No keyword selected —'}</div>
+          <div className="hint">{keyword ? 'Carried from the analysis page. Select a source and press Run Analysis.' : 'Go to Analysis and select a keyword to enable AI insights.'}</div>
         </div>
 
         <div className="di-input-label">Data Sources</div>
@@ -309,10 +309,7 @@ export function DeepInsightPage() {
         </div>
       </div>
 
-      <Link to={ROUTES.ASK_EXPERT} className="di-ask-expert-float">
-        <span className="di-expert-icon">🧑‍🔬</span>
-        Ask an expert
-      </Link>
+      {/* Ask Expert removed */}
 
       {showUpgradeModal ? (
         <div className="upgrade-modal-overlay" onClick={() => setShowUpgradeModal(false)}>

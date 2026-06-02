@@ -22,13 +22,14 @@ public class MarketTrendUpdater {
 
     public MarketTrendUpdater(MarketTrendRepository marketTrendRepository,
                               AiProvider aiProvider,
-                              @Value("${home.live-trends.seed-keywords:AI & Automation=AI Agent|Generative AI|AI automation;Mobility & Consumer=Electric bike|Urban mobility|EV commute;Commerce & Platforms=TikTok Shop trends|Social Commerce|Creator commerce;Food & Lifestyle=Pho|Vietnamese street food|Quick noodle recipes}") String seedKeywords) {
+                              @Value("${home.live-trends.seed-keywords:Market Research=consumer demand|market signals|category growth;Mobility & Consumer=Electric bike|Urban mobility|EV commute;Commerce & Platforms=TikTok Shop trends|Social Commerce|Creator commerce;Food & Lifestyle=Pho|Vietnamese street food|Quick noodle recipes}") String seedKeywords) {
         this.marketTrendRepository = marketTrendRepository;
         this.aiProvider = aiProvider;
         this.seedKeywords = seedKeywords;
     }
 
     @EventListener(ApplicationReadyEvent.class)
+    @Transactional
     public void warmUp() {
         boolean needsBackfill = marketTrendRepository.findAll().stream()
                 .anyMatch(trend -> trend.getMarket() == null || trend.getMarket().isBlank());
@@ -98,7 +99,7 @@ public class MarketTrendUpdater {
 
     private void seedFallbackTrends() {
         List<MarketSeed> defaults = List.of(
-                new MarketSeed("AI & Automation", List.of("AI Agent")),
+            new MarketSeed("Market Research", List.of("consumer demand")),
                 new MarketSeed("Mobility & Consumer", List.of("Electric bike")),
                 new MarketSeed("Commerce & Platforms", List.of("TikTok Shop trends")),
                 new MarketSeed("Food & Lifestyle", List.of("Pho"))
