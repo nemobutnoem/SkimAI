@@ -21,10 +21,19 @@ Yêu cầu phân tích:
 
 * Xác định thị trường đang tăng trưởng, giảm sút hay ổn định.
 * Đánh giá mức độ quan tâm hiện tại: cao / trung bình / thấp.
+* Đưa ra Market Score từ 0-100 nếu dữ liệu đủ để chấm.
+* Ghi rõ độ tin cậy: cao / vừa / thấp.
+* Nêu 2-4 lý do trực tiếp từ dữ liệu dẫn đến kết luận.
+* Nêu caveat hoặc dữ liệu còn thiếu nếu kết luận chưa đủ chắc.
 
 3. Tiềm năng thị trường
 
 * Nhận định ngắn gọn về cơ hội phát triển của từ khóa dựa trên dữ liệu.
+* Xác định cơ hội chính nếu có: nhóm nhu cầu, cụm keyword, nguồn hoặc hành vi nổi bật.
+* Đưa ra Opportunity Score từ 0-100 nếu dữ liệu đủ để chấm.
+* Giải thích vì sao cơ hội đó đáng chú ý.
+* Nêu rủi ro hoặc điểm cần kiểm chứng thêm.
+* Đề xuất next move cụ thể để kiểm chứng hoặc khai thác cơ hội.
 * Không suy đoán ngoài phạm vi dữ liệu được cung cấp.
 
 4. Kênh tiếp cận phù hợp
@@ -49,11 +58,20 @@ Quy tắc trả lời:
 
 ## Đánh giá tổng thể
 
-* ...
+* Market verdict: ...
+* Market score: .../100
+* Mức quan tâm: ...
+* Độ tin cậy: ...
+* Lý do: ...
+* Caveat / dữ liệu còn thiếu: ...
 
 ## Tiềm năng thị trường
 
-* ...
+* Cơ hội chính: ...
+* Opportunity score: .../100
+* Vì sao đáng chú ý: ...
+* Rủi ro / điểm cần kiểm chứng: ...
+* Next move: ...
 
 ## Kênh tiếp cận đề xuất
 

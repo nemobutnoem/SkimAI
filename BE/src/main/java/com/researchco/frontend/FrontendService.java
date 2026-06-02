@@ -1023,15 +1023,34 @@ public class FrontendService {
 
     private LocaleProfile resolveLocaleProfile(String keyword) {
         String value = keyword == null ? "" : keyword.trim().toLowerCase(Locale.ROOT);
-        boolean hasNonAscii = value.chars().anyMatch(ch -> ch > 127);
-        boolean vietnameseHint = hasNonAscii
-                || value.contains("pho")
-                || value.contains("viet")
-                || value.contains("banh")
-                || value.contains("shopee")
-                || value.contains("tiki")
-                || value.contains("zalo");
+        String normalizedValue = Normalizer.normalize(value, Normalizer.Form.NFD)
+                .replaceAll("\\p{M}+", "")
+                .replace('đ', 'd')
+                .replace('Đ', 'D')
+                .toLowerCase(Locale.ROOT);
+        Set<String> localeTokens = List.of(normalizedValue.split("\\s+")).stream()
+                .map(token -> token.replaceAll("[^\\p{L}\\p{N}]", ""))
+                .filter(token -> !token.isBlank())
+                .collect(Collectors.toSet());
+        boolean vietnameseHint = hasVietnameseDiacritic(value)
+                || localeTokens.contains("pho")
+                || localeTokens.contains("viet")
+                || localeTokens.contains("vietnam")
+                || value.contains("viet nam")
+                || value.contains("việt nam")
+                || localeTokens.contains("banh")
+                || localeTokens.contains("shopee")
+                || localeTokens.contains("tiki")
+                || localeTokens.contains("zalo");
         return vietnameseHint ? new LocaleProfile("VN", "vi") : new LocaleProfile("US", "en");
+    }
+
+    private boolean hasVietnameseDiacritic(String value) {
+        if (value == null || value.isBlank()) {
+            return false;
+        }
+        String lower = value.toLowerCase(Locale.ROOT);
+        return lower.matches(".*[ăâđêôơưáàảãạắằẳẵặấầẩẫậéèẻẽẹếềểễệíìỉĩịóòỏõọốồổỗộớờởỡợúùủũụứừửữựýỳỷỹỵ].*");
     }
 
     private List<String> tokenize(String value) {

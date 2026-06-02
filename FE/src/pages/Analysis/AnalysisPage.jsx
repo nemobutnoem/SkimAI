@@ -6,6 +6,10 @@ import { appApi } from '../../services/appApi'
 
 const NO_DATA = 'không có dữ liệu để đánh giá'
 
+function clamp(value, min = 0, max = 100) {
+  return Math.max(min, Math.min(max, value))
+}
+
 function formatNumber(num) {
   if (!num && num !== 0) return '0'
   if (num >= 1000000) return `${(num / 1000000).toFixed(1)}M`
@@ -114,6 +118,8 @@ function buildOverallRead(data, sourceRows, timelinePoints) {
   const totalMentions = keywords.reduce((sum, item) => sum + (item.mentionCount || 0), 0)
   const totalViews = keywords.reduce((sum, item) => sum + (item.totalViews || 0), 0)
   const totalComments = keywords.reduce((sum, item) => sum + (item.totalComments || 0), 0)
+  const sourceCount = sourceRows.filter((row) => row.count > 0).length
+  const evidenceCoverage = Number(data?.dataQuality?.evidenceCoveragePct ?? 0)
   const avgEngagement = keywords.length
     ? keywords.reduce((sum, item) => sum + (item.avgEngagement || 0), 0) / keywords.length
     : 0
@@ -130,30 +136,106 @@ function buildOverallRead(data, sourceRows, timelinePoints) {
     marketState = 'giảm sút'
   }
 
-  const signalScore = totalMentions + totalComments + Math.round(avgEngagement * 1000) + sourceRows.filter((row) => row.count > 0).length * 5
-  const interestLevel = signalScore >= 80 || totalViews >= 100000 ? 'cao' : signalScore >= 25 || totalViews >= 1000 ? 'trung bình' : 'thấp'
+  const viewScore = clamp(Math.round(Math.log10(Math.max(1, totalViews)) * 8), 0, 30)
+  const discussionScore = clamp(Math.round(Math.log10(Math.max(1, totalComments + 1)) * 10), 0, 20)
+  const keywordScore = clamp(Math.round(totalMentions * 1.2), 0, 16)
+  const engagementScore = clamp(Math.round(avgEngagement * 250), 0, 14)
+  const diversityScore = clamp(sourceCount * 4, 0, 16)
+  const growthScore = marketState === 'tăng trưởng' ? 8 : marketState === 'giảm sút' ? -6 : 3
+  const rawMarketScore = clamp(Math.round(viewScore + discussionScore + keywordScore + engagementScore + diversityScore + growthScore), 0, 100)
+  const marketScore = totalViews < 1000 && totalComments < 30
+    ? Math.min(rawMarketScore, 58)
+    : totalViews < 5000 && totalComments < 50
+      ? Math.min(rawMarketScore, 68)
+      : rawMarketScore
+  const interestLevel = marketScore >= 70 ? 'cao' : marketScore >= 40 ? 'trung bình' : 'thấp'
+  const confidenceScore = clamp(Math.round((evidenceCoverage * 0.45) + (diversityScore * 1.4) + (keywords.length * 6) + (totalComments > 0 ? 8 : 0)), 0, 100)
+  const confidenceBand = confidenceScore >= 75 ? 'cao' : confidenceScore >= 45 ? 'vừa' : 'thấp'
   const hasData = keywords.length || sourceRows.some((row) => row.count > 0)
+  const evidenceReasons = [
+    `${formatNumber(totalViews)} views quan sát được`,
+    `${formatNumber(totalComments)} bình luận từ dữ liệu hiện có`,
+    `${formatNumber(totalMentions)} tín hiệu keyword`,
+    `${sourceCount} nguồn có bằng chứng trực tiếp`,
+  ]
+  const missingData = [
+    totalComments < 30 ? 'Thảo luận còn mỏng nên khó kết luận nhu cầu mua thật.' : null,
+    sourceCount < 4 ? 'Độ đa dạng nguồn còn thấp, dễ bị lệch bởi một vài website.' : null,
+    evidenceCoverage < 60 ? 'Evidence coverage chưa đủ mạnh để chấm confidence cao.' : null,
+    keywords.length < 3 ? 'Cụm keyword liên quan còn ít, cần mở rộng truy vấn.' : null,
+  ].filter(Boolean)
 
   return {
     hasData,
     marketState,
     interestLevel,
+    marketScore,
+    confidenceScore,
+    confidenceBand,
     totalMentions,
     totalViews,
     totalComments,
     avgEngagement,
-    coverage: data?.dataQuality?.evidenceCoveragePct ?? 0,
+    sourceCount,
+    evidenceReasons,
+    missingData,
+    coverage: evidenceCoverage,
   }
 }
 
-function pickMarketPotential(data, overall) {
+function buildOpportunityRead(data, overall, sourceRows) {
   const keywords = data?.relatedKeywords ?? []
-  if (!overall.hasData) return noDataFor('tiềm năng thị trường')
-  const strongest = [...keywords].sort((a, b) => (b.mentionCount || 0) - (a.mentionCount || 0))[0]
-  if (!strongest) {
-    return `Từ khóa có tín hiệu ${overall.interestLevel}, nhưng cụm cơ hội liên quan còn thiếu dữ liệu cụ thể.`
+  if (!overall.hasData) {
+    return {
+      title: noDataFor('tiềm năng thị trường'),
+      score: 0,
+      band: 'chưa đủ dữ liệu',
+      why: [noDataFor('cơ hội phát triển')],
+      risk: 'Thiếu tín hiệu nguồn và cụm keyword để xác định cơ hội.',
+      nextMove: 'Mở rộng nguồn dữ liệu hoặc thử keyword có intent rõ hơn.',
+      strongest: null,
+    }
   }
-  return `Cơ hội nằm ở cụm "${strongest.keyword}" với ${strongest.mentionCount || 0} lần lặp lại; nên ưu tiên kiểm chứng thêm trước khi mở rộng.`
+  const strongest = [...keywords].sort((a, b) => (b.mentionCount || 0) - (a.mentionCount || 0))[0]
+  const bestSource = sourceRows.find((row) => row.count > 0)
+  if (!strongest) {
+    return {
+      title: `Từ khóa có tín hiệu ${overall.interestLevel}, nhưng chưa thấy cụm cơ hội rõ.`,
+      score: clamp(Math.round(overall.marketScore * 0.45), 0, 100),
+      band: 'thấp',
+      why: ['Có dữ liệu thị trường tổng quan nhưng thiếu keyword cluster nổi bật.'],
+      risk: 'Chưa đủ dữ liệu cụm intent để xác định hướng tăng trưởng.',
+      nextMove: 'Thu thêm dữ liệu theo các intent: giá, so sánh, mua, review, đối thủ.',
+      strongest: null,
+    }
+  }
+  const mentionScore = clamp((strongest.mentionCount || 0) * 10, 0, 35)
+  const engagementSignal = clamp(Math.round((strongest.avgEngagement || overall.avgEngagement) * 300), 0, 20)
+  const sourceSignal = clamp(overall.sourceCount * 6, 0, 20)
+  const marketSignal = clamp(Math.round(overall.marketScore * 0.25), 0, 25)
+  const rawScore = clamp(mentionScore + engagementSignal + sourceSignal + marketSignal, 0, 100)
+  const score = (strongest.mentionCount || 0) < 5 && overall.totalComments < 30
+    ? Math.min(rawScore, 48)
+    : rawScore
+  const band = score >= 70 ? 'mạnh' : score >= 40 ? 'vừa' : 'yếu'
+  const why = [
+    `"${strongest.keyword}" là cụm lặp lại nhiều nhất (${strongest.mentionCount || 0} lần).`,
+    `${bestSource ? `${bestSource.source} là nguồn có tín hiệu nổi bật nhất (${bestSource.count}).` : 'Chưa có nguồn nổi bật rõ ràng.'}`,
+    `Market score hiện tại là ${overall.marketScore}/100, mức quan tâm ${overall.interestLevel}.`,
+  ]
+  const risk = score < 50
+    ? 'Tín hiệu cơ hội còn sớm; chưa nên xem đây là nhu cầu thị trường lớn.'
+    : 'Cơ hội có tín hiệu đáng chú ý nhưng vẫn cần kiểm chứng bằng dữ liệu theo intent mua/so sánh.'
+  const nextMove = `Kiểm chứng thêm các truy vấn liên quan đến "${strongest.keyword}" như giá, review, so sánh, mua ở đâu và đối thủ trực tiếp.`
+  return {
+    title: `Cơ hội chính nằm ở cụm "${strongest.keyword}".`,
+    score,
+    band,
+    why,
+    risk,
+    nextMove,
+    strongest,
+  }
 }
 
 function pickChannelRecommendation(sourceRows, overall) {
@@ -217,7 +299,7 @@ export function AnalysisPage() {
 
   const sourceRows = useMemo(() => buildSourceTrendRows(data, evidenceItems), [data, evidenceItems])
   const overall = useMemo(() => buildOverallRead(data, sourceRows, timelinePoints), [data, sourceRows, timelinePoints])
-  const marketPotential = useMemo(() => pickMarketPotential(data, overall), [data, overall])
+  const opportunityRead = useMemo(() => buildOpportunityRead(data, overall, sourceRows), [data, overall, sourceRows])
   const channelRecommendation = useMemo(() => pickChannelRecommendation(sourceRows, overall), [sourceRows, overall])
   const topKeywords = (data?.relatedKeywords ?? []).slice(0, 5)
   const researchGuard = data?.researchGuard ?? null
@@ -347,22 +429,75 @@ export function AnalysisPage() {
       </InsightSection>
 
       <InsightSection title="Đánh giá tổng thể" badge="02">
-        <ul className="prompt-bullet-list">
-          <li>
-            {overall.hasData
-              ? `Thị trường đang ${overall.marketState}; mức quan tâm hiện tại ${overall.interestLevel}.`
-              : noDataFor('đánh giá tổng thể')}
-          </li>
-          <li>
-            {overall.hasData
-              ? `Dữ liệu ghi nhận ${formatNumber(overall.totalViews)} views, ${formatNumber(overall.totalComments)} bình luận và ${formatNumber(overall.totalMentions)} tín hiệu keyword.`
-              : noDataFor('mức độ quan tâm hiện tại')}
-          </li>
-        </ul>
+        <div className="decision-grid">
+          <div className="decision-score-card">
+            <span className="decision-label">Market score</span>
+            <strong>{overall.hasData ? `${overall.marketScore}/100` : 'N/A'}</strong>
+            <div className="score-track">
+              <div className="score-fill" style={{ width: `${overall.hasData ? overall.marketScore : 0}%` }} />
+            </div>
+            <p>{overall.hasData ? `Mức quan tâm: ${overall.interestLevel}` : noDataFor('mức độ quan tâm hiện tại')}</p>
+          </div>
+          <div className="decision-verdict">
+            <span className="decision-label">Market verdict</span>
+            <h4>{overall.hasData ? `Thị trường đang ${overall.marketState}` : noDataFor('đánh giá tổng thể')}</h4>
+            <p>
+              {overall.hasData
+                ? `Confidence ở mức ${overall.confidenceBand} (${overall.confidenceScore}/100), dựa trên coverage ${Number(overall.coverage)}%, ${overall.sourceCount} nguồn và ${formatNumber(overall.totalComments)} bình luận.`
+                : noDataFor('độ tin cậy')}
+            </p>
+          </div>
+        </div>
+        <div className="decision-detail-grid">
+          <div>
+            <div className="analysis-subsection-title">Vì sao hệ thống kết luận như vậy</div>
+            <ul className="prompt-bullet-list">
+              {(overall.hasData ? overall.evidenceReasons : [noDataFor('bằng chứng đánh giá tổng thể')]).map((reason) => (
+                <li key={reason}>{reason}</li>
+              ))}
+            </ul>
+          </div>
+          <div>
+            <div className="analysis-subsection-title">Caveat / dữ liệu còn thiếu</div>
+            <ul className="prompt-bullet-list">
+              {(overall.missingData.length ? overall.missingData : ['Dữ liệu hiện đủ cho kết luận sơ bộ, vẫn nên kiểm chứng thêm trước quyết định lớn.']).map((item) => (
+                <li key={item}>{item}</li>
+              ))}
+            </ul>
+          </div>
+        </div>
       </InsightSection>
 
       <InsightSection title="Tiềm năng thị trường" badge="03">
-        <p className="prompt-main-text">{marketPotential}</p>
+        <div className="decision-grid">
+          <div className="decision-score-card opportunity-score">
+            <span className="decision-label">Opportunity score</span>
+            <strong>{opportunityRead.score}/100</strong>
+            <div className="score-track">
+              <div className="score-fill" style={{ width: `${opportunityRead.score}%` }} />
+            </div>
+            <p>Độ mạnh tín hiệu: {opportunityRead.band}</p>
+          </div>
+          <div className="decision-verdict">
+            <span className="decision-label">Top opportunity</span>
+            <h4>{opportunityRead.title}</h4>
+            <p>{opportunityRead.risk}</p>
+          </div>
+        </div>
+        <div className="decision-detail-grid">
+          <div>
+            <div className="analysis-subsection-title">Why it matters</div>
+            <ul className="prompt-bullet-list">
+              {opportunityRead.why.map((item) => (
+                <li key={item}>{item}</li>
+              ))}
+            </ul>
+          </div>
+          <div>
+            <div className="analysis-subsection-title">Recommended next move</div>
+            <p className="prompt-main-text">{opportunityRead.nextMove}</p>
+          </div>
+        </div>
         {topKeywords.length ? (
           <div className="compact-keyword-list">
             {topKeywords.map((item) => (
@@ -406,74 +541,6 @@ export function AnalysisPage() {
           </div>
         </section>
       ) : null}
-
-      <section className="card ai-summary">
-        <div className="analysis-section-heading">
-          <div>
-            <div className="card-title">Keyword Overview</div>
-            <p className="hint">Core insights and adjacent keyword opportunities for this topic.</p>
-          </div>
-        </div>
-
-        <div className="insight-grid">
-          {(data?.insights ?? []).map((item, i) => (
-            <InsightCard key={i} insight={item} index={i} />
-          ))}
-        </div>
-
-        <div className="analysis-keyword-shelf">
-          <div className="kw-shelf-header">
-            <div>
-              <div className="analysis-subsection-title">Related keyword clusters</div>
-              <p className="hint" style={{ margin: '4px 0 0' }}>Adjacent topics detected from market signals</p>
-            </div>
-            <span className="kw-count-badge">{(data?.relatedKeywords ?? []).length} keywords</span>
-          </div>
-          <div className="keyword-table">
-            <div className="kw-table-head">
-              <span className="kw-th kw-th-rank">#</span>
-              <span className="kw-th kw-th-name">Keyword</span>
-              <span className="kw-th kw-th-metric">Views</span>
-              <span className="kw-th kw-th-metric">Likes</span>
-              <span className="kw-th kw-th-metric">Comments</span>
-              <span className="kw-th kw-th-metric">Mentions</span>
-              <span className="kw-th kw-th-bar">Strength</span>
-            </div>
-            {(data?.relatedKeywords ?? []).map((km, index) => {
-              const score = (km.mentionCount || 0) * 100 + Math.log10(Math.max(1, (km.totalViews || 0) + ((km.totalLikes || 0) * 2) + ((km.totalComments || 0) * 3))) * 100
-              const maxScore = Math.max(...(data?.relatedKeywords ?? []).map((k) => (k.mentionCount || 0) * 100 + Math.log10(Math.max(1, (k.totalViews || 0) + ((k.totalLikes || 0) * 2) + ((k.totalComments || 0) * 3))) * 100), 1)
-              const barWidth = Math.max(15, (score / maxScore) * 100)
-              return (
-                <div className="kw-table-row" key={km.keyword || index}>
-                  <span className="kw-rank">{index + 1}</span>
-                  <span className="kw-name">{km.keyword}</span>
-                  <span className="kw-metric-val">{formatNumber(km.totalViews)}</span>
-                  <span className="kw-metric-val">{formatNumber(km.totalLikes)}</span>
-                  <span className="kw-metric-val">{formatNumber(km.totalComments)}</span>
-                  <span className="kw-metric-val kw-metric-mentions">{km.mentionCount}</span>
-                  <span className="kw-bar-cell">
-                    <div className="kw-bar" style={{ width: `${barWidth}%` }} />
-                  </span>
-                </div>
-              )
-            })}
-          </div>
-        </div>
-
-        <div className="ask-more">
-          {canRunDeepInsight ? (
-            <Link to={`${ROUTES.DEEP_INSIGHT}?keyword=${encodeURIComponent(keyword)}`} className="ask-more-cta">
-              <span className="ask-more-icon">AI</span>
-              <span>Ask AI for deeper insights {'->'}</span>
-            </Link>
-          ) : (
-            <button type="button" className="ask-more-cta ask-more-cta-disabled" disabled>
-              <span className="ask-more-icon">AI</span>
-              <span>Refine keyword to unlock deep insight</span>
-            </button>
-          )}
-        </div>
-      </section>
 
       <section className="card">
         <div className="analysis-section-heading">

@@ -1210,6 +1210,86 @@ textarea { resize: vertical; }
   line-height: 1.7;
 }
 
+.decision-grid {
+  display: grid;
+  grid-template-columns: minmax(220px, 0.35fr) minmax(0, 1fr);
+  gap: 14px;
+}
+
+.decision-score-card,
+.decision-verdict {
+  padding: 16px;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  background: var(--gray-50);
+}
+
+.decision-score-card {
+  display: grid;
+  align-content: start;
+  gap: 10px;
+}
+
+.decision-label {
+  color: var(--text-secondary);
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.decision-score-card strong {
+  color: var(--text-primary);
+  font-size: clamp(28px, 4vw, 42px);
+  line-height: 1;
+}
+
+.decision-score-card p,
+.decision-verdict p {
+  margin: 0;
+  color: var(--text-secondary);
+  font-size: 13px;
+  line-height: 1.55;
+}
+
+.decision-verdict h4 {
+  margin: 8px 0 8px;
+  font-size: 22px;
+  line-height: 1.25;
+}
+
+.score-track {
+  height: 8px;
+  border-radius: var(--radius-full);
+  background: var(--gray-200);
+  overflow: hidden;
+}
+
+.score-fill {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, var(--primary), var(--green));
+}
+
+.opportunity-score .score-fill {
+  background: linear-gradient(90deg, var(--blue), var(--primary));
+}
+
+.decision-detail-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+  margin-top: 14px;
+}
+
+.decision-detail-grid > div {
+  padding: 14px;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  background: var(--white);
+}
+
 .compact-keyword-list {
   display: flex;
   flex-wrap: wrap;
@@ -2371,6 +2451,11 @@ code {
 
   .source-trend-row {
     flex-direction: column;
+  }
+
+  .decision-grid,
+  .decision-detail-grid {
+    grid-template-columns: 1fr;
   }
 
   .insight-grid,
