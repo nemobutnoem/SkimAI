@@ -52,6 +52,6 @@ integration:
 
 home:
   live-trends:
-    seed-keywords: ${HOME_LIVE_TRENDS_SEEDS:AI & Automation=AI Agent|Generative AI|AI automation;Mobility & Consumer=Electric bike|Urban mobility|EV commute;Commerce & Platforms=TikTok Shop trends|Social Commerce|Creator commerce;Food & Lifestyle=Pho|Vietnamese street food|Quick noodle recipes}
+    seed-keywords: ${HOME_LIVE_TRENDS_SEEDS:Market Research=consumer demand|market signals|category growth;Mobility & Consumer=Electric bike|Urban mobility|EV commute;Commerce & Platforms=TikTok Shop trends|Social Commerce|Creator commerce;Food & Lifestyle=Pho|Vietnamese street food|Quick noodle recipes}
     refresh-ms: ${HOME_LIVE_TRENDS_REFRESH_MS:3600000}
 

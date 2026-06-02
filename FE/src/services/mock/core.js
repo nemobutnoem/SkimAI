@@ -124,7 +124,7 @@ export const DB = {
     {
       id: 'q-111',
       user_id: '11111111-1111-1111-1111-111111111111',
-      keyword: 'AI Agent',
+      keyword: 'consumer demand',
       country_code: 'VN',
       language_code: 'vi',
       time_range: '30d',

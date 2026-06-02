@@ -32,7 +32,7 @@ export function HomePage() {
           Market Insights in <span className="highlight">Seconds</span>, Not Weeks
         </h1>
         <p className="hero-subtitle">
-          AI-powered analysis and real-time trend detection to help you make smarter business decisions instantly.
+          Market intelligence and real-time signal detection to help you make smarter business decisions instantly.
         </p>
 
         <div className="input-row">

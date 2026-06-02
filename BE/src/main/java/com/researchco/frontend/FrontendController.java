@@ -37,37 +37,37 @@ public class FrontendController {
     }
 
     @GetMapping("/analysis")
-    public FrontendDtos.AnalysisResponse getAnalysis(@RequestParam(name = "keyword", defaultValue = "AI Agent") String keyword) {
+    public FrontendDtos.AnalysisResponse getAnalysis(@RequestParam(name = "keyword", defaultValue = "") String keyword) {
         return frontendService.getAnalysis(keyword);
     }
 
     @GetMapping("/analysis/project")
-    public FrontendDtos.ProjectWorkflowResponse getProjectWorkflow(@RequestParam(name = "keyword", defaultValue = "AI Agent") String keyword) {
+    public FrontendDtos.ProjectWorkflowResponse getProjectWorkflow(@RequestParam(name = "keyword", defaultValue = "") String keyword) {
         return frontendService.getProjectWorkflow(keyword);
     }
 
     @GetMapping("/analysis/alerts")
-    public List<FrontendDtos.AlertItem> getAnalysisAlerts(@RequestParam(name = "keyword", defaultValue = "AI Agent") String keyword) {
+    public List<FrontendDtos.AlertItem> getAnalysisAlerts(@RequestParam(name = "keyword", defaultValue = "") String keyword) {
         return frontendService.getAnalysisAlerts(keyword);
     }
 
     @GetMapping("/analysis/competitor")
-    public List<FrontendDtos.CompetitorSignal> getCompetitorSignals(@RequestParam(name = "keyword", defaultValue = "AI Agent") String keyword) {
+    public List<FrontendDtos.CompetitorSignal> getCompetitorSignals(@RequestParam(name = "keyword", defaultValue = "") String keyword) {
         return frontendService.getCompetitorSignals(keyword);
     }
 
     @GetMapping("/analysis/evidence")
-    public List<FrontendDtos.EvidenceItem> getAnalysisEvidence(@RequestParam(name = "keyword", defaultValue = "AI Agent") String keyword) {
+    public List<FrontendDtos.EvidenceItem> getAnalysisEvidence(@RequestParam(name = "keyword", defaultValue = "") String keyword) {
         return frontendService.getAnalysisEvidence(keyword);
     }
 
     @GetMapping("/analysis/compare")
-    public List<FrontendDtos.CompareItem> getAnalysisCompare(@RequestParam(name = "keyword", defaultValue = "AI Agent") String keyword) {
+    public List<FrontendDtos.CompareItem> getAnalysisCompare(@RequestParam(name = "keyword", defaultValue = "") String keyword) {
         return frontendService.getAnalysisCompare(keyword);
     }
 
     @GetMapping("/analysis/timeline")
-    public List<FrontendDtos.TimeSeriesPoint> getAnalysisTimeline(@RequestParam(name = "keyword", defaultValue = "AI Agent") String keyword) {
+    public List<FrontendDtos.TimeSeriesPoint> getAnalysisTimeline(@RequestParam(name = "keyword", defaultValue = "") String keyword) {
         return frontendService.getAnalysisTimeline(keyword);
     }
 

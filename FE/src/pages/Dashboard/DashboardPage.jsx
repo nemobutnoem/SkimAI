@@ -26,7 +26,7 @@ export function DashboardPage() {
   }, [])
 
   const quickActions = [
-    { label: 'Run new analysis', hint: 'Start a fresh keyword research flow', to: `${ROUTES.ANALYSIS}?keyword=AI Agent` },
+    { label: 'Run new analysis', hint: 'Start a fresh keyword research flow', to: ROUTES.ANALYSIS },
     { label: 'Open pricing', hint: 'Compare plans and upgrade access', to: ROUTES.PRICING },
     { label: 'Manage account', hint: 'Review billing and notifications', to: ROUTES.ACCOUNT },
   ]

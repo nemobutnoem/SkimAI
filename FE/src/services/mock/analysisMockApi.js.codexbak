@@ -37,7 +37,7 @@ export const analysisMockApi = {
     })
   },
 
-  async getAnalysis(keyword = 'AI Agent') {
+  async getAnalysis(keyword = '') {
     await sleep(280)
 
     const query = findQueryByKeyword(keyword)

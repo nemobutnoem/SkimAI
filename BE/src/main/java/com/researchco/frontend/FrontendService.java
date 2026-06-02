@@ -37,6 +37,7 @@ import org.springframework.http.HttpStatus;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
+import java.text.Normalizer;
 import java.net.URI;
 import java.net.URLEncoder;
 import java.net.http.HttpClient;
@@ -232,36 +233,7 @@ public class FrontendService {
                 .toList();
 
         String kw = query.getKeyword();
-        List<FrontendDtos.InsightItem> fallbackInsights = List.of(
-                new FrontendDtos.InsightItem(
-                        "Trend Insight",
-                        "Search interest for \"" + kw + "\" is showing steady activity. Consumer attention typically peaks during key seasonal windows.",
-                        "Cross-source synthesis",
-                        61,
-                        "Limited live evidence. Expand source coverage for stronger confidence."
-                ),
-                new FrontendDtos.InsightItem(
-                        "Media Signal",
-                        "Limited media coverage detected for \"" + kw + "\". Expanding source coverage may reveal additional market signals.",
-                        "Cross-source synthesis",
-                        58,
-                        "Few active source records found for this keyword."
-                ),
-                new FrontendDtos.InsightItem(
-                        "Social Sentiment",
-                        "Sentiment data for \"" + kw + "\" is still being collected. Initial signals suggest neutral-to-positive reception.",
-                        "Cross-source synthesis",
-                        56,
-                        "Not enough engagement data to form high-confidence sentiment."
-                ),
-                new FrontendDtos.InsightItem(
-                        "Keyword Opportunity",
-                        "Related keyword data for \"" + kw + "\" is limited. Consider broadening search scope to uncover emerging opportunities.",
-                        "Cross-source synthesis",
-                        59,
-                        "Adjacent keyword evidence is currently sparse."
-                )
-        );
+        List<FrontendDtos.InsightItem> fallbackInsights = List.of();
 
         return new FrontendDtos.AnalysisResponse(
                 kw,
@@ -270,10 +242,7 @@ public class FrontendService {
                 availableAnalysisSources(),
                 fallbackInsights,
                 keywords,
-                news.isEmpty() ? List.of(
-                        "Recent public content is still limited for this keyword.",
-                        "Expand source coverage to improve depth."
-                ) : news,
+                news,
                 List.of("Compare competitors", "Forecast demand", "Analyze top keywords", "Audience insights"),
                 new FrontendDtos.DataQuality(
                         120,
@@ -288,8 +257,7 @@ public class FrontendService {
     @Transactional
     public FrontendDtos.DeepInsightResponse getDeepInsight(FrontendDtos.DeepInsightRequest request) {
         UserEntity user = preferredUser();
-        UserSubscriptionEntity subscription = userSubscriptionRepository
-                .findFirstByUserAndStatusOrderByStartDateDesc(user, "ACTIVE")
+        UserSubscriptionEntity subscription = userSubscriptionRepository.findFirstByUserAndStatusOrderByStartDateDesc(user, "ACTIVE")
                 .orElse(null);
 
         FrontendDtos.AnalysisResponse analysis = getAnalysis(request.keyword());
@@ -333,7 +301,7 @@ public class FrontendService {
                     ),
                     new FrontendDtos.StrategicRecommendation(
                             "Strengthen input signal first",
-                            "This keyword currently lacks market-grade evidence. Improve intent quality, then re-run deep insight.",
+                            "This keyword currently lacks enough evidence from the connected sources. Improve intent quality, then re-run deep insight.",
                             List.of(
                                     new FrontendDtos.StatItem(String.valueOf(analysis.researchGuard().intentScore()), "Current score"),
                                     new FrontendDtos.StatItem("70+", "Target score"),
@@ -772,7 +740,7 @@ public class FrontendService {
     }
 
     private FrontendDtos.AnalysisResponse buildLiveAnalysis(SearchQueryEntity trackedQuery, String keyword, List<NormalizedSourceItem> items) {
-        String kw = keyword == null || keyword.isBlank() ? "AI Agent" : keyword;
+        String kw = keyword == null ? "" : keyword.trim();
 
         // Aggregate total metrics across all items
         long totalViews = 0L;
@@ -836,8 +804,21 @@ public class FrontendService {
                                 : "Caution advised — negative sentiment may indicate market friction."
         );
 
-        // 4 — Keyword Opportunity (build keywords first)
+        // 4 — Keyword Opportunity (build phrases first)
+        Map<String, long[]> phraseStats = new HashMap<>();
         Map<String, long[]> tokenStats = new HashMap<>();
+        Set<String> stopWords = new HashSet<>(List.of(
+            "about", "after", "agent", "with", "from", "this", "that", "have", "your",
+            "what", "when", "where", "which", "into", "they", "them", "more", "than", "then",
+            "youtube", "video", "market", "analysis", "trend", "trends", "news",
+            "comments", "duration", "topics", "search", "result", "views", "likes",
+            "subscribers", "tags", "best", "review", "2024", "2025", "2026",
+            "check", "watching", "thanks", "thank", "shorts", "short", "official",
+            "breaking", "update", "today", "channel", "subscribe", "watch",
+            "latest", "videos", "vlog", "clip", "clips",
+            "va", "la", "cua", "cho", "voi", "trong", "nay", "do", "mot", "cac",
+            "nhung", "cung", "dan", "danh", "tinh", "long", "thanh", "thng"
+        ));
         for (NormalizedSourceItem item : items) {
             long itemViews = 0L;
             long itemLikes = 0L;
@@ -849,13 +830,16 @@ public class FrontendService {
                 itemComments = toLong(payload.get("commentCount"));
                 itemEngagement = toDouble(payload.get("engagementRate"));
             }
-            Set<String> tokens = new HashSet<>();
-            tokens.addAll(tokenize(item.title()));
+            List<String> itemTokens = new ArrayList<>();
+            itemTokens.addAll(tokenize(item.title()));
             String cleanDesc = cleanSnippet(item.snippet(), "");
             if (cleanDesc != null) {
-                tokens.addAll(tokenize(cleanDesc));
+                itemTokens.addAll(tokenize(cleanDesc));
             }
+            Set<String> tokens = new HashSet<>(itemTokens);
+            Set<String> phrases = extractPhraseCandidates(itemTokens, stopWords);
             int tokenCount = Math.max(tokens.size(), 1);
+            int phraseCount = Math.max(phrases.size(), 1);
             long viewsShare = itemViews > 0 ? Math.max(1L, itemViews / tokenCount) : 0L;
             long likesShare = itemLikes > 0 ? Math.max(1L, itemLikes / tokenCount) : 0L;
             long commentsShare = itemComments > 0 ? Math.max(1L, itemComments / tokenCount) : 0L;
@@ -868,21 +852,23 @@ public class FrontendService {
                 stats[3] += commentsShare;
                 stats[4] += Math.round(itemEngagement * 10000);
             }
+            long phraseViewsShare = itemViews > 0 ? Math.max(1L, itemViews / phraseCount) : 0L;
+            long phraseLikesShare = itemLikes > 0 ? Math.max(1L, itemLikes / phraseCount) : 0L;
+            long phraseCommentsShare = itemComments > 0 ? Math.max(1L, itemComments / phraseCount) : 0L;
+            for (String phrase : phrases) {
+                phraseStats.computeIfAbsent(phrase, k -> new long[5]);
+                long[] stats = phraseStats.get(phrase);
+                stats[0]++;
+                stats[1] += phraseViewsShare;
+                stats[2] += phraseLikesShare;
+                stats[3] += phraseCommentsShare;
+                stats[4] += Math.round(itemEngagement * 10000);
+            }
         }
-
-        Set<String> stopWords = new HashSet<>(List.of(
-                "about", "after", "agent", "with", "from", "this", "that", "have", "your",
-                "what", "when", "where", "which", "into", "they", "them", "more", "than", "then",
-                "youtube", "video", "market", "analysis", "trend", "trends", "news",
-                "comments", "duration", "topics", "search", "result", "views", "likes",
-                "subscribers", "tags", "best", "review", "2024", "2025", "2026",
-                "check", "watching", "thanks", "thank", "shorts", "short", "official",
-                "breaking", "update", "today", "channel", "subscribe", "watch",
-                "latest", "videos", "vlog", "clip", "clips"
-        ));
         String keywordLower = kw.trim().toLowerCase(Locale.ROOT);
 
-        List<FrontendDtos.KeywordMetric> relatedKeywords = tokenStats.entrySet().stream()
+        Map<String, long[]> candidateStats = phraseStats.isEmpty() ? tokenStats : phraseStats;
+        List<FrontendDtos.KeywordMetric> relatedKeywords = candidateStats.entrySet().stream()
                 .filter(entry -> entry.getKey().length() >= 4)
                 .filter(entry -> !stopWords.contains(entry.getKey()))
                 .filter(entry -> !entry.getKey().equals(keywordLower))
@@ -900,11 +886,12 @@ public class FrontendService {
                 .map(k -> "\"" + k + "\"")
                 .collect(Collectors.joining(", "));
         String kwOpportunityText = relatedKeywords.isEmpty()
-                ? "No strong related keyword signals detected yet for \"" + kw + "\". Consider broadening the search scope."
-                : String.format(
-                        "Trending related keywords %s show high co-occurrence with \"%s\", indicating expanding market segments worth targeting.",
-                        topKws, kw
-                );
+            ? "No related keyword signals detected yet for \"" + kw + "\"."
+            : String.format(
+                "Related keywords detected for \"%s\": %s.",
+                kw,
+                topKws
+            );
         long totalMentions = relatedKeywords.stream()
                 .mapToLong(FrontendDtos.KeywordMetric::mentionCount)
                 .sum();
@@ -1000,7 +987,7 @@ public class FrontendService {
 
     private SearchQueryEntity recordSearchActivity(String keyword, LocaleProfile localeProfile) {
         UserEntity user = preferredUser();
-        String normalizedKeyword = (keyword == null || keyword.isBlank()) ? "AI Agent" : keyword.trim();
+        String normalizedKeyword = keyword == null ? "" : keyword.trim();
         return searchQueryRepository.save(SearchQueryEntity.builder()
                 .user(user)
                 .keyword(normalizedKeyword)
@@ -1051,11 +1038,91 @@ public class FrontendService {
         if (value == null || value.isBlank()) {
             return List.of();
         }
-        return List.of(value.toLowerCase(Locale.ROOT).split("\\s+")).stream()
+        String normalized = Normalizer.normalize(value, Normalizer.Form.NFD)
+            .replaceAll("\\p{M}+", "")
+            .toLowerCase(Locale.ROOT);
+        return List.of(normalized.split("\\s+")).stream()
                 .filter(token -> !token.startsWith("http"))
-                .map(token -> token.replaceAll("[^a-z0-9]", ""))
+            .map(token -> token.replaceAll("[^\\p{L}\\p{N}]", ""))
                 .filter(token -> !token.isBlank())
+                .filter(token -> token.length() >= 4)
+                .filter(this::hasEnoughVowels)
                 .toList();
+    }
+
+    private Set<String> extractPhraseCandidates(List<String> tokens, Set<String> stopWords) {
+        Set<String> phrases = new HashSet<>();
+        if (tokens == null || tokens.isEmpty()) {
+            return phrases;
+        }
+
+        for (int i = 0; i < tokens.size(); i++) {
+            String first = tokens.get(i);
+            if (isNoiseToken(first, stopWords)) {
+                continue;
+            }
+
+            if (i + 1 < tokens.size()) {
+                String second = tokens.get(i + 1);
+                if (!isNoiseToken(second, stopWords)) {
+                    String phrase = first + " " + second;
+                    if (isMeaningfulPhrase(phrase, stopWords)) {
+                        phrases.add(phrase);
+                    }
+                }
+            }
+
+            if (i + 2 < tokens.size()) {
+                String second = tokens.get(i + 1);
+                String third = tokens.get(i + 2);
+                if (!isNoiseToken(second, stopWords) && !isNoiseToken(third, stopWords)) {
+                    String phrase = first + " " + second + " " + third;
+                    if (isMeaningfulPhrase(phrase, stopWords)) {
+                        phrases.add(phrase);
+                    }
+                }
+            }
+        }
+
+        return phrases;
+    }
+
+    private boolean isMeaningfulPhrase(String phrase, Set<String> stopWords) {
+        if (phrase == null || phrase.isBlank()) {
+            return false;
+        }
+        String[] parts = phrase.trim().split("\\s+");
+        if (parts.length < 2) {
+            return false;
+        }
+        int meaningfulParts = 0;
+        for (String part : parts) {
+            if (!isNoiseToken(part, stopWords)) {
+                meaningfulParts++;
+            }
+        }
+        return meaningfulParts >= 2 && phrase.length() >= 8;
+    }
+
+    private boolean isNoiseToken(String token, Set<String> stopWords) {
+        if (token == null || token.isBlank()) {
+            return true;
+        }
+        return stopWords != null && stopWords.contains(token);
+    }
+
+    private boolean hasEnoughVowels(String token) {
+        if (token == null) {
+            return false;
+        }
+        int vowels = 0;
+        for (int i = 0; i < token.length(); i++) {
+            char ch = token.charAt(i);
+            if ("aeiouy".indexOf(ch) >= 0) {
+                vowels++;
+            }
+        }
+        return vowels >= 2;
     }
 
     private boolean isTokenMetricMeaningful(long[] stats) {
@@ -1187,7 +1254,7 @@ public class FrontendService {
     private SearchQueryEntity fallbackQuery(String keyword) {
         return SearchQueryEntity.builder()
                 .id(UUID.randomUUID())
-                .keyword(keyword == null || keyword.isBlank() ? "AI Agent" : keyword)
+                .keyword(keyword == null ? "" : keyword.trim())
                 .createdAt(LocalDateTime.now())
                 .build();
     }

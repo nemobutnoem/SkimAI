@@ -12,7 +12,7 @@ Người dùng nhập **keyword**, hệ thống sẽ:
 - thu thập tín hiệu từ nhiều nguồn (Google/News qua SerpApi, YouTube Data API)
 - normalize về format chung
 - tổng hợp thành **market snapshot** (insights, keywords, timeline…)
-- cho phép tạo **deep insight** (AI/generative) và **report**
+- cho phép tạo **deep insight** từ dữ liệu và **report**
 - có các màn admin (users/revenue/reports)
 
 Mục tiêu MVP: chạy end‑to‑end ổn định (fetch → normalize → analysis UI), kiến trúc đủ mở để thêm provider / endpoint mới.
@@ -39,7 +39,7 @@ Mục tiêu MVP: chạy end‑to‑end ổn định (fetch → normalize → ana
 ### Integrations
 - SerpApi (Google + News)
 - YouTube Data API (search → videos.list → channels.list)
-- Gemini (Generative Language API) cho deep insight & “live trends” (optional: không có key thì fallback)
+- Gemini (Generative Language API) cho deep insight & “live trends” (optional: không có key thì hiển thị trạng thái thiếu dữ liệu thay vì bịa insight)
 - Stripe (checkout/confirm) (optional: không có key thì endpoint sẽ fallback/giảm chức năng tuỳ service)
 
 ---
@@ -183,7 +183,7 @@ Providers đã có trong code:
 
 - `SERPAPI_API_KEY` (optional nhưng cần để lấy Google/News)
 - `YOUTUBE_API_KEY` (optional)
-- `GEMINI_API_KEY` + `GEMINI_MODEL` (optional; thiếu key thì deep insight/trends fallback)
+- `GEMINI_API_KEY` + `GEMINI_MODEL` (optional; thiếu key thì deep insight/trends hiển thị trạng thái thiếu dữ liệu)
 - `STRIPE_SECRET_KEY` (optional)
 
 ---

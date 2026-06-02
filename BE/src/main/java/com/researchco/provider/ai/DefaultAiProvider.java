@@ -220,7 +220,7 @@ public class DefaultAiProvider implements AiProvider {
                   "trends": [
                     {
                       "market": "AI & Automation",
-                      "keyword": "AI Agent",
+                      "keyword": "consumer demand",
                       "trendScore": 160,
                       "changePct": 22,
                       "sentiment": "positive",
