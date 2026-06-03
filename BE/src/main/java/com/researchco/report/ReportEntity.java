@@ -22,6 +22,7 @@ import org.hibernate.annotations.UuidGenerator;
 import org.hibernate.type.SqlTypes;
 
 import java.time.LocalDateTime;
+import java.util.Map;
 import java.util.UUID;
 
 @Getter
@@ -47,7 +48,7 @@ public class ReportEntity {
     private SearchQueryEntity searchQuery;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "snapshot_id", nullable = false)
+    @JoinColumn(name = "snapshot_id", nullable = true)
     private AnalysisSnapshotEntity snapshot;
 
     @Column
@@ -55,7 +56,7 @@ public class ReportEntity {
 
     @JdbcTypeCode(SqlTypes.JSON)
     @Column(name = "report_content")
-    private Object reportContent;
+    private Map<String, Object> reportContent;
 
     @Column(length = 20)
     private String status;

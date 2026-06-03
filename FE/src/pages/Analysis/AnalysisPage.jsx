@@ -270,6 +270,7 @@ export function AnalysisPage() {
   const [evidenceItems, setEvidenceItems] = useState([])
   const [timelinePoints, setTimelinePoints] = useState([])
   const [loading, setLoading] = useState(false)
+  const [isExporting, setIsExporting] = useState(false)
   const [streamProgress, setStreamProgress] = useState(0)
   const [cacheInfo, setCacheInfo] = useState(null)
 
@@ -412,6 +413,58 @@ export function AnalysisPage() {
   const researchGuard = data?.researchGuard ?? null
   const canRunDeepInsight = researchGuard ? Boolean(researchGuard.deepInsightEnabled) : true
 
+  const handleExport = async () => {
+    if (!keyword || !overall.hasData) {
+      alert("Không có dữ liệu để xuất báo cáo!");
+      return;
+    }
+    
+    setIsExporting(true);
+    try {
+      const response = await appApi.exportAnalysisReport(keyword);
+      if (response && response.success === false) {
+          alert("Lỗi Backend: " + response.error + " (Chi tiết: " + response.cause + ")");
+          return;
+      }
+      
+      const mdContent = `
+# Báo Cáo Phân Tích Thị Trường: ${keyword}
+**Ngày tạo:** ${new Date().toLocaleDateString('vi-VN')}
+
+## Tóm Tắt Nhanh
+- **Trạng thái thị trường:** ${overall.marketState}
+- **Mức quan tâm:** ${overall.interestLevel}
+- **Độ tin cậy (Coverage):** ${Number(overall.coverage)}%
+- **Tương tác trung bình:** ${pct(overall.avgEngagement)}
+- **Market Score:** ${overall.marketScore}/100
+- **Market Verdict:** Thị trường đang ${overall.marketState}. Confidence ở mức ${overall.confidenceBand} (${overall.confidenceScore}/100), dựa trên coverage ${Number(overall.coverage)}%, ${overall.sourceCount} nguồn và ${formatNumber(overall.totalComments)} bình luận.
+
+## Tổng Quan Xu Hướng
+${sourceRows.map(row => `- **${row.source}:** ${row.count} tín hiệu. ${row.summary} (Xu hướng: ${directionLabel(row.direction)})`).join('\n')}
+
+## Top Keywords Liên Quan
+${(data?.relatedKeywords ?? []).slice(0, 10).map(k => `- **${k.keyword}**: ${k.mentionCount} mentions, ${formatNumber(k.totalViews)} views, Sentiment: ${k.sentimentScore}/100`).join('\n')}
+
+## Bằng Chứng Báo Chí
+${evidenceItems.map(ev => `- [${ev.source}] ${ev.title}\n  Link: ${ev.url}`).join('\n\n')}
+      `.trim();
+      
+      const blob = new Blob([mdContent], { type: 'text/markdown;charset=utf-8' });
+      const link = document.createElement('a');
+      link.href = URL.createObjectURL(blob);
+      link.download = `${keyword}_Market_Report.md`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      
+      alert("Xuất báo cáo thành công! File .md đã được tải về và báo cáo đã được lưu vào Dashboard.");
+    } catch (e) {
+      alert("Lỗi khi xuất báo cáo: " + e.message);
+    } finally {
+      setIsExporting(false);
+    }
+  }
+
   if (!keyword) {
     return (
       <div className="analysis-shell page-wrap">
@@ -491,7 +544,9 @@ export function AnalysisPage() {
           <p className="hint">Tối đa hóa insight ngắn gọn, có bằng chứng nguồn và trạng thái thiếu dữ liệu.</p>
         </div>
         <div className="header-actions">
-          <Button variant="secondary" className="btn-sm">Export</Button>
+          <Button variant="secondary" className="btn-sm" onClick={handleExport} disabled={isExporting || loading}>
+            {isExporting ? 'Đang xuất...' : 'Export'}
+          </Button>
           <Button onClick={load} disabled={loading} className="btn-sm">
             {loading ? 'Đang phân tích...' : 'Refresh Data'}
           </Button>

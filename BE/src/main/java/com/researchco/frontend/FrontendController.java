@@ -44,6 +44,11 @@ public class FrontendController {
         return frontendService.getAnalysis(keyword);
     }
 
+    @PostMapping("/reports/export")
+    public Map<String, Object> exportReport(@RequestParam(name = "keyword", defaultValue = "") String keyword) {
+        return frontendService.exportReport(keyword);
+    }
+
     @GetMapping("/analysis/stream")
     public SseEmitter getAnalysisStream(@RequestParam(name = "keyword", defaultValue = "") String keyword) {
         SseEmitter emitter = new SseEmitter(300000L); // 5 min timeout

@@ -9,6 +9,7 @@ import com.researchco.provider.NormalizedSourceItem;
 import com.researchco.provider.ProviderOrchestrator;
 import com.researchco.provider.SearchProviderEntity;
 import com.researchco.provider.SearchProviderRepository;
+import com.researchco.report.ReportEntity;
 import com.researchco.report.ReportRepository;
 import com.researchco.search.SearchQueryEntity;
 import com.researchco.search.SearchQueryRepository;
@@ -1767,5 +1768,48 @@ public class FrontendService {
             return "0";
         }
         return amount.stripTrailingZeros().toPlainString();
+    }
+
+    @Transactional(noRollbackFor = Exception.class)
+    public Map<String, Object> exportReport(String keyword) {
+        try {
+            UserEntity user = preferredUser();
+            
+            String normalizedKeyword = keyword == null ? "" : keyword.trim();
+            SearchQueryEntity query = searchQueryRepository.findAll().stream()
+                    .filter(q -> q.getKeyword() != null && q.getKeyword().trim().equalsIgnoreCase(normalizedKeyword))
+                    .max(Comparator.comparing(q -> q.getCreatedAt() != null ? q.getCreatedAt() : java.time.LocalDateTime.MIN))
+                    .orElseThrow(() -> new RuntimeException("No analysis found to export"));
+                    
+            AnalysisSnapshotEntity snapshot = analysisSnapshotRepository.findBySearchQueryId(query.getId())
+                    .orElseGet(() -> {
+                        AnalysisSnapshotEntity dummy = AnalysisSnapshotEntity.builder()
+                                .searchQuery(query)
+                                .summaryText("Exported from Streaming Analysis")
+                                .totalSources(0)
+                                .build();
+                        return analysisSnapshotRepository.saveAndFlush(dummy);
+                    });
+                    
+            FrontendDtos.AnalysisResponse response = buildAnalysisFromSnapshot(query, snapshot);
+            
+            String shortKeyword = keyword != null && keyword.length() > 50 ? keyword.substring(0, 50) : keyword;
+            
+            ReportEntity report = ReportEntity.builder()
+                    .user(user)
+                    .searchQuery(query)
+                    .snapshot(snapshot)
+                    .title(shortKeyword + " Report")
+                    .status("EXPORTED")
+                    .reportContent(objectMapper.convertValue(response, Map.class))
+                    .build();
+                    
+            reportRepository.saveAndFlush(report);
+            
+            return Map.of("success", true);
+        } catch (Exception e) {
+            e.printStackTrace();
+            return Map.of("success", false, "error", e.getMessage() != null ? e.getMessage() : e.getClass().getName(), "cause", e.getCause() != null ? e.getCause().getMessage() : "none");
+        }
     }
 }

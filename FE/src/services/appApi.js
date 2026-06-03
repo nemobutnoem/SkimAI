@@ -68,6 +68,10 @@ const realApi = {
     const query = new URLSearchParams({ keyword: keyword ?? '' }).toString()
     return request(`/analysis?${query}`)
   },
+  exportAnalysisReport(keyword) {
+    const query = new URLSearchParams({ keyword: keyword ?? '' }).toString()
+    return request(`/reports/export?${query}`, { method: 'POST' })
+  },
   getAnalysisProject(keyword) {
     const query = new URLSearchParams({ keyword: keyword ?? '' }).toString()
     return request(`/analysis/project?${query}`)
