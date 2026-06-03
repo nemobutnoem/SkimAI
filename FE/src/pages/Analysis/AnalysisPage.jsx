@@ -3,6 +3,7 @@ import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { Button } from '../../components/Button'
 import { ROUTES } from '../../constants/routes'
 import { appApi } from '../../services/appApi'
+import { AnimatedNumber, TypewriterText } from '../../components/Effects'
 
 const NO_DATA = 'không có dữ liệu để đánh giá'
 
@@ -542,19 +543,19 @@ export function AnalysisPage() {
       <div className="prompt-summary-grid">
         <section className="card prompt-summary-card">
           <span>Trạng thái thị trường</span>
-          <strong>{overall.hasData ? overall.marketState : 'chưa đủ dữ liệu'}</strong>
+          <strong>{overall.hasData ? <TypewriterText text={overall.marketState} speed={40} /> : 'chưa đủ dữ liệu'}</strong>
         </section>
         <section className="card prompt-summary-card">
           <span>Mức quan tâm</span>
-          <strong>{overall.hasData ? overall.interestLevel : 'chưa đủ dữ liệu'}</strong>
+          <strong>{overall.hasData ? <TypewriterText text={overall.interestLevel} speed={40} /> : 'chưa đủ dữ liệu'}</strong>
         </section>
         <section className="card prompt-summary-card">
           <span>Bằng chứng</span>
-          <strong>{loading ? '0%' : `${Number(overall.coverage)}%`}</strong>
+          <strong><AnimatedNumber value={Number(overall.coverage)} />%</strong>
         </section>
         <section className="card prompt-summary-card">
           <span>Tương tác TB</span>
-          <strong>{loading ? '0.00%' : pct(overall.avgEngagement)}</strong>
+          <strong><AnimatedNumber value={overall.avgEngagement * 100} format={(v) => v.toFixed(2)} />%</strong>
         </section>
       </div>
 
@@ -564,7 +565,7 @@ export function AnalysisPage() {
             <div className="source-trend-row" key={row.source}>
               <div>
                 <strong>{row.source}</strong>
-                <p>{row.summary}</p>
+                <p><TypewriterText text={row.summary} speed={20} /></p>
               </div>
               <span className={`direction-pill direction-${directionClass(row.direction)}`}>
                 {directionLabel(row.direction)}
@@ -580,18 +581,18 @@ export function AnalysisPage() {
         <div className="decision-grid">
           <div className="decision-score-card">
             <span className="decision-label">Market score</span>
-            <strong>{overall.hasData ? `${overall.marketScore}/100` : 'N/A'}</strong>
+            <strong>{overall.hasData ? <><AnimatedNumber value={overall.marketScore} />/100</> : 'N/A'}</strong>
             <div className="score-track">
               <div className="score-fill" style={{ width: `${overall.hasData ? overall.marketScore : 0}%` }} />
             </div>
-            <p>{overall.hasData ? `Mức quan tâm: ${overall.interestLevel}` : noDataFor('mức độ quan tâm hiện tại')}</p>
+            <p>{overall.hasData ? <TypewriterText text={`Mức quan tâm: ${overall.interestLevel}`} speed={30} /> : noDataFor('mức độ quan tâm hiện tại')}</p>
           </div>
           <div className="decision-verdict">
             <span className="decision-label">Market verdict</span>
-            <h4>{overall.hasData ? `Thị trường đang ${overall.marketState}` : noDataFor('đánh giá tổng thể')}</h4>
+            <h4>{overall.hasData ? <TypewriterText text={`Thị trường đang ${overall.marketState}`} speed={30} /> : noDataFor('đánh giá tổng thể')}</h4>
             <p>
               {overall.hasData
-                ? `Confidence ở mức ${overall.confidenceBand} (${overall.confidenceScore}/100), dựa trên coverage ${Number(overall.coverage)}%, ${overall.sourceCount} nguồn và ${formatNumber(overall.totalComments)} bình luận.`
+                ? <TypewriterText text={`Confidence ở mức ${overall.confidenceBand} (${overall.confidenceScore}/100), dựa trên coverage ${Number(overall.coverage)}%, ${overall.sourceCount} nguồn và ${formatNumber(overall.totalComments)} bình luận.`} speed={20} />
                 : noDataFor('độ tin cậy')}
             </p>
           </div>
