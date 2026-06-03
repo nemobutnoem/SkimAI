@@ -92,6 +92,43 @@ const realApi = {
     const query = new URLSearchParams({ keyword: keyword ?? '' }).toString()
     return request(`/analysis/timeline?${query}`)
   },
+  streamAnalysis(keyword, onEvent, onError) {
+    const query = new URLSearchParams({ keyword: keyword ?? '' }).toString()
+    const url = `${API_BASE_URL}/analysis/stream?${query}`
+    
+    try {
+      // NOTE: Native EventSource does not support custom headers.
+      // Auth for this endpoint should be cookie-based or the endpoint should be public.
+      const eventSource = new EventSource(url)
+      
+      eventSource.addEventListener('query-start', (e) => onEvent('query-start', JSON.parse(e.data)))
+      eventSource.addEventListener('cache-hit', (e) => onEvent('cache-hit', JSON.parse(e.data)))
+      eventSource.addEventListener('sources', (e) => onEvent('sources', JSON.parse(e.data)))
+      eventSource.addEventListener('keywords', (e) => onEvent('keywords', JSON.parse(e.data)))
+      eventSource.addEventListener('news', (e) => onEvent('news', JSON.parse(e.data)))
+      eventSource.addEventListener('insights', (e) => onEvent('insights', JSON.parse(e.data)))
+      eventSource.addEventListener('data-quality', (e) => onEvent('data-quality', JSON.parse(e.data)))
+      eventSource.addEventListener('complete', (e) => {
+        onEvent('complete', JSON.parse(e.data))
+        eventSource.close()
+      })
+
+      // Native EventSource error events do not include a JSON payload.
+      // Use onerror to trigger fallback logic.
+      eventSource.onerror = () => {
+        const readyState = eventSource.readyState
+        if (readyState === EventSource.CLOSED) {
+          eventSource.close()
+        }
+        onError?.({ message: 'Stream connection error', readyState })
+      }
+      
+      return eventSource
+    } catch (e) {
+      onError?.(e)
+      return null
+    }
+  },
   getDeepInsight(payload) {
     return request('/deep-insight', { method: 'POST', body: payload })
   },

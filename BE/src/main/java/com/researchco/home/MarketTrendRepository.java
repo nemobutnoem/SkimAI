@@ -9,6 +9,9 @@ import java.util.UUID;
 public interface MarketTrendRepository extends JpaRepository<MarketTrendEntity, UUID> {
     List<MarketTrendEntity> findTop8ByOrderByTrendScoreDescUpdatedAtDesc();
 
+    List<MarketTrendEntity> findTop8ByUpdatedAtAfterOrderByTrendScoreDescUpdatedAtDesc(java.time.LocalDateTime updatedAt);
+
+
     Optional<MarketTrendEntity> findByKeyword(String keyword);
 
     Optional<MarketTrendEntity> findByMarket(String market);

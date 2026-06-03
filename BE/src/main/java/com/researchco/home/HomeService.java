@@ -20,7 +20,8 @@ public class HomeService {
 
     public List<HomeDtos.TrendItem> getHomeTrends() {
         Map<String, HomeDtos.TrendItem> uniqueTrends = new LinkedHashMap<>();
-        marketTrendRepository.findTop8ByOrderByTrendScoreDescUpdatedAtDesc().stream()
+        LocalDateTime cutoff = LocalDateTime.now().minusDays(7);
+        marketTrendRepository.findTop8ByUpdatedAtAfterOrderByTrendScoreDescUpdatedAtDesc(cutoff).stream()
                 .map(trend -> {
                     String market = safeMarketLabel(trend.getMarket(), trend.getKeyword());
                     String keyword = trend.getKeyword() == null || trend.getKeyword().isBlank() ? market : trend.getKeyword();

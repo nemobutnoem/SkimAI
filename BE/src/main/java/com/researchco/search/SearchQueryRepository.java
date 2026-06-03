@@ -5,6 +5,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 public interface SearchQueryRepository extends JpaRepository<SearchQueryEntity, UUID> {
@@ -17,4 +18,11 @@ public interface SearchQueryRepository extends JpaRepository<SearchQueryEntity, 
     long countByCreatedAtBetween(LocalDateTime start, LocalDateTime end);
 
     List<SearchQueryEntity> findTop10ByUserOrderByCreatedAtDesc(UserEntity user);
+
+    List<SearchQueryEntity> findByUserAndKeywordAndCountryCodeAndLanguageCode(
+            UserEntity user,
+            String keyword,
+            String countryCode,
+            String languageCode
+    );
 }

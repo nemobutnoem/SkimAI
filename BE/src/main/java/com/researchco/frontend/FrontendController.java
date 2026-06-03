@@ -7,6 +7,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
 import java.util.List;
 import java.util.Map;
@@ -16,9 +17,11 @@ import java.util.Map;
 public class FrontendController {
 
     private final FrontendService frontendService;
+    private final StreamingAnalysisService streamingAnalysisService;
 
-    public FrontendController(FrontendService frontendService) {
+    public FrontendController(FrontendService frontendService, StreamingAnalysisService streamingAnalysisService) {
         this.frontendService = frontendService;
+        this.streamingAnalysisService = streamingAnalysisService;
     }
 
     @GetMapping("/dashboard")
@@ -39,6 +42,13 @@ public class FrontendController {
     @GetMapping("/analysis")
     public FrontendDtos.AnalysisResponse getAnalysis(@RequestParam(name = "keyword", defaultValue = "") String keyword) {
         return frontendService.getAnalysis(keyword);
+    }
+
+    @GetMapping("/analysis/stream")
+    public SseEmitter getAnalysisStream(@RequestParam(name = "keyword", defaultValue = "") String keyword) {
+        SseEmitter emitter = new SseEmitter(300000L); // 5 min timeout
+        new Thread(() -> streamingAnalysisService.streamAnalysis(keyword, emitter)).start();
+        return emitter;
     }
 
     @GetMapping("/analysis/project")

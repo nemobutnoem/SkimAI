@@ -81,13 +81,18 @@ export function DashboardPage() {
           <div className="dashboard-recent-list">
             {(data?.recent ?? []).length ? (
               (data?.recent ?? []).map((item) => (
-                <div key={item.id} className="dashboard-recent-item">
+                <Link 
+                  key={item.id} 
+                  to={`${ROUTES.ANALYSIS}?keyword=${encodeURIComponent(item.title)}`}
+                  className="dashboard-recent-item"
+                  style={{ textDecoration: 'none', color: 'inherit', display: 'flex', alignItems: 'center' }}
+                >
                   <div>
                     <strong>{item.title}</strong>
                     <p>Tracked inside your market research workspace</p>
                   </div>
                   <time>{new Date(item.createdAt).toLocaleString()}</time>
-                </div>
+                </Link>
               ))
             ) : (
               <div className="dashboard-empty-state">

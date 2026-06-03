@@ -73,34 +73,34 @@ function noDataFor(section) {
 function buildSourceTrendRows(data, evidenceItems) {
   const grouped = new Map()
 
-  ;(evidenceItems ?? []).forEach((item) => {
-    const source = canonicalSource(item?.source)
-    const current = grouped.get(source) ?? {
-      source,
-      count: 0,
-      titles: [],
-      signalText: '',
-      direction: 'chưa rõ',
-    }
-    current.count += 1
-    if (item?.title) current.titles.push(item.title)
-    current.signalText = [current.signalText, item?.metric, item?.signal, item?.title].filter(Boolean).join(' ')
-    current.direction = inferDirection(current.signalText, current.count)
-    grouped.set(source, current)
-  })
-
-  ;(data?.dataSources ?? []).forEach((sourceName) => {
-    const source = canonicalSource(sourceName)
-    if (!grouped.has(source)) {
-      grouped.set(source, {
+    ; (evidenceItems ?? []).forEach((item) => {
+      const source = canonicalSource(item?.source)
+      const current = grouped.get(source) ?? {
         source,
         count: 0,
         titles: [],
         signalText: '',
         direction: 'chưa rõ',
-      })
-    }
-  })
+      }
+      current.count += 1
+      if (item?.title) current.titles.push(item.title)
+      current.signalText = [current.signalText, item?.metric, item?.signal, item?.title].filter(Boolean).join(' ')
+      current.direction = inferDirection(current.signalText, current.count)
+      grouped.set(source, current)
+    })
+
+    ; (data?.dataSources ?? []).forEach((sourceName) => {
+      const source = canonicalSource(sourceName)
+      if (!grouped.has(source)) {
+        grouped.set(source, {
+          source,
+          count: 0,
+          titles: [],
+          signalText: '',
+          direction: 'chưa rõ',
+        })
+      }
+    })
 
   return Array.from(grouped.values())
     .sort((a, b) => b.count - a.count)
@@ -269,8 +269,10 @@ export function AnalysisPage() {
   const [evidenceItems, setEvidenceItems] = useState([])
   const [timelinePoints, setTimelinePoints] = useState([])
   const [loading, setLoading] = useState(false)
+  const [streamProgress, setStreamProgress] = useState(0)
+  const [cacheInfo, setCacheInfo] = useState(null)
 
-  const load = async () => {
+  const loadTraditional = async () => {
     setLoading(true)
     try {
       const [result, evidence, timeline] = await Promise.all([
@@ -281,8 +283,112 @@ export function AnalysisPage() {
       setData(result)
       setEvidenceItems(evidence)
       setTimelinePoints(timeline)
+      setStreamProgress(0)
     } finally {
       setLoading(false)
+    }
+  }
+
+  const load = async () => {
+    setLoading(true)
+    setStreamProgress(0)
+    setCacheInfo(null)
+    setData(null)
+    setEvidenceItems([])
+    setTimelinePoints([])
+
+    let gotKeywords = false
+    let gotNews = false
+    let gotInsights = false
+
+    try {
+      const eventSource = appApi.streamAnalysis(
+        keyword,
+        (eventName, eventData) => {
+          if (eventName === 'query-start') {
+            setStreamProgress(1)
+          } else if (eventName === 'cache-hit') {
+            setCacheInfo({
+              message: eventData.message,
+              cached: eventData.cached,
+            })
+          } else if (eventName === 'sources') {
+            setData((prev) => ({
+              ...prev,
+              dataSources: eventData.sources,
+            }))
+            setStreamProgress(2)
+          } else if (eventName === 'keywords') {
+            const nextKeywords = eventData.keywords || []
+            if (Array.isArray(nextKeywords) && nextKeywords.length) {
+              gotKeywords = true
+            }
+            setData((prev) => ({
+              ...prev,
+              relatedKeywords: nextKeywords,
+            }))
+            setStreamProgress(3)
+          } else if (eventName === 'news') {
+            const nextNews = eventData.news || []
+            if (Array.isArray(nextNews) && nextNews.length) {
+              gotNews = true
+            }
+            setData((prev) => ({
+              ...prev,
+              news: nextNews,
+            }))
+            setStreamProgress(4)
+          } else if (eventName === 'insights') {
+            const nextInsights = eventData.insights || []
+            if (Array.isArray(nextInsights) && nextInsights.length) {
+              gotInsights = true
+            }
+            setData((prev) => ({
+              ...prev,
+              insights: nextInsights,
+            }))
+            setStreamProgress(5)
+          } else if (eventName === 'data-quality') {
+            setData((prev) => ({
+              ...prev,
+              dataQuality: {
+                freshnessMinutes: eventData.freshnessMinutes,
+                sourceDiversity: eventData.sourceDiversity,
+                evidenceCoveragePct: eventData.evidenceCoveragePct,
+                confidenceBand: eventData.confidenceBand,
+              },
+            }))
+            setStreamProgress(6)
+          } else if (eventName === 'complete') {
+            setStreamProgress(7)
+
+            // Stream endpoint may return only placeholders when there's no snapshot yet.
+            // In that case, fetch the full analysis from the traditional endpoint.
+            const hasMeaningfulData = gotKeywords || gotNews || gotInsights
+            if (!hasMeaningfulData) {
+              loadTraditional()
+              return
+            }
+
+            // Fetch timeline data asynchronously since streaming doesn't provide it
+            appApi.getAnalysisTimeline(keyword)
+              .then(setTimelinePoints)
+              .catch(() => setTimelinePoints([]))
+              .finally(() => setTimeout(() => setLoading(false), 300))
+          }
+        },
+        (error) => {
+          console.error('Stream error:', error)
+          loadTraditional()
+        }
+      )
+
+      if (!eventSource) {
+        loadTraditional()
+      }
+    } catch (error) {
+      console.error('Stream initialization error:', error)
+      loadTraditional()
     }
   }
 
@@ -374,7 +480,7 @@ export function AnalysisPage() {
         <div className="analysis-suite-meta">
           <div className="analysis-suite-meta-label">Tracked keyword</div>
           <strong>{keyword}</strong>
-          <span>{loading ? 'Refreshing...' : 'Updated just now'}</span>
+          <span>{loading ? 'Đang phân tích...' : 'Updated just now'}</span>
         </div>
       </section>
 
@@ -386,10 +492,52 @@ export function AnalysisPage() {
         <div className="header-actions">
           <Button variant="secondary" className="btn-sm">Export</Button>
           <Button onClick={load} disabled={loading} className="btn-sm">
-            {loading ? 'Refreshing...' : 'Refresh Data'}
+            {loading ? 'Đang phân tích...' : 'Refresh Data'}
           </Button>
         </div>
       </div>
+
+      {loading && streamProgress > 0 && (
+        <div className="streaming-progress-bar" style={{
+          background: '#f3f4f6',
+          padding: '12px 16px',
+          borderRadius: '4px',
+          marginBottom: '16px',
+          borderLeft: '4px solid #3b82f6'
+        }}>
+          <div style={{ fontSize: '13px', marginBottom: '8px', color: '#666' }}>
+            Phân tích đang diễn ra... ({['Khởi tạo', 'Nguồn', 'Từ khóa', 'Tin tức', 'Insight', 'Chất lượng', 'Hoàn tất'][streamProgress - 1]})
+          </div>
+          <div style={{
+            background: '#e5e7eb',
+            height: '4px',
+            borderRadius: '2px',
+            overflow: 'hidden'
+          }}>
+            <div style={{
+              background: '#3b82f6',
+              height: '100%',
+              width: `${(streamProgress / 7) * 100}%`,
+              transition: 'width 0.3s ease'
+            }} />
+          </div>
+        </div>
+      )}
+
+      {cacheInfo && cacheInfo.cached && (
+        <div style={{
+          background: '#ecfdf5',
+          border: '1px solid #86efac',
+          borderLeft: '4px solid #22c55e',
+          padding: '12px 16px',
+          borderRadius: '4px',
+          marginBottom: '16px',
+          fontSize: '13px',
+          color: '#166534'
+        }}>
+          💾 <strong>Data từ cache:</strong> {cacheInfo.message} (Tiết kiệm token ✨)
+        </div>
+      )}
 
       <div className="prompt-summary-grid">
         <section className="card prompt-summary-card">
@@ -402,11 +550,11 @@ export function AnalysisPage() {
         </section>
         <section className="card prompt-summary-card">
           <span>Bằng chứng</span>
-          <strong>{Number(overall.coverage)}%</strong>
+          <strong>{loading ? '0%' : `${Number(overall.coverage)}%`}</strong>
         </section>
         <section className="card prompt-summary-card">
           <span>Tương tác TB</span>
-          <strong>{pct(overall.avgEngagement)}</strong>
+          <strong>{loading ? '0.00%' : pct(overall.avgEngagement)}</strong>
         </section>
       </div>
 
