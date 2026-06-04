@@ -171,7 +171,7 @@ public class AdminService {
                             user.getId().toString(),
                             user.getFullName(),
                             user.getEmail(),
-                            "USER".equalsIgnoreCase(user.getRole()) ? "Member" : user.getRole(),
+                            "USER".equalsIgnoreCase(user.getRole()) ? "Thành viên" : user.getRole(),
                             resolvedType,
                             badgeStatus(user.getStatus()),
                             usage
@@ -325,7 +325,7 @@ public class AdminService {
                                 .mapToObj(i -> YearMonth.now().minusMonths(months - 1L - i))
                                 .toList();
                 List<String> labels = yearMonths.stream()
-                                .map(ym -> ym.getMonth().getDisplayName(TextStyle.SHORT, Locale.ENGLISH))
+                                .map(ym -> ym.getMonth().getDisplayName(TextStyle.SHORT, new Locale("vi", "VN")))
                                 .toList();
                 List<Double> values = yearMonths.stream()
                                 .map(ym -> {
@@ -342,7 +342,7 @@ public class AdminService {
                                 .mapToObj(i -> YearMonth.now().minusMonths(months - 1L - i))
                                 .toList();
                 List<String> labels = yearMonths.stream()
-                                .map(ym -> ym.getMonth().getDisplayName(TextStyle.SHORT, Locale.ENGLISH))
+                                .map(ym -> ym.getMonth().getDisplayName(TextStyle.SHORT, new Locale("vi", "VN")))
                                 .toList();
                 List<Double> values = yearMonths.stream()
                                 .map(ym -> {

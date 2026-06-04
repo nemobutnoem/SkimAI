@@ -5,6 +5,14 @@ import { appApi } from '../../services/appApi'
 
 const STATUSES = ['all', 'pending', 'draft', 'published', 'archived']
 
+const STATUS_LABELS = {
+  all: 'Tất cả',
+  pending: 'Chờ duyệt',
+  draft: 'Bản nháp',
+  published: 'Đã xuất bản',
+  archived: 'Lưu trữ',
+}
+
 export function AdminReportsPage() {
   const [status, setStatus] = useState('all')
   const [query, setQuery] = useState('')
@@ -52,8 +60,8 @@ export function AdminReportsPage() {
     <div className="stack page-wrap">
       <div className="page-header">
         <div>
-          <h1>Admin Reports</h1>
-          <p className="hint">Moderation queue: filter, preview, approve, or archive report output.</p>
+          <h1>Quản trị Báo cáo</h1>
+          <p className="hint">Hàng đợi kiểm duyệt: lọc, xem trước, phê duyệt hoặc lưu trữ báo cáo.</p>
         </div>
         <div className="tag-wrap">
           {STATUSES.map((item) => (
@@ -62,7 +70,7 @@ export function AdminReportsPage() {
               className={['tab-btn', status === item ? 'active' : ''].join(' ')}
               onClick={() => setStatus(item)}
             >
-              {item}
+              {STATUS_LABELS[item] || item}
             </button>
           ))}
         </div>
@@ -73,16 +81,16 @@ export function AdminReportsPage() {
           <input
             value={query}
             onChange={(event) => setQuery(event.target.value)}
-            placeholder="Search report title or author"
+            placeholder="Tìm kiếm tiêu đề hoặc tác giả"
           />
           <div className="hint" style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end' }}>
-            Showing {filteredReports.length} report(s)
+            Đang hiển thị {filteredReports.length} báo cáo
           </div>
         </div>
       </Card>
 
       <div className="grid admin-columns">
-        <Card title="Report List">
+        <Card title="Danh sách Báo cáo">
           <div className="stack">
             {filteredReports.map((report) => (
               <button
@@ -92,39 +100,39 @@ export function AdminReportsPage() {
               >
                 <div className="list-select-row">
                   <strong>{report.title}</strong>
-                  <span className={['badge', `badge-${report.status}`].join(' ')}>{report.status}</span>
+                  <span className={['badge', `badge-${report.status}`].join(' ')}>{STATUS_LABELS[report.status] || report.status}</span>
                 </div>
                 <span className="hint">
-                  {report.category} • AI Score {report.aiScore}%
+                  {report.category} • Điểm AI {report.aiScore}%
                 </span>
               </button>
             ))}
           </div>
         </Card>
 
-        <Card title="Preview & Moderation">
+        <Card title="Xem trước & Kiểm duyệt">
           {selected ? (
             <div className="stack">
               <h3>{selected.title}</h3>
               <p>{selected.summary}</p>
-              <span className="hint">Author: {selected.author}</span>
-              <span className="hint">Updated: {new Date(selected.updatedAt).toLocaleString()}</span>
+              <span className="hint">Tác giả: {selected.author}</span>
+              <span className="hint">Cập nhật: {new Date(selected.updatedAt).toLocaleString('vi-VN')}</span>
 
               <div className="tag-wrap">
-                <Button onClick={() => moderate('published')}>Approve</Button>
+                <Button onClick={() => moderate('published')}>Phê duyệt</Button>
                 <Button variant="secondary" onClick={() => moderate('draft')}>
-                  Request revision
+                  Yêu cầu chỉnh sửa
                 </Button>
                 <Button variant="secondary" onClick={() => moderate('archived')}>
-                  Archive
+                  Lưu trữ
                 </Button>
                 <Button variant="secondary" onClick={() => moderate('pending')}>
-                  Move to pending
+                  Chuyển về chờ duyệt
                 </Button>
               </div>
             </div>
           ) : (
-            <div className="hint">No report selected</div>
+            <div className="hint">Chưa chọn báo cáo nào</div>
           )}
         </Card>
       </div>

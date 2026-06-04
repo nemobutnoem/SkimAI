@@ -53,8 +53,7 @@ public class SecurityConfig {
                                 "/api/pricing",
                                 "/api/pricing/**",
                                 "/api/account/**",
-                                "/api/admin/**",
-                                "/api/reports/export"
+                                "/api/admin/**"
                         ).permitAll()
                         .anyRequest().authenticated()
                 )

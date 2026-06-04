@@ -6,8 +6,8 @@ export function NotFoundPage() {
     <div className="center-page">
       <div className="stack">
         <h1>404</h1>
-        <p>Page not found.</p>
-        <Link to={ROUTES.HOME}>Go home</Link>
+        <p>Trang không tồn tại.</p>
+        <Link to={ROUTES.HOME}>Quay lại trang chủ</Link>
       </div>
     </div>
   )

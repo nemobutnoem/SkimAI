@@ -3,6 +3,7 @@ import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { Button } from '../../components/Button'
 import { ROUTES } from '../../constants/routes'
 import { appApi } from '../../services/appApi'
+import { useAuth } from '../../hooks/useAuth'
 import { AnimatedNumber, TypewriterText } from '../../components/Effects'
 
 const NO_DATA = 'không có dữ liệu để đánh giá'
@@ -69,6 +70,30 @@ function directionClass(direction) {
 
 function noDataFor(section) {
   return `${NO_DATA} ${section}`
+}
+
+function loadGoogleIdentityScript() {
+  if (typeof window === 'undefined') return Promise.reject(new Error('Browser only'))
+  if (window.google?.accounts?.id) return Promise.resolve()
+
+  const existing = document.querySelector('script[data-google-identity="true"]')
+  if (existing) {
+    return new Promise((resolve, reject) => {
+      existing.addEventListener('load', () => resolve())
+      existing.addEventListener('error', () => reject(new Error('Failed to load Google Identity script')))
+    })
+  }
+
+  return new Promise((resolve, reject) => {
+    const script = document.createElement('script')
+    script.src = 'https://accounts.google.com/gsi/client'
+    script.async = true
+    script.defer = true
+    script.dataset.googleIdentity = 'true'
+    script.onload = () => resolve()
+    script.onerror = () => reject(new Error('Failed to load Google Identity script'))
+    document.head.appendChild(script)
+  })
 }
 
 function buildSourceTrendRows(data, evidenceItems) {
@@ -262,6 +287,7 @@ function InsightSection({ title, badge, children }) {
 
 export function AnalysisPage() {
   const navigate = useNavigate()
+  const { isAuthenticated, login, loginWithGoogle } = useAuth()
   const [searchParams] = useSearchParams()
   const keyword = searchParams.get('keyword')?.trim() || ''
   const [draftKeyword, setDraftKeyword] = useState('')
@@ -273,6 +299,15 @@ export function AnalysisPage() {
   const [isExporting, setIsExporting] = useState(false)
   const [streamProgress, setStreamProgress] = useState(0)
   const [cacheInfo, setCacheInfo] = useState(null)
+
+  // Login popup states
+  const [showLoginModal, setShowLoginModal] = useState(false)
+  const [loginMode, setLoginMode] = useState('user') // 'user' | 'admin'
+  const [loginEmail, setLoginEmail] = useState('')
+  const [loginPassword, setLoginPassword] = useState('')
+  const [loginError, setLoginError] = useState('')
+  const [loginSubmitting, setLoginSubmitting] = useState(false)
+  const [triggerExportAfterLogin, setTriggerExportAfterLogin] = useState(false)
 
   const loadTraditional = async () => {
     setLoading(true)
@@ -413,7 +448,72 @@ export function AnalysisPage() {
   const researchGuard = data?.researchGuard ?? null
   const canRunDeepInsight = researchGuard ? Boolean(researchGuard.deepInsightEnabled) : true
 
-  const handleExport = async () => {
+  // Google Sign-In inside Modal initialization
+  useEffect(() => {
+    if (!showLoginModal || loginMode !== 'user') return
+
+    const clientId = import.meta.env.VITE_GOOGLE_CLIENT_ID
+    if (!clientId) {
+      console.warn('VITE_GOOGLE_CLIENT_ID not found in .env')
+      return
+    }
+
+    let cancelled = false
+
+    const loadGoogle = async () => {
+      try {
+        await loadGoogleIdentityScript()
+        if (cancelled) return
+
+        const google = window.google
+        if (!google?.accounts?.id) return
+
+        google.accounts.id.initialize({
+          client_id: clientId,
+          callback: async (response) => {
+            setLoginError('')
+            setLoginSubmitting(true)
+            try {
+              await loginWithGoogle({ credential: response?.credential })
+              setShowLoginModal(false)
+              if (triggerExportAfterLogin) {
+                setTriggerExportAfterLogin(false)
+                executeExport()
+              }
+            } catch (err) {
+              setLoginError(err?.message ?? 'Đăng nhập Google thất bại')
+            } finally {
+              setLoginSubmitting(false)
+            }
+          },
+        })
+
+        // Wait a tiny bit for the element container to render in DOM
+        setTimeout(() => {
+          if (cancelled) return
+          const container = document.getElementById('googleSignInModalBtn')
+          if (container) {
+            container.innerHTML = ''
+            google.accounts.id.renderButton(container, {
+              theme: 'outline',
+              size: 'large',
+              width: '320',
+            })
+          }
+        }, 100)
+      } catch (err) {
+        console.error('Google ID script load error:', err)
+      }
+    }
+
+    loadGoogle()
+
+    return () => {
+      cancelled = true
+    }
+  }, [showLoginModal, loginMode])
+
+  const executeExport = async () => {
     if (!keyword || !overall.hasData) {
       alert("Không có dữ liệu để xuất báo cáo!");
       return;
@@ -465,39 +565,88 @@ ${evidenceItems.map(ev => `- [${ev.source}] ${ev.title}\n  Link: ${ev.url}`).joi
     }
   }
 
+  const handleExport = () => {
+    if (!isAuthenticated) {
+      setTriggerExportAfterLogin(true);
+      setShowLoginModal(true);
+      return;
+    }
+    executeExport();
+  }
+
+  const handleModalLogin = async (e) => {
+    e.preventDefault()
+    setLoginError('')
+    setLoginSubmitting(true)
+    try {
+      await login({ email: loginEmail, password: loginPassword })
+      setShowLoginModal(false)
+      if (triggerExportAfterLogin) {
+        setTriggerExportAfterLogin(false)
+        executeExport()
+      }
+    } catch (err) {
+      setLoginError(err?.message ?? 'Đăng nhập thất bại')
+    } finally {
+      setLoginSubmitting(false)
+    }
+  }
+
+  const handlePreset = async (role) => {
+    setLoginError('')
+    setLoginSubmitting(true)
+    const email = role === 'admin' ? 'admin@skimai.local' : 'demo@skimai.local'
+    const password = '123456'
+    setLoginEmail(email)
+    setLoginPassword(password)
+    
+    try {
+      await login({ email, password })
+      setShowLoginModal(false)
+      if (triggerExportAfterLogin) {
+        setTriggerExportAfterLogin(false)
+        executeExport()
+      }
+    } catch (err) {
+      setLoginError(err?.message ?? 'Đăng nhập thử nghiệm thất bại')
+    } finally {
+      setLoginSubmitting(false)
+    }
+  }
+
   if (!keyword) {
     return (
       <div className="analysis-shell page-wrap">
         <section className="analysis-suite-hero card">
           <div>
-            <p className="dashboard-kicker">Research suite</p>
-            <h1>Start a Market Research Query</h1>
+            <p className="dashboard-kicker">Bộ công cụ phân tích</p>
+            <h1>Bắt đầu phân tích thị trường</h1>
             <p className="hint">
               Nhập một từ khóa để hệ thống tổng hợp insight thị trường theo đúng prompt: xu hướng, đánh giá tổng thể, tiềm năng và kênh tiếp cận.
             </p>
             <div className="analysis-module-strip">
-              <span className="analysis-module-chip">Source trend</span>
-              <span className="analysis-module-chip">Overall interest</span>
-              <span className="analysis-module-chip">Channel fit</span>
+              <span className="analysis-module-chip">Xu hướng nguồn</span>
+              <span className="analysis-module-chip">Độ quan tâm tổng thể</span>
+              <span className="analysis-module-chip">Kênh tiếp cận</span>
             </div>
           </div>
 
           <div className="analysis-suite-meta">
-            <div className="analysis-suite-meta-label">Tracked keyword</div>
-            <strong>Not selected</strong>
-            <span>Search to start analysis</span>
+            <div className="analysis-suite-meta-label">Từ khóa theo dõi</div>
+            <strong>Chưa chọn</strong>
+            <span>Tìm kiếm để bắt đầu phân tích</span>
           </div>
         </section>
 
         <section className="card dashboard-empty-state analysis-empty-state">
-          <h2>Research starts with a keyword</h2>
+          <h2>Bắt đầu nghiên cứu bằng một từ khóa</h2>
           <p>Trang sẽ chỉ đưa ra nhận định dựa trên dữ liệu thu thập được. Nếu thiếu dữ liệu, hệ thống sẽ ghi rõ mục không thể đánh giá.</p>
 
           <div className="input-row analysis-empty-input">
             <input
               value={draftKeyword}
               onChange={(e) => setDraftKeyword(e.target.value)}
-              placeholder="Try: phở, electric bike, AI agent, TikTok Shop trends..."
+              placeholder="Thử tìm: phở, xe máy điện, AI agent, xu hướng TikTok Shop..."
             />
             <Button
               onClick={() => {
@@ -506,7 +655,7 @@ ${evidenceItems.map(ev => `- [${ev.source}] ${ev.title}\n  Link: ${ev.url}`).joi
                 navigate(`${ROUTES.ANALYSIS}?keyword=${encodeURIComponent(nextKeyword)}`)
               }}
             >
-              Start Research
+              Bắt đầu phân tích
             </Button>
           </div>
         </section>
@@ -518,7 +667,7 @@ ${evidenceItems.map(ev => `- [${ev.source}] ${ev.title}\n  Link: ${ev.url}`).joi
     <div className="analysis-shell page-wrap">
       <section className="analysis-suite-hero card">
         <div>
-          <p className="dashboard-kicker">Market insight prompt</p>
+          <p className="dashboard-kicker">Phân tích dữ liệu thị trường</p>
           <h1>Phân tích thị trường theo từ khóa</h1>
           <p className="hint">
             Dựa hoàn toàn trên dữ liệu về "{keyword}", không thêm kiến thức bên ngoài và không vẽ dữ liệu.
@@ -532,9 +681,9 @@ ${evidenceItems.map(ev => `- [${ev.source}] ${ev.title}\n  Link: ${ev.url}`).joi
         </div>
 
         <div className="analysis-suite-meta">
-          <div className="analysis-suite-meta-label">Tracked keyword</div>
+          <div className="analysis-suite-meta-label">Từ khóa theo dõi</div>
           <strong>{keyword}</strong>
-          <span>{loading ? 'Đang phân tích...' : 'Updated just now'}</span>
+          <span>{loading ? 'Đang phân tích...' : 'Vừa cập nhật'}</span>
         </div>
       </section>
 
@@ -544,11 +693,22 @@ ${evidenceItems.map(ev => `- [${ev.source}] ${ev.title}\n  Link: ${ev.url}`).joi
           <p className="hint">Tối đa hóa insight ngắn gọn, có bằng chứng nguồn và trạng thái thiếu dữ liệu.</p>
         </div>
         <div className="header-actions">
+          {canRunDeepInsight ? (
+            <Link to={`${ROUTES.DEEP_INSIGHT}?keyword=${encodeURIComponent(keyword)}`} className="btn btn-primary btn-sm">
+              <span className="ask-more-icon" style={{ marginRight: '6px' }}>AI</span>
+              <span>Phân tích chuyên sâu</span>
+            </Link>
+          ) : (
+            <button type="button" className="btn btn-primary btn-sm ask-more-cta-disabled" disabled title={researchGuard?.message || 'Tối ưu từ khóa để mở khóa phân tích chuyên sâu'}>
+              <span className="ask-more-icon" style={{ marginRight: '6px' }}>AI</span>
+              <span>Phân tích chuyên sâu</span>
+            </button>
+          )}
           <Button variant="secondary" className="btn-sm" onClick={handleExport} disabled={isExporting || loading}>
-            {isExporting ? 'Đang xuất...' : 'Export'}
+            {isExporting ? 'Đang xuất...' : 'Xuất báo cáo'}
           </Button>
           <Button onClick={load} disabled={loading} className="btn-sm">
-            {loading ? 'Đang phân tích...' : 'Refresh Data'}
+            {loading ? 'Đang phân tích...' : 'Cập nhật dữ liệu'}
           </Button>
         </div>
       </div>
@@ -598,11 +758,25 @@ ${evidenceItems.map(ev => `- [${ev.source}] ${ev.title}\n  Link: ${ev.url}`).joi
       <div className="prompt-summary-grid">
         <section className="card prompt-summary-card">
           <span>Trạng thái thị trường</span>
-          <strong>{overall.hasData ? <TypewriterText text={overall.marketState} speed={40} /> : 'chưa đủ dữ liệu'}</strong>
+          <strong style={{
+            textTransform: 'uppercase',
+            color: overall.hasData 
+              ? (overall.marketState?.toLowerCase() === 'tăng trưởng' ? 'var(--green)' : overall.marketState?.toLowerCase() === 'giảm sút' ? 'var(--red)' : '#f59e0b') 
+              : 'var(--text-muted)'
+          }}>
+            {overall.hasData ? <TypewriterText text={overall.marketState} speed={40} /> : 'chưa đủ dữ liệu'}
+          </strong>
         </section>
         <section className="card prompt-summary-card">
           <span>Mức quan tâm</span>
-          <strong>{overall.hasData ? <TypewriterText text={overall.interestLevel} speed={40} /> : 'chưa đủ dữ liệu'}</strong>
+          <strong style={{
+            textTransform: 'uppercase',
+            color: overall.hasData 
+              ? (overall.interestLevel?.toLowerCase() === 'cao' ? 'var(--green)' : overall.interestLevel?.toLowerCase() === 'thấp' ? 'var(--red)' : '#f59e0b') 
+              : 'var(--text-muted)'
+          }}>
+            {overall.hasData ? <TypewriterText text={overall.interestLevel} speed={40} /> : 'chưa đủ dữ liệu'}
+          </strong>
         </section>
         <section className="card prompt-summary-card">
           <span>Bằng chứng</span>
@@ -635,7 +809,7 @@ ${evidenceItems.map(ev => `- [${ev.source}] ${ev.title}\n  Link: ${ev.url}`).joi
       <InsightSection title="Đánh giá tổng thể" badge="02">
         <div className="decision-grid">
           <div className="decision-score-card">
-            <span className="decision-label">Market score</span>
+            <span className="decision-label">Điểm thị trường</span>
             <strong>{overall.hasData ? <><AnimatedNumber value={overall.marketScore} />/100</> : 'N/A'}</strong>
             <div className="score-track">
               <div className="score-fill" style={{ width: `${overall.hasData ? overall.marketScore : 0}%` }} />
@@ -643,11 +817,11 @@ ${evidenceItems.map(ev => `- [${ev.source}] ${ev.title}\n  Link: ${ev.url}`).joi
             <p>{overall.hasData ? <TypewriterText text={`Mức quan tâm: ${overall.interestLevel}`} speed={30} /> : noDataFor('mức độ quan tâm hiện tại')}</p>
           </div>
           <div className="decision-verdict">
-            <span className="decision-label">Market verdict</span>
+            <span className="decision-label">Đánh giá chung</span>
             <h4>{overall.hasData ? <TypewriterText text={`Thị trường đang ${overall.marketState}`} speed={30} /> : noDataFor('đánh giá tổng thể')}</h4>
             <p>
               {overall.hasData
-                ? <TypewriterText text={`Confidence ở mức ${overall.confidenceBand} (${overall.confidenceScore}/100), dựa trên coverage ${Number(overall.coverage)}%, ${overall.sourceCount} nguồn và ${formatNumber(overall.totalComments)} bình luận.`} speed={20} />
+                ? <TypewriterText text={`Độ tin cậy ở mức ${overall.confidenceBand} (${overall.confidenceScore}/100), dựa trên độ phủ ${Number(overall.coverage)}%, ${overall.sourceCount} nguồn và ${formatNumber(overall.totalComments)} bình luận.`} speed={20} />
                 : noDataFor('độ tin cậy')}
             </p>
           </div>
@@ -675,7 +849,7 @@ ${evidenceItems.map(ev => `- [${ev.source}] ${ev.title}\n  Link: ${ev.url}`).joi
       <InsightSection title="Tiềm năng thị trường" badge="03">
         <div className="decision-grid">
           <div className="decision-score-card opportunity-score">
-            <span className="decision-label">Opportunity score</span>
+            <span className="decision-label">Điểm cơ hội</span>
             <strong>{opportunityRead.score}/100</strong>
             <div className="score-track">
               <div className="score-fill" style={{ width: `${opportunityRead.score}%` }} />
@@ -683,14 +857,14 @@ ${evidenceItems.map(ev => `- [${ev.source}] ${ev.title}\n  Link: ${ev.url}`).joi
             <p>Độ mạnh tín hiệu: {opportunityRead.band}</p>
           </div>
           <div className="decision-verdict">
-            <span className="decision-label">Top opportunity</span>
+            <span className="decision-label">Cơ hội tốt nhất</span>
             <h4>{opportunityRead.title}</h4>
             <p>{opportunityRead.risk}</p>
           </div>
         </div>
         <div className="decision-detail-grid">
           <div>
-            <div className="analysis-subsection-title">Why it matters</div>
+            <div className="analysis-subsection-title">Ý nghĩa</div>
             <ul className="prompt-bullet-list">
               {opportunityRead.why.map((item) => (
                 <li key={item}>{item}</li>
@@ -698,7 +872,7 @@ ${evidenceItems.map(ev => `- [${ev.source}] ${ev.title}\n  Link: ${ev.url}`).joi
             </ul>
           </div>
           <div>
-            <div className="analysis-subsection-title">Recommended next move</div>
+            <div className="analysis-subsection-title">Hành động đề xuất tiếp theo</div>
             <p className="prompt-main-text">{opportunityRead.nextMove}</p>
           </div>
         </div>
@@ -724,22 +898,22 @@ ${evidenceItems.map(ev => `- [${ev.source}] ${ev.title}\n  Link: ${ev.url}`).joi
         <section className={`card research-guard-card ${canRunDeepInsight ? 'guard-ok' : 'guard-low'}`}>
           <div className="analysis-section-heading">
             <div>
-              <div className="card-title">Keyword Validation</div>
+              <div className="card-title">Kiểm định Từ khóa</div>
               <p className="hint">{researchGuard.message}</p>
             </div>
             <div className="guard-score">{researchGuard.intentScore}/100</div>
           </div>
           <div className="grid grid-2">
             <div className="opportunity-item">
-              <strong>Status: {researchGuard.status}</strong>
+              <strong>Trạng thái: {researchGuard.status}</strong>
               <p className="hint">
                 {canRunDeepInsight
-                  ? 'This keyword is valid for market analysis and deep insight.'
-                  : 'Deep insight is temporarily blocked until keyword intent improves.'}
+                  ? 'Từ khóa này hợp lệ để phân tích thị trường và phân tích chuyên sâu.'
+                  : 'Phân tích chuyên sâu tạm thời bị khóa cho đến khi độ rõ của từ khóa được cải thiện.'}
               </p>
             </div>
             <div className="opportunity-item">
-              <strong>Suggested keywords</strong>
+              <strong>Từ khóa gợi ý</strong>
               <p className="hint">{(researchGuard.suggestedKeywords ?? []).slice(0, 5).join(' | ')}</p>
             </div>
           </div>
@@ -774,19 +948,152 @@ ${evidenceItems.map(ev => `- [${ev.source}] ${ev.title}\n  Link: ${ev.url}`).joi
         </div>
       </section>
 
-      <div className="ask-more">
-        {canRunDeepInsight ? (
-          <Link to={`${ROUTES.DEEP_INSIGHT}?keyword=${encodeURIComponent(keyword)}`} className="ask-more-cta">
-            <span className="ask-more-icon">AI</span>
-            <span>Run Deep Insight</span>
-          </Link>
-        ) : (
-          <button type="button" className="ask-more-cta ask-more-cta-disabled" disabled>
-            <span className="ask-more-icon">AI</span>
-            <span>Refine keyword to unlock deep insight</span>
-          </button>
-        )}
-      </div>
+
+      {/* Login Modal Popup */}
+      {showLoginModal && (
+        <div className="upgrade-modal-overlay" style={{ backdropFilter: 'blur(6px)', zIndex: 9999 }} onClick={() => setShowLoginModal(false)}>
+          <div className="upgrade-modal" style={{ maxWidth: '440px', padding: '30px', position: 'relative', borderRadius: '16px' }} onClick={(e) => e.stopPropagation()}>
+            <button 
+              style={{
+                position: 'absolute',
+                top: '16px',
+                right: '16px',
+                background: 'none',
+                border: 'none',
+                fontSize: '24px',
+                cursor: 'pointer',
+                color: 'var(--text-secondary)',
+                lineHeight: 1
+              }}
+              onClick={() => setShowLoginModal(false)}
+            >
+              &times;
+            </button>
+            <div style={{ textAlign: 'center', marginBottom: '24px' }}>
+              <div style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                width: '48px',
+                height: '48px',
+                background: 'var(--primary)',
+                color: 'white',
+                borderRadius: '12px',
+                fontWeight: 'bold',
+                fontSize: '18px',
+                marginBottom: '12px'
+              }}>AI</div>
+              <h3 style={{ margin: '0 0 8px', fontSize: '20px', fontWeight: 'bold' }}>Đăng nhập tài khoản</h3>
+              <p style={{ margin: 0, fontSize: '14px', color: 'var(--text-secondary)' }}>
+                Bạn cần đăng nhập để thực hiện tải báo cáo về thiết bị.
+              </p>
+            </div>
+            
+            <div className="login-mode-toggle" style={{ marginBottom: '20px' }}>
+              <button
+                type="button"
+                className={loginMode === 'user' ? 'active' : ''}
+                onClick={() => {
+                  setLoginMode('user')
+                  setLoginError('')
+                }}
+                style={{ flex: 1 }}
+              >
+                Người dùng
+              </button>
+              <button
+                type="button"
+                className={loginMode === 'admin' ? 'active' : ''}
+                onClick={() => {
+                  setLoginMode('admin')
+                  setLoginError('')
+                }}
+                style={{ flex: 1 }}
+              >
+                Quản trị viên
+              </button>
+            </div>
+
+            {loginMode === 'admin' && (
+              <form onSubmit={handleModalLogin} className="login-form">
+                <div className="login-field">
+                  <label>Email ID</label>
+                  <input
+                    value={loginEmail}
+                    onChange={(e) => setLoginEmail(e.target.value)}
+                    placeholder="admin@skimai.local"
+                    required
+                  />
+                </div>
+                <div className="login-field">
+                  <label>Mật khẩu</label>
+                  <input
+                    type="password"
+                    value={loginPassword}
+                    onChange={(e) => setLoginPassword(e.target.value)}
+                    placeholder="••••••••"
+                    required
+                  />
+                </div>
+                {loginError && <div className="login-error">{loginError}</div>}
+                <button type="submit" className="login-submit-btn" disabled={loginSubmitting} style={{ width: '100%' }}>
+                  {loginSubmitting ? 'Đang đăng nhập...' : 'Đăng nhập'}
+                </button>
+              </form>
+            )}
+
+            {loginMode === 'user' && (
+              <div className="login-google" style={{ width: '100%' }}>
+                <div id="googleSignInModalBtn" style={{ minHeight: '40px', display: 'flex', justifyContent: 'center', width: '100%' }} />
+                {loginError && <div className="login-error" style={{ width: '100%' }}>{loginError}</div>}
+                
+                <div style={{ margin: '15px 0 10px', display: 'flex', alignItems: 'center', width: '100%' }}>
+                  <div style={{ flex: 1, height: '1px', background: 'var(--border-color)' }} />
+                  <span style={{ margin: '0 10px', fontSize: '11px', color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>HOẶC ĐĂNG NHẬP NHANH</span>
+                  <div style={{ flex: 1, height: '1px', background: 'var(--border-color)' }} />
+                </div>
+
+                <form onSubmit={handleModalLogin} className="login-form" style={{ width: '100%' }}>
+                  <div className="login-field">
+                    <label>Email</label>
+                    <input
+                      value={loginEmail}
+                      onChange={(e) => setLoginEmail(e.target.value)}
+                      placeholder="demo@skimai.local"
+                      required
+                    />
+                  </div>
+                  <div className="login-field">
+                    <label>Mật khẩu</label>
+                    <input
+                      type="password"
+                      value={loginPassword}
+                      onChange={(e) => setLoginPassword(e.target.value)}
+                      placeholder="••••••••"
+                      required
+                    />
+                  </div>
+                  <button type="submit" className="login-submit-btn" disabled={loginSubmitting} style={{ width: '100%' }}>
+                    {loginSubmitting ? 'Đang đăng nhập...' : 'Đăng nhập tài khoản'}
+                  </button>
+                </form>
+              </div>
+            )}
+
+            <div className="login-presets" style={{ marginTop: '20px', paddingTop: '15px' }}>
+              <p style={{ margin: '0 0 8px', fontSize: '12px' }}>Đăng nhập thử nghiệm nhanh:</p>
+              <div className="login-preset-btns">
+                <button type="button" onClick={() => handlePreset('user')} style={{ flex: 1 }}>
+                  Người dùng thử
+                </button>
+                <button type="button" onClick={() => handlePreset('admin')} style={{ flex: 1 }}>
+                  Quản trị thử
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

@@ -82,7 +82,7 @@ export function LoginPage() {
                 navigate(ROUTES.DASHBOARD)
               }
             } catch (err) {
-              setError(err?.message ?? 'Google sign in failed')
+              setError(err?.message ?? 'Đăng nhập Google thất bại')
             } finally {
               setIsSubmitting(false)
             }
@@ -128,7 +128,7 @@ export function LoginPage() {
         navigate(ROUTES.DASHBOARD)
       }
     } catch (err) {
-      setError(err?.message ?? 'Sign in failed')
+      setError(err?.message ?? 'Đăng nhập thất bại')
     } finally {
       setIsSubmitting(false)
     }
@@ -148,15 +148,15 @@ export function LoginPage() {
             <div className="login-logo-icon">AI</div>
             <span>AISKIM</span>
           </div>
-          <h1>Market Intelligence at the Speed of Thought.</h1>
+          <h1>Trí tuệ Thị trường nhanh như Tư duy.</h1>
           <p>
-            Unlock data-driven decisions with real-time trend detection, 
-            sentiment analysis, and competitor monitoring powered by AI.
+            Đưa ra quyết định dựa trên dữ liệu với tính năng phát hiện xu hướng thời gian thực, 
+            phân tích cảm nhận và giám sát đối thủ do AI hỗ trợ.
           </p>
           <div className="login-badges">
-            <span className="login-badge">🚀 10x Faster Analysis</span>
-            <span className="login-badge">📈 Live Search Trends</span>
-            <span className="login-badge">💡 Deep AI Insights</span>
+            <span className="login-badge">🚀 Phân tích nhanh hơn gấp 10 lần</span>
+            <span className="login-badge">📈 Xu hướng tìm kiếm thời gian thực</span>
+            <span className="login-badge">💡 Nhận định AI chuyên sâu</span>
           </div>
         </div>
         {/* Abstract shapes in the background */}
@@ -168,8 +168,8 @@ export function LoginPage() {
       <div className="login-form-container">
         <div className="login-form-inner">
           <div className="login-header">
-            <h2>Welcome back</h2>
-            <p>Please enter your details to sign in.</p>
+            <h2>Chào mừng quay lại</h2>
+            <p>Vui lòng nhập thông tin chi tiết để đăng nhập.</p>
           </div>
 
           <div className="login-mode-toggle" role="tablist" aria-label="Login mode">
@@ -181,7 +181,7 @@ export function LoginPage() {
                 setError('')
               }}
             >
-              User (Google)
+              Người dùng (Google)
             </button>
             <button
               type="button"
@@ -191,14 +191,14 @@ export function LoginPage() {
                 setError('')
               }}
             >
-              Admin (Account)
+              Quản trị viên (Tài khoản)
             </button>
           </div>
 
           {mode === 'user' && (
             <div className="login-google">
               <div id="googleSignInBtn" />
-              {!googleReady && !googleError && <div className="login-google-hint">Loading Google Sign-In…</div>}
+              {!googleReady && !googleError && <div className="login-google-hint">Đang tải Đăng nhập Google…</div>}
               {googleError && <div className="login-error">{googleError}</div>}
               {error && <div className="login-error">{error}</div>}
             </div>
@@ -208,18 +208,18 @@ export function LoginPage() {
             <>
               <form onSubmit={onSubmit} className="login-form">
                 <div className="login-field">
-                  <label>Email ID</label>
+                  <label>Địa chỉ Email</label>
                   <input
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
-                    placeholder="Enter your email"
+                    placeholder="Nhập email của bạn"
                     autoComplete="email"
                     required
                   />
                 </div>
 
                 <div className="login-field">
-                  <label>Password</label>
+                  <label>Mật khẩu</label>
                   <input
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
@@ -235,18 +235,18 @@ export function LoginPage() {
                 <div className="login-options">
                   <label className="login-checkbox">
                     <input type="checkbox" />
-                    <span>Remember me</span>
+                    <span>Ghi nhớ đăng nhập</span>
                   </label>
-                  <a href="#" className="login-forgot">Forgot password?</a>
+                  <a href="#" className="login-forgot">Quên mật khẩu?</a>
                 </div>
 
                 <button type="submit" className="login-submit-btn" disabled={isSubmitting}>
-                  {isSubmitting ? 'Signing in...' : 'Sign in'}
+                  {isSubmitting ? 'Đang đăng nhập...' : 'Đăng nhập'}
                 </button>
               </form>
 
               <div className="login-presets">
-                <p>Try our demo presets:</p>
+                <p>Sử dụng tài khoản thử nghiệm nhanh:</p>
                 <div className="login-preset-btns">
                   <button type="button" onClick={() => setPreset('admin')}>Demo Admin</button>
                 </div>

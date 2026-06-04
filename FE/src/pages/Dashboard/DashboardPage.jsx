@@ -17,7 +17,7 @@ export function DashboardPage() {
         if (alive) setData(d)
       })
       .catch((e) => {
-        if (alive) setError(e?.message ?? 'Load dashboard failed')
+        if (alive) setError(e?.message ?? 'Tải thông tin bảng điều khiển thất bại')
       })
 
     return () => {
@@ -26,26 +26,26 @@ export function DashboardPage() {
   }, [])
 
   const quickActions = [
-    { label: 'Run new analysis', hint: 'Start a fresh keyword research flow', to: ROUTES.ANALYSIS },
-    { label: 'Open pricing', hint: 'Compare plans and upgrade access', to: ROUTES.PRICING },
-    { label: 'Manage account', hint: 'Review billing and notifications', to: ROUTES.ACCOUNT },
+    { label: 'Chạy phân tích mới', hint: 'Bắt đầu luồng nghiên cứu từ khóa mới', to: ROUTES.ANALYSIS },
+    { label: 'Xem bảng giá', hint: 'So sánh các gói và nâng cấp tài khoản', to: ROUTES.PRICING },
+    { label: 'Quản lý tài khoản', hint: 'Xem thông tin tài khoản và thanh toán', to: ROUTES.ACCOUNT },
   ]
 
   return (
     <div className="stack page-wrap dashboard-shell">
       <section className="dashboard-hero card">
         <div className="dashboard-hero-copy">
-          <p className="dashboard-kicker">Workspace overview</p>
-          <h1>Dashboard</h1>
+          <p className="dashboard-kicker">Tổng quan không gian làm việc</p>
+          <h1>Bảng điều khiển</h1>
           <p className="hint">
-            Keep track of your reports, active insights, and the latest research activity in one place.
+            Theo dõi báo cáo, thông tin phân tích và các hoạt động nghiên cứu mới nhất của bạn tại một nơi duy nhất.
           </p>
         </div>
         <div className="dashboard-hero-panel">
-          <div className="dashboard-hero-pill">User workspace</div>
+          <div className="dashboard-hero-pill">Không gian cá nhân</div>
           <div className="dashboard-hero-meta">
             <strong>{data?.recent?.length ?? 0}</strong>
-            <span>recent activity items</span>
+            <span>hoạt động gần đây</span>
           </div>
         </div>
       </section>
@@ -57,13 +57,13 @@ export function DashboardPage() {
           <Card key={k.label} className="dashboard-kpi-card">
             <div className="dashboard-kpi-label">{k.label}</div>
             <div className="dashboard-kpi-value">{k.value}</div>
-            <div className="dashboard-kpi-note">Live summary from your workspace</div>
+            <div className="dashboard-kpi-note">Cập nhật trực tiếp từ workspace</div>
           </Card>
         ))}
       </div>
 
       <div className="grid grid-2 dashboard-main-grid">
-        <Card title="Quick Actions" className="dashboard-section-card">
+        <Card title="Hành động Nhanh" className="dashboard-section-card">
           <div className="dashboard-action-list">
             {quickActions.map((action) => (
               <Link key={action.label} to={action.to} className="dashboard-action-item">
@@ -71,13 +71,13 @@ export function DashboardPage() {
                   <strong>{action.label}</strong>
                   <p>{action.hint}</p>
                 </div>
-                <span>Open</span>
+                <span>Mở</span>
               </Link>
             ))}
           </div>
         </Card>
 
-        <Card title="Recent Activity" className="dashboard-section-card">
+        <Card title="Hoạt động Gần đây" className="dashboard-section-card">
           <div className="dashboard-recent-list">
             {(data?.recent ?? []).length ? (
               (data?.recent ?? []).map((item) => (
@@ -89,14 +89,14 @@ export function DashboardPage() {
                 >
                   <div>
                     <strong>{item.title}</strong>
-                    <p>Tracked inside your market research workspace</p>
+                    <p>Được theo dõi trong workspace nghiên cứu thị trường của bạn</p>
                   </div>
                   <time>{new Date(item.createdAt).toLocaleString()}</time>
                 </Link>
               ))
             ) : (
               <div className="dashboard-empty-state">
-                No recent activity yet. Start a new analysis to populate this workspace.
+                Chưa có hoạt động gần đây. Hãy bắt đầu phân tích từ khóa mới để điền dữ liệu.
               </div>
             )}
           </div>

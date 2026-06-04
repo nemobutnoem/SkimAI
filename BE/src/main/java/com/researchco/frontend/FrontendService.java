@@ -141,9 +141,9 @@ public class FrontendService {
 
         return new FrontendDtos.DashboardResponse(
                 List.of(
-                        new FrontendDtos.KpiItem("Documents", String.valueOf(userSearches)),
-                        new FrontendDtos.KpiItem("Insights", String.valueOf(userInsights)),
-                        new FrontendDtos.KpiItem("Reports", String.valueOf(userReports))
+                        new FrontendDtos.KpiItem("Tài liệu", String.valueOf(userSearches)),
+                        new FrontendDtos.KpiItem("Thông tin chi tiết", String.valueOf(userInsights)),
+                        new FrontendDtos.KpiItem("Báo cáo", String.valueOf(userReports))
                 ),
                 recentQueries.stream()
                         .map(query -> new FrontendDtos.RecentItem(
@@ -192,9 +192,9 @@ public class FrontendService {
                         renewsAt
                 ),
                 List.of(
-                        new FrontendDtos.UsageItem("API Calls", Math.min(95, (int) queryCount * 18 + 24)),
-                        new FrontendDtos.UsageItem("Storage", Math.min(95, (int) reportCount * 22 + 18)),
-                        new FrontendDtos.UsageItem("Team Seats", "ENTERPRISE".equalsIgnoreCase(plan != null ? plan.getName() : "") ? 80 : 30)
+                        new FrontendDtos.UsageItem("Yêu cầu API", Math.min(95, (int) queryCount * 18 + 24)),
+                        new FrontendDtos.UsageItem("Lưu trữ", Math.min(95, (int) reportCount * 22 + 18)),
+                        new FrontendDtos.UsageItem("Thành viên", "ENTERPRISE".equalsIgnoreCase(plan != null ? plan.getName() : "") ? 80 : 30)
                 ),
                 invoices,
                 new LinkedHashMap<>(notificationSettings.get())
@@ -275,12 +275,12 @@ public class FrontendService {
                 fallbackInsights,
                 keywords,
                 news,
-                List.of("Compare competitors", "Forecast demand", "Analyze top keywords", "Audience insights"),
+                List.of("So sánh đòn bẩy đối thủ", "Dự báo nhu cầu", "Phân tích từ khóa hàng đầu", "Nhận định khán giả"),
                 new FrontendDtos.DataQuality(
                         120,
                         Math.max(1, getAvailableAnalysisSources().size() - 1),
                         clamp((keywords.size() * 18) + (news.size() * 12), 15, 72),
-                        "Low confidence"
+                        "Độ tin cậy thấp"
                 ),
                 buildResearchGuard(kw, keywords, news, 120, Math.max(1, getAvailableAnalysisSources().size() - 1))
         );
@@ -318,12 +318,12 @@ public class FrontendService {
                 fallbackInsights,
                 keywords,
                 news,
-                List.of("Compare competitors", "Forecast demand", "Analyze top keywords", "Audience insights"),
+                List.of("So sánh đòn bẩy đối thủ", "Dự báo nhu cầu", "Phân tích từ khóa hàng đầu", "Nhận định khán giả"),
                 new FrontendDtos.DataQuality(
                         120,
                         Math.max(1, getAvailableAnalysisSources().size() - 1),
                         clamp((keywords.size() * 18) + (news.size() * 12), 15, 72),
-                        "Low confidence"
+                        "Độ tin cậy thấp"
                 ),
                 buildResearchGuard(kw, keywords, news, 120, Math.max(1, getAvailableAnalysisSources().size() - 1))
         );
@@ -346,50 +346,50 @@ public class FrontendService {
 
         FrontendDtos.AnalysisResponse analysis = getAnalysis(request.keyword());
         if (analysis.researchGuard() != null && !analysis.researchGuard().deepInsightEnabled()) {
-            String keyword = analysis.keyword() == null || analysis.keyword().isBlank() ? "this keyword" : analysis.keyword();
+            String keyword = analysis.keyword() == null || analysis.keyword().isBlank() ? "từ khóa này" : analysis.keyword();
             List<String> suggestions = analysis.researchGuard().suggestedKeywords() == null
                     ? List.of()
                     : analysis.researchGuard().suggestedKeywords();
             return new FrontendDtos.DeepInsightResponse(
                     keyword,
                     request.source(),
-                    "Signal quality is too low for a reliable deep insight report.",
+                    "Chất lượng tín hiệu quá thấp để tạo báo cáo phân tích chuyên sâu đáng tin cậy.",
                     suggestions.isEmpty()
-                            ? List.of("Try a clearer market intent keyword.", "Use business + audience + region terms.")
+                            ? List.of("Hãy thử từ khóa có ý định thị trường rõ ràng hơn.", "Sử dụng các thuật ngữ về doanh nghiệp + đối tượng + khu vực.")
                             : suggestions,
-                    "Run a new analysis with a stronger market-intent keyword before generating strategic recommendations.",
+                    "Hãy chạy phân tích mới với từ khóa có ý định thị trường mạnh mẽ hơn trước khi tạo khuyến nghị chiến lược.",
                     List.of(
-                            new FrontendDtos.StatItem(String.valueOf(analysis.researchGuard().intentScore()), "Intent score"),
-                            new FrontendDtos.StatItem(analysis.researchGuard().status(), "Validation"),
-                            new FrontendDtos.StatItem("Low", "Evidence readiness")
+                            new FrontendDtos.StatItem(String.valueOf(analysis.researchGuard().intentScore()), "Điểm ý định"),
+                            new FrontendDtos.StatItem(analysis.researchGuard().status(), "Kiểm định"),
+                            new FrontendDtos.StatItem("Thấp", "Độ sẵn sàng bằng chứng")
                     ),
-                    List.of(new FrontendDtos.SignalItem("Research guard", analysis.researchGuard().message())),
+                    List.of(new FrontendDtos.SignalItem("Kiểm định từ khóa", analysis.researchGuard().message())),
                     List.of(
-                            new FrontendDtos.TrendPoint("Current signal quality", analysis.researchGuard().intentScore(), "Intent-based validation"),
-                            new FrontendDtos.TrendPoint("Target readiness", 70, "Recommended minimum score for deep insight")
+                            new FrontendDtos.TrendPoint("Chất lượng tín hiệu hiện tại", analysis.researchGuard().intentScore(), "Kiểm định dựa trên ý định"),
+                            new FrontendDtos.TrendPoint("Độ sẵn sàng mục tiêu", 70, "Điểm tối thiểu khuyến nghị để phân tích chuyên sâu")
                     ),
                     new FrontendDtos.SentimentBlock(
                             List.of(
-                                    new FrontendDtos.SentimentBar("Positive", 0, "#10b981", "positive"),
-                                    new FrontendDtos.SentimentBar("Neutral", 100, "#94a3b8", "neutral"),
-                                    new FrontendDtos.SentimentBar("Negative", 0, "#ef4444", "negative")
+                                    new FrontendDtos.SentimentBar("Tích cực", 0, "#10b981", "positive"),
+                                    new FrontendDtos.SentimentBar("Trung lập", 100, "#94a3b8", "neutral"),
+                                    new FrontendDtos.SentimentBar("Tiêu cực", 0, "#ef4444", "negative")
                             ),
                             List.of(
-                                    new FrontendDtos.TopicItem("Data coverage", "insufficient"),
-                                    new FrontendDtos.TopicItem("Keyword fit", "needs refinement")
+                                    new FrontendDtos.TopicItem("Độ phủ dữ liệu", "chưa đủ"),
+                                    new FrontendDtos.TopicItem("Độ phù hợp từ khóa", "cần tinh chỉnh")
                             )
                     ),
                     List.of(
-                            new FrontendDtos.OpportunityCard("Refine keyword intent", "Add product, audience, and geo intent in keyword.", "mint"),
-                            new FrontendDtos.OpportunityCard("Expand source signal", "Include adjacent commercial terms to increase evidence.", "blue")
+                            new FrontendDtos.OpportunityCard("Tinh chỉnh ý định từ khóa", "Thêm ý định về sản phẩm, đối tượng và địa lý vào từ khóa.", "mint"),
+                            new FrontendDtos.OpportunityCard("Mở rộng tín hiệu nguồn", "Bao gồm các thuật ngữ thương mại liền kề để tăng bằng chứng.", "blue")
                     ),
                     new FrontendDtos.StrategicRecommendation(
-                            "Strengthen input signal first",
-                            "This keyword currently lacks enough evidence from the connected sources. Improve intent quality, then re-run deep insight.",
+                            "Hãy tăng cường tín hiệu đầu vào trước",
+                            "Từ khóa này hiện thiếu bằng chứng từ các nguồn kết nối. Hãy cải thiện chất lượng ý định từ khóa, sau đó chạy lại phân tích sâu.",
                             List.of(
-                                    new FrontendDtos.StatItem(String.valueOf(analysis.researchGuard().intentScore()), "Current score"),
-                                    new FrontendDtos.StatItem("70+", "Target score"),
-                                    new FrontendDtos.StatItem("Blocked", "Deep insight state")
+                                    new FrontendDtos.StatItem(String.valueOf(analysis.researchGuard().intentScore()), "Điểm hiện tại"),
+                                    new FrontendDtos.StatItem("70+", "Điểm mục tiêu"),
+                                    new FrontendDtos.StatItem("Bị khóa", "Trạng thái phân tích sâu")
                             )
                     )
             );
@@ -409,19 +409,19 @@ public class FrontendService {
                 .toList();
 
         List<FrontendDtos.ProjectSnapshotPoint> timeline = new ArrayList<>();
-        timeline.add(new FrontendDtos.ProjectSnapshotPoint("Baseline", "Search opened"));
-        timeline.add(new FrontendDtos.ProjectSnapshotPoint("Signal", formatCompact(
+        timeline.add(new FrontendDtos.ProjectSnapshotPoint("Điểm xuất phát", "Bắt đầu tìm kiếm"));
+        timeline.add(new FrontendDtos.ProjectSnapshotPoint("Tín hiệu", formatCompact(
                 analysis.relatedKeywords().stream().mapToLong(FrontendDtos.KeywordMetric::totalViews).sum()
-        ) + " observed views"));
-        timeline.add(new FrontendDtos.ProjectSnapshotPoint("Discussion", formatCompact(
+        ) + " lượt xem ghi nhận"));
+        timeline.add(new FrontendDtos.ProjectSnapshotPoint("Thảo luận", formatCompact(
                 analysis.relatedKeywords().stream().mapToLong(FrontendDtos.KeywordMetric::totalComments).sum()
-        ) + " comments"));
-        timeline.add(new FrontendDtos.ProjectSnapshotPoint("Action", analysis.suggestedActions().isEmpty()
-                ? "Run competitor comparison"
+        ) + " bình luận"));
+        timeline.add(new FrontendDtos.ProjectSnapshotPoint("Hành động", analysis.suggestedActions().isEmpty()
+                ? "Chạy so sánh đối thủ cạnh tranh"
                 : analysis.suggestedActions().get(0)));
 
         return new FrontendDtos.ProjectWorkflowResponse(
-                titleCase((analysis.keyword() == null || analysis.keyword().isBlank()) ? "Market Research" : analysis.keyword()) + " Project",
+                "Dự án " + titleCase((analysis.keyword() == null || analysis.keyword().isBlank()) ? "Nghiên cứu thị trường" : analysis.keyword()),
                 analysis.keyword(),
                 compareKeywords,
                 timeline
@@ -440,36 +440,36 @@ public class FrontendService {
             alerts.add(new FrontendDtos.AlertItem(
                     "alert-low-volume",
                     "medium",
-                    "Low market volume detected",
+                    "Phát hiện dung lượng thị trường thấp",
                     "open",
-                    "Expand keyword scope and add adjacent intent queries."
+                    "Mở rộng phạm vi từ khóa và thêm các truy vấn ý định liền kề."
             ));
         }
         if (avgEngagement < 0.015) {
             alerts.add(new FrontendDtos.AlertItem(
                     "alert-low-engagement",
                     "high",
-                    "Weak engagement momentum",
+                    "Đà tương tác yếu",
                     "open",
-                    "Prioritize sentiment review before scaling campaign budget."
+                    "Ưu tiên đánh giá cảm xúc khách hàng trước khi tăng ngân sách chiến dịch."
             ));
         }
         if (totalComments > 10_000) {
             alerts.add(new FrontendDtos.AlertItem(
                     "alert-discussion-spike",
                     "low",
-                    "Discussion spike detected",
+                    "Phát hiện lượng thảo luận tăng đột biến",
                     "open",
-                    "Review top narratives and capture creator talking points."
+                    "Đánh giá các nội dung thảo luận hàng đầu và ghi nhận ý kiến từ các nhà sáng tạo."
             ));
         }
         if (alerts.isEmpty()) {
             alerts.add(new FrontendDtos.AlertItem(
                     "alert-stable",
                     "low",
-                    "Signals are stable",
+                    "Tín hiệu ổn định",
                     "monitoring",
-                    "Keep tracking trend changes and refresh this analysis periodically."
+                    "Tiếp tục theo dõi các thay đổi xu hướng và cập nhật phân tích này định kỳ."
             ));
         }
         return alerts;
@@ -490,25 +490,25 @@ public class FrontendService {
 
         return List.of(
                 new FrontendDtos.CompetitorSignal(
-                        "Share-of-voice proxy",
+                        "Tỷ lệ hiển thị (SOV)",
                         topByViews == null ? "n/a" : topByViews.keyword(),
                         topByViews == null
-                                ? "Not enough source coverage yet."
-                                : formatCompact(topByViews.totalViews()) + " views in the strongest cluster."
+                                ? "Chưa đủ độ bao phủ nguồn tin."
+                                : formatCompact(topByViews.totalViews()) + " lượt xem trong nhóm mạnh nhất."
                 ),
                 new FrontendDtos.CompetitorSignal(
-                        "Keyword gap",
+                        "Khoảng trống từ khóa",
                         topByMentions == null ? "n/a" : topByMentions.keyword(),
                         topByMentions == null
-                                ? "No strong co-occurrence keyword found."
-                                : topByMentions.mentionCount() + " mentions suggest this is a priority adjacent angle."
+                                ? "Không tìm thấy từ khóa đồng xuất hiện mạnh mẽ."
+                                : topByMentions.mentionCount() + " lượt đề cập cho thấy đây là một hướng tiếp cận ưu tiên."
                 ),
                 new FrontendDtos.CompetitorSignal(
-                        "Engagement edge",
+                        "Lợi thế tương tác",
                         topByEng == null ? "n/a" : topByEng.keyword(),
                         topByEng == null
-                                ? "No engagement signal available."
-                                : String.format(Locale.ROOT, "%.2f%% avg engagement in this cluster.", topByEng.avgEngagement() * 100)
+                                ? "Không có tín hiệu tương tác."
+                                : String.format(Locale.ROOT, "Tỷ lệ tương tác trung bình %.2f%% trong nhóm này.", topByEng.avgEngagement() * 100)
                 )
         );
     }
@@ -517,10 +517,10 @@ public class FrontendService {
         List<NormalizedSourceItem> items = fetchLiveSources(keyword);
         if (items.isEmpty()) {
             return List.of(new FrontendDtos.EvidenceItem(
-                    "Cross-source synthesis",
-                    "No direct source item available",
-                    "0 views",
-                    "Expand sources or try another keyword.",
+                    "Tổng hợp đa nguồn",
+                    "Không có nguồn cấp trực tiếp khả dụng",
+                    "0 lượt xem",
+                    "Hãy mở rộng nguồn tin hoặc thử từ khóa khác.",
                     null
             ));
         }
@@ -537,9 +537,9 @@ public class FrontendService {
                         comments = toLong(payload.get("commentCount"));
                     }
                     return new FrontendDtos.EvidenceItem(
-                            item.sourceName() == null || item.sourceName().isBlank() ? "Research source" : item.sourceName(),
-                            firstMeaningfulText(item.title(), "Untitled source"),
-                            String.format("Views %s | Likes %s | Comments %s", formatCompact(views), formatCompact(likes), formatCompact(comments)),
+                            item.sourceName() == null || item.sourceName().isBlank() ? "Nguồn nghiên cứu" : item.sourceName(),
+                            firstMeaningfulText(item.title(), "Nguồn không có tiêu đề"),
+                            String.format("Lượt xem %s | Lượt thích %s | Bình luận %s", formatCompact(views), formatCompact(likes), formatCompact(comments)),
                             cleanSnippet(item.snippet(), item.title()),
                             extractEvidenceUrl(item)
                     );
@@ -597,7 +597,7 @@ public class FrontendService {
         int hash = Math.abs((analysis.keyword() == null ? "market" : analysis.keyword()).hashCode());
 
         double[] ramps = new double[]{0.55, 0.68, 0.79, 0.91, 1.0};
-        String[] labels = new String[]{"W-4", "W-3", "W-2", "W-1", "Now"};
+        String[] labels = new String[]{"Tuần -4", "Tuần -3", "Tuần -2", "Tuần -1", "Hiện tại"};
         List<FrontendDtos.TimeSeriesPoint> points = new ArrayList<>();
         for (int i = 0; i < ramps.length; i++) {
             long wobble = (hash % (900 + (i * 137))) + (i * 230L);
@@ -609,16 +609,16 @@ public class FrontendService {
 
     public List<FrontendDtos.ExpertItem> getExperts() {
         return List.of(
-                new FrontendDtos.ExpertItem("e1", "Ngoc Bui", "Market Strategy", 4.9, 20),
-                new FrontendDtos.ExpertItem("e2", "Tuan Ho", "Consumer Insight", 4.8, 18),
-                new FrontendDtos.ExpertItem("e3", "Trang Le", "Growth Planning", 4.7, 22)
+                new FrontendDtos.ExpertItem("e1", "Ngoc Bui", "Chiến lược thị trường", 4.9, 20),
+                new FrontendDtos.ExpertItem("e2", "Tuan Ho", "Hành vi người tiêu dùng", 4.8, 18),
+                new FrontendDtos.ExpertItem("e3", "Trang Le", "Kế hoạch tăng trưởng", 4.7, 22)
         );
     }
 
     public FrontendDtos.ExpertQuestionResponse submitExpertQuestion(FrontendDtos.ExpertQuestionRequest request) {
         return new FrontendDtos.ExpertQuestionResponse(
                 "ticket_" + System.currentTimeMillis(),
-                "queued",
+                "Đang chờ",
                 12,
                 LocalDateTime.now().toString()
         );
@@ -633,7 +633,7 @@ public class FrontendService {
                 .orElse("free");
 
         return planRepository.findAll().stream()
-                .filter(plan -> List.of("FREE", "STARTER", "TEAM", "ENTERPRISE").contains(plan.getName().toUpperCase(Locale.ROOT)))
+                .filter(plan -> List.of("FREE", "STARTER", "TEAM").contains(plan.getName().toUpperCase(Locale.ROOT)))
                 .sorted(Comparator.comparingInt(plan -> planTier(plan.getName())))
                 .map(plan -> new FrontendDtos.PricingPlan(
                         plan.getName().toLowerCase(Locale.ROOT),
@@ -857,21 +857,21 @@ public class FrontendService {
 
         // 1 — Trend Insight
         String trendText = String.format(
-                "Across %d videos analyzed, \"%s\" generated %s total views with an average engagement rate of %s%%. %s",
+                "Trong số %d video được phân tích, \"%s\" đã tạo ra tổng cộng %s lượt xem với tỷ lệ tương tác trung bình là %s%%. %s",
                 items.size(), kw, formatCompact(totalViews), engagementPct,
                 totalViews > 100000
-                        ? "This indicates strong and growing consumer interest."
-                        : "The topic is emerging — early positioning could capture rising demand."
+                        ? "Điều này cho thấy sự quan tâm mạnh mẽ và ngày càng tăng từ người tiêu dùng."
+                        : "Chủ đề này đang mới nổi — tiếp cận sớm có thể nắm bắt nhu cầu đang gia tăng."
         );
 
         // 2 — Media Signal
         String topChannels = channels.stream().limit(3).collect(Collectors.joining(", "));
         String mediaText = String.format(
-                "Content about \"%s\" is actively produced by %d creator(s) including %s. %s",
-                kw, channels.size(), topChannels.isEmpty() ? "various channels" : topChannels,
+                "Nội dung về \"%s\" đang được sản xuất tích cực bởi %d nhà sáng tạo bao gồm %s. %s",
+                kw, channels.size(), topChannels.isEmpty() ? "nhiều kênh khác nhau" : topChannels,
                 channels.size() >= 3
-                        ? "A competitive content landscape suggests high market relevance."
-                        : "Limited creator coverage presents an opportunity for early market voice."
+                        ? "Bối cảnh nội dung cạnh tranh cho thấy mức độ liên quan cao của thị trường."
+                        : "Sự phủ sóng hạn chế của các nhà sáng tạo mở ra cơ hội để xây dựng tiếng nói thị trường sớm."
         );
 
         // 3 — Social Sentiment
@@ -879,13 +879,13 @@ public class FrontendService {
         int positiveRate = totalSentiment > 0 ? (int) (positive * 100 / totalSentiment) : 0;
         int negativeRate = totalSentiment > 0 ? (int) (negative * 100 / totalSentiment) : 0;
         String sentimentText = String.format(
-                "%d%% positive and %d%% negative sentiment detected across %s likes and %s comments. %s",
+                "Phát hiện %d%% cảm xúc tích cực và %d%% cảm xúc tiêu cực trên tổng số %s lượt thích và %s lượt bình luận. %s",
                 positiveRate, negativeRate, formatCompact(totalLikes), formatCompact(totalComments),
                 positiveRate >= 60
-                        ? "Overall reception is favorable — strong foundation for market entry."
+                        ? "Phản hồi chung rất thuận lợi — nền tảng vững chắc để thâm nhập thị trường."
                         : positiveRate >= 30
-                                ? "Mixed signals detected — deeper competitor analysis recommended."
-                                : "Caution advised — negative sentiment may indicate market friction."
+                                ? "Phát hiện các tín hiệu hỗn hợp — khuyến nghị phân tích đối thủ cạnh tranh sâu hơn."
+                                : "Khuyến nghị thận trọng — cảm xúc tiêu cực có thể cho thấy rào cản thị trường."
         );
 
         // 4 — Keyword Opportunity (build phrases first)
@@ -970,9 +970,9 @@ public class FrontendService {
                 .map(k -> "\"" + k + "\"")
                 .collect(Collectors.joining(", "));
         String kwOpportunityText = relatedKeywords.isEmpty()
-            ? "No related keyword signals detected yet for \"" + kw + "\"."
+            ? "Chưa phát hiện tín hiệu từ khóa liên quan cho \"" + kw + "\"."
             : String.format(
-                "Related keywords detected for \"%s\": %s.",
+                "Đã phát hiện các từ khóa liên quan cho \"%s\": %s.",
                 kw,
                 topKws
             );
@@ -989,32 +989,32 @@ public class FrontendService {
 
         List<FrontendDtos.InsightItem> insights = List.of(
                 new FrontendDtos.InsightItem(
-                        "Trend Insight",
+                        "Xu hướng thị trường",
                         trendText,
                         sourceEvidence,
                         evidenceConfidence,
-                        String.format("Mentions: %s | Views: %s", formatCompact(totalMentions), formatCompact(totalViews))
+                        String.format("Đề cập: %s | Lượt xem: %s", formatCompact(totalMentions), formatCompact(totalViews))
                 ),
                 new FrontendDtos.InsightItem(
-                        "Media Signal",
+                        "Tín hiệu truyền thông",
                         mediaText,
                         sourceEvidence,
                         clamp(evidenceConfidence - 3, 50, 90),
-                        String.format("Sources: %d | Channels: %d", items.size(), channels.size())
+                        String.format("Nguồn: %d | Kênh: %d", items.size(), channels.size())
                 ),
                 new FrontendDtos.InsightItem(
-                        "Social Sentiment",
+                        "Cảm xúc xã hội",
                         sentimentText,
                         sourceEvidence,
                         clamp(evidenceConfidence - 2, 50, 90),
-                        String.format("Likes: %s | Comments: %s", formatCompact(totalLikes), formatCompact(totalComments))
+                        String.format("Lượt thích: %s | Bình luận: %s", formatCompact(totalLikes), formatCompact(totalComments))
                 ),
                 new FrontendDtos.InsightItem(
-                        "Keyword Opportunity",
+                        "Cơ hội từ khóa",
                         kwOpportunityText,
                         sourceEvidence,
                         clamp(evidenceConfidence - 1, 50, 90),
-                        String.format("Keyword clusters: %d", relatedKeywords.size())
+                        String.format("Nhóm từ khóa: %d", relatedKeywords.size())
                 )
         );
 
@@ -1026,13 +1026,13 @@ public class FrontendService {
                 .toList();
 
         List<String> suggestedActions = new ArrayList<>();
-        suggestedActions.add("Compare creator momentum");
-        suggestedActions.add("Track related intent keywords");
-        suggestedActions.add(positive >= negative ? "Double down on positive demand signals" : "Investigate negative sentiment sources");
-        suggestedActions.add("Review top YouTube narratives");
+        suggestedActions.add("So sánh đà phát triển của nhà sáng tạo");
+        suggestedActions.add("Theo dõi từ khóa ý định liên quan");
+        suggestedActions.add(positive >= negative ? "Tập trung khai thác các tín hiệu nhu cầu tích cực" : "Điều tra các nguồn cảm xúc tiêu cực");
+        suggestedActions.add("Đánh giá nội dung YouTube hàng đầu");
 
         int sourceDiversity = (int) items.stream()
-                .map(item -> item.sourceName() == null || item.sourceName().isBlank() ? "Research source" : item.sourceName())
+                .map(item -> item.sourceName() == null || item.sourceName().isBlank() ? "Nguồn nghiên cứu" : item.sourceName())
                 .distinct()
                 .count();
         int evidenceCoveragePct = clamp(
@@ -1062,7 +1062,7 @@ public class FrontendService {
                 getAvailableAnalysisSources(),
                 insights,
                 relatedKeywords,
-                news.isEmpty() ? List.of("No recent public content found for this keyword.") : news,
+                news.isEmpty() ? List.of("Không tìm thấy nội dung công khai gần đây cho từ khóa này.") : news,
                 suggestedActions.stream().distinct().limit(4).toList(),
                 dataQuality,
                 researchGuard
@@ -1416,14 +1416,14 @@ public class FrontendService {
         if ("FREE".equals(planName)) {
             throw new AppException(
                     HttpStatus.FORBIDDEN,
-                    "Free plan includes 2 AI runs/month. You used all 2. Please upgrade to continue."
+                    "Gói Miễn phí bao gồm " + maxQuota + " lượt sử dụng AI/tháng. Bạn đã sử dụng hết " + maxQuota + " lượt. Vui lòng nâng cấp gói để tiếp tục."
             );
         }
 
         throw new AppException(
                 HttpStatus.FORBIDDEN,
-                "You used all " + maxQuota + " AI runs for this month on plan "
-                        + titleCase(planName) + ". Please buy additional AI capacity."
+                "Bạn đã sử dụng hết " + maxQuota + " lượt sử dụng AI trong tháng này cho gói "
+                        + titleCase(planName) + ". Vui lòng mua thêm lượt sử dụng AI."
         );
     }
 
@@ -1449,21 +1449,7 @@ public class FrontendService {
     }
 
     private int resolveDeepInsightQuota(UserSubscriptionEntity subscription) {
-        String planName = resolvePlanName(subscription);
-        if ("FREE".equals(planName)) {
-            return 2;
-        }
-        if (subscription == null || subscription.getPlan() == null) {
-            return 2;
-        }
-        Integer searchLimit = subscription.getPlan().getSearchLimit();
-        if (searchLimit == null || searchLimit <= 0) {
-            return 50;
-        }
-        if (searchLimit >= 9999) {
-            return 3000;
-        }
-        return searchLimit;
+        return 2;
     }
 
     private String resolvePlanName(UserSubscriptionEntity subscription) {
@@ -1552,16 +1538,16 @@ public class FrontendService {
         String message;
         boolean deepInsightEnabled;
         if (score >= 70) {
-            status = "market-ready";
-            message = "Keyword has strong market intent and enough evidence for reliable analysis.";
+            status = "Sẵn sàng";
+            message = "Từ khóa có ý định thị trường mạnh mẽ và đủ bằng chứng để phân tích đáng tin cậy.";
             deepInsightEnabled = true;
         } else if (score >= 45) {
-            status = "needs-more-signal";
-            message = "Keyword is usable but evidence is moderate. Expand scope for stronger reliability.";
+            status = "Cần thêm tín hiệu";
+            message = "Từ khóa có thể sử dụng được nhưng bằng chứng ở mức trung bình. Hãy mở rộng phạm vi để tăng độ tin cậy.";
             deepInsightEnabled = true;
         } else {
-            status = "low-market-intent";
-            message = "Keyword has weak market intent or low evidence. Refine before taking major business decisions.";
+            status = "Ý định thị trường thấp";
+            message = "Từ khóa có ý định thị trường yếu hoặc ít bằng chứng. Hãy tinh chỉnh trước khi đưa ra quyết định kinh doanh lớn.";
             deepInsightEnabled = false;
         }
 
@@ -1575,18 +1561,18 @@ public class FrontendService {
     }
 
     private List<String> suggestedResearchKeywords(String keyword, List<FrontendDtos.KeywordMetric> metrics, int keywordCount) {
-        String seed = keyword == null || keyword.isBlank() ? "market" : keyword.trim();
+        String seed = keyword == null || keyword.isBlank() ? "thị trường" : keyword.trim();
         List<String> fromSignals = metrics == null ? List.of() : metrics.stream()
                 .map(FrontendDtos.KeywordMetric::keyword)
                 .filter(item -> item != null && !item.isBlank())
                 .limit(3)
                 .toList();
         List<String> base = List.of(
-                seed + " market size",
-                seed + " customer demand",
-                seed + " competitor analysis",
-                seed + " pricing trend",
-                seed + " audience behavior"
+                "quy mô thị trường " + seed,
+                "nhu cầu khách hàng " + seed,
+                "phân tích đối thủ cạnh tranh " + seed,
+                "xu hướng giá cả " + seed,
+                "hành vi đối tượng " + seed
         );
         List<String> merged = new ArrayList<>();
         merged.addAll(fromSignals);
@@ -1605,12 +1591,12 @@ public class FrontendService {
 
     private String confidenceBand(int score) {
         if (score >= 80) {
-            return "High confidence";
+            return "Độ tin cậy cao";
         }
         if (score >= 65) {
-            return "Medium confidence";
+            return "Độ tin cậy trung bình";
         }
-        return "Low confidence";
+        return "Độ tin cậy thấp";
     }
 
     private record LocaleProfile(String countryCode, String languageCode) {
@@ -1728,37 +1714,37 @@ public class FrontendService {
 
     private List<String> pricingFeatures(PlanEntity plan) {
         if (plan == null || plan.getName() == null) {
-            return List.of("Flexible plan");
+            return List.of("Gói linh hoạt");
         }
         return switch (plan.getName().toUpperCase(Locale.ROOT)) {
             case "FREE" -> List.of(
-                    "10 searches/month",
-                    "Community access",
-                    "No exports"
+                    "10 lượt tìm kiếm/tháng",
+                    "Truy cập cộng đồng",
+                    "Không hỗ trợ xuất báo cáo"
             );
             case "STARTER" -> List.of(
-                    "100 searches/month",
-                    "Basic market analysis",
-                    "AI Summary",
-                    "Export PDF"
+                    "100 lượt tìm kiếm/tháng",
+                    "Phân tích thị trường cơ bản",
+                    "Tóm tắt bằng AI",
+                    "Xuất báo cáo PDF"
             );
             case "TEAM" -> List.of(
-                    "500 searches/month",
-                    "Advanced AI Deep Insight",
-                    "Competitor view",
-                    "Priority processing"
+                    "500 lượt tìm kiếm/tháng",
+                    "Phân tích sâu bằng AI nâng cao",
+                    "Xem đối thủ cạnh tranh",
+                    "Xử lý ưu tiên"
             );
             case "ENTERPRISE" -> List.of(
-                    "Unlimited searches",
-                    "Unlimited exports",
-                    "Team usage",
-                    "Admin dashboard",
-                    "Priority support"
+                    "Không giới hạn tìm kiếm",
+                    "Không giới hạn xuất báo cáo",
+                    "Sử dụng nhóm",
+                    "Bảng điều khiển quản trị",
+                    "Hỗ trợ ưu tiên"
             );
             default -> List.of(
-                    (plan.getSearchLimit() != null && plan.getSearchLimit() >= 9999 ? "Unlimited" : plan.getSearchLimit()) + " searches/month",
-                    (plan.getExportLimit() != null && plan.getExportLimit() >= 999 ? "Unlimited" : plan.getExportLimit()) + " exports/month",
-                    plan.getDescription() != null ? plan.getDescription() : "Flexible plan"
+                    (plan.getSearchLimit() != null && plan.getSearchLimit() >= 9999 ? "Không giới hạn" : plan.getSearchLimit()) + " lượt tìm kiếm/tháng",
+                    (plan.getExportLimit() != null && plan.getExportLimit() >= 999 ? "Không giới hạn" : plan.getExportLimit()) + " lượt xuất báo cáo/tháng",
+                    plan.getDescription() != null ? plan.getDescription() : "Gói linh hoạt"
             );
         };
     }

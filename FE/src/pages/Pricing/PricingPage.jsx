@@ -33,7 +33,7 @@ export function PricingPage() {
     const sessionId = searchParams.get('session_id')
 
     if (paymentStatus === 'cancelled') {
-      setNotice({ tone: 'error', text: 'Payment was cancelled before completion.' })
+      setNotice({ tone: 'error', text: 'Thanh toán đã bị hủy trước khi hoàn tất.' })
       setSearchParams({}, { replace: true })
       return
     }
@@ -45,7 +45,7 @@ export function PricingPage() {
           setNotice({ tone: result.status === 'success' ? 'success' : 'info', text: result.message })
           await loadPricing()
         } catch (error) {
-          setNotice({ tone: 'error', text: error.message || 'Unable to confirm payment right now.' })
+          setNotice({ tone: 'error', text: error.message || 'Không thể xác nhận thanh toán vào lúc này.' })
         } finally {
           setSearchParams({}, { replace: true })
         }
@@ -68,7 +68,7 @@ export function PricingPage() {
       }
       setNotice({ tone: 'info', text: result.message })
     } catch (error) {
-      setNotice({ tone: 'error', text: error.message || 'Unable to complete checkout right now.' })
+      setNotice({ tone: 'error', text: error.message || 'Không thể hoàn tất thanh toán lúc này.' })
     } finally {
       setSubmittingPlanId(null)
     }
@@ -97,7 +97,7 @@ export function PricingPage() {
         note: '',
       })
     } catch (error) {
-      setNotice({ tone: 'error', text: error.message || 'Unable to send sales request right now.' })
+      setNotice({ tone: 'error', text: error.message || 'Không thể gửi yêu cầu tư vấn lúc này.' })
     } finally {
       setSubmittingPlanId(null)
     }
@@ -107,15 +107,15 @@ export function PricingPage() {
     <div className="stack page-wrap">
       <div className="page-header">
         <div>
-          <h1>Pricing</h1>
-          <p className="hint">Choose your AISKIM plan for market intelligence at every scale.</p>
+          <h1>Bảng giá</h1>
+          <p className="hint">Chọn gói AISKIM phù hợp để phân tích thị trường ở mọi quy mô.</p>
         </div>
         <div className="segmented">
           <button className={cycle === 'monthly' ? 'on' : ''} onClick={() => setCycle('monthly')}>
-            Monthly
+            Hàng tháng
           </button>
           <button className={cycle === 'yearly' ? 'on' : ''} onClick={() => setCycle('yearly')}>
-            Yearly
+            Hàng năm
           </button>
         </div>
       </div>
@@ -127,11 +127,11 @@ export function PricingPage() {
       ) : null}
 
       {showEnterpriseForm ? (
-        <Card title="Enterprise Sales Request" className="enterprise-sales-card">
+        <Card title="Yêu cầu Tư vấn gói Doanh nghiệp" className="enterprise-sales-card">
           <form className="form form-wide" onSubmit={submitEnterpriseLead}>
             <div className="grid grid-2">
               <label className="field">
-                <span>Contact name</span>
+                <span>Tên người liên hệ</span>
                 <input
                   value={enterpriseForm.contactName}
                   onChange={(event) => setEnterpriseForm((prev) => ({ ...prev, contactName: event.target.value }))}
@@ -140,7 +140,7 @@ export function PricingPage() {
                 />
               </label>
               <label className="field">
-                <span>Work email</span>
+                <span>Email công việc</span>
                 <input
                   type="email"
                   value={enterpriseForm.workEmail}
@@ -153,7 +153,7 @@ export function PricingPage() {
 
             <div className="grid grid-2">
               <label className="field">
-                <span>Company name</span>
+                <span>Tên công ty</span>
                 <input
                   value={enterpriseForm.companyName}
                   onChange={(event) => setEnterpriseForm((prev) => ({ ...prev, companyName: event.target.value }))}
@@ -162,7 +162,7 @@ export function PricingPage() {
                 />
               </label>
               <label className="field">
-                <span>Team size</span>
+                <span>Số lượng thành viên</span>
                 <input
                   type="number"
                   min="1"
@@ -174,12 +174,12 @@ export function PricingPage() {
             </div>
 
             <label className="field">
-              <span>Notes</span>
+              <span>Ghi chú</span>
               <textarea
                 rows="4"
                 value={enterpriseForm.note}
                 onChange={(event) => setEnterpriseForm((prev) => ({ ...prev, note: event.target.value }))}
-                placeholder="Describe reporting needs, departments, or rollout timeline..."
+                placeholder="Mô tả nhu cầu báo cáo, bộ phận hoặc thời gian triển khai mong muốn..."
               />
             </label>
 
@@ -190,23 +190,23 @@ export function PricingPage() {
                 onClick={() => setShowEnterpriseForm(false)}
                 disabled={submittingPlanId === 'enterprise'}
               >
-                Cancel
+                Hủy
               </Button>
               <Button type="submit" disabled={submittingPlanId === 'enterprise'}>
-                {submittingPlanId === 'enterprise' ? 'Submitting...' : 'Send request'}
+                {submittingPlanId === 'enterprise' ? 'Đang gửi...' : 'Gửi yêu cầu'}
               </Button>
             </div>
           </form>
         </Card>
       ) : null}
 
-      <div className="grid grid-4">
+      <div className="grid grid-3">
         {plans.map((plan) => (
-          <Card key={plan.id} title={plan.name}>
+          <Card key={plan.id} title={plan.id === 'free' ? 'Gói Miễn Phí' : plan.id === 'starter' ? 'Gói Starter' : plan.id === 'team' ? 'Gói Team' : plan.name}>
             <div className="stack">
-              {plan.current ? <span className="badge badge-success">Current plan</span> : null}
+              {plan.current ? <span className="badge badge-success">Gói hiện tại</span> : null}
               <div className="price">${plan[cycle]}</div>
-              <div className="hint">/{cycle === 'monthly' ? 'month' : 'year'}</div>
+              <div className="hint">/{cycle === 'monthly' ? 'tháng' : 'năm'}</div>
               <ul className="list">
                 {plan.features.map((feature) => (
                   <li key={feature}>{feature}</li>
@@ -218,8 +218,10 @@ export function PricingPage() {
                 disabled={Boolean(submittingPlanId) || plan.current}
               >
                 {submittingPlanId === plan.id
-                  ? 'Processing...'
-                  : plan.ctaLabel ?? (plan.id === 'enterprise' ? 'Contact sales' : 'Start now')}
+                  ? 'Đang xử lý...'
+                  : plan.current
+                    ? 'Gói hiện tại'
+                    : plan.ctaLabel === 'Contact sales' ? 'Liên hệ tư vấn' : plan.ctaLabel === 'Start now' ? 'Bắt đầu ngay' : (plan.id === 'enterprise' ? 'Liên hệ tư vấn' : 'Bắt đầu ngay')}
               </Button>
             </div>
           </Card>

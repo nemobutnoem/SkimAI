@@ -13,25 +13,25 @@ export function AdminRevenuePage() {
     <div className="stack page-wrap">
       <div className="page-header">
         <div>
-          <h1>Admin Revenue</h1>
-          <p className="hint">Finance operations view: monitor MRR, payment quality, and subscription events.</p>
+          <h1>Quản trị Doanh thu</h1>
+          <p className="hint">Giao diện quản lý tài chính: giám sát MRR, chất lượng thanh toán và các sự kiện đăng ký gói.</p>
         </div>
       </div>
 
       <div className="grid grid-4">
         {(data?.metrics ?? []).map((item) => (
-          <Card key={item.label} title={item.label}>
+          <Card key={item.label} title={item.label === 'MRR' ? 'Doanh thu tháng (MRR)' : item.label === 'ARR' ? 'Doanh thu năm ước tính (ARR)' : item.label === 'Upgrade Rate' ? 'Tỷ lệ nâng cấp' : item.label === 'Failed Payments' ? 'Giao dịch thất bại' : item.label}>
             <div className="kpi">{item.value}</div>
           </Card>
         ))}
       </div>
 
       <div className="grid grid-2">
-        <Card title="Revenue by Channel">
+        <Card title="Doanh thu theo Kênh">
           <div className="stack">
             {(data?.channels ?? []).map((channel) => (
               <div key={channel.name} className="list-item">
-                <span>{channel.name}</span>
+                <span>{channel.name === 'Stripe Checkout' ? 'Cổng thanh toán Stripe' : channel.name === 'Direct Bank Transfer' ? 'Chuyển khoản trực tiếp' : channel.name}</span>
                 <span>
                   {channel.amount} ({channel.pct}%)
                 </span>
@@ -40,29 +40,29 @@ export function AdminRevenuePage() {
           </div>
         </Card>
 
-        <Card title="Subscription Events">
+        <Card title="Sự kiện Đăng ký gói">
           <div className="hint" style={{ marginBottom: 12 }}>
-            Latest transactions from billing flow.
+            Giao dịch gần đây nhất từ luồng thanh toán.
           </div>
           <table className="table">
             <thead>
               <tr>
-                <th>User</th>
-                <th>Event</th>
-                <th>Plan</th>
-                <th>Amount</th>
-                <th>Status</th>
+                <th>Người dùng</th>
+                <th>Sự kiện</th>
+                <th>Gói dịch vụ</th>
+                <th>Số tiền</th>
+                <th>Trạng thái</th>
               </tr>
             </thead>
             <tbody>
               {(data?.events ?? []).map((event) => (
                 <tr key={event.id}>
                   <td>{event.user}</td>
-                  <td>{event.event}</td>
-                  <td>{event.plan}</td>
+                  <td>{event.event === 'checkout_completed' ? 'Thanh toán hoàn tất' : event.event === 'checkout_failed' ? 'Thanh toán thất bại' : event.event === 'subscription_cancelled' ? 'Hủy gói dịch vụ' : event.event}</td>
+                  <td>{event.plan?.toUpperCase() === 'FREE' ? 'Miễn phí' : event.plan?.toUpperCase() === 'STARTER' ? 'Gói Starter' : event.plan?.toUpperCase() === 'TEAM' ? 'Gói Team' : event.plan?.toUpperCase() === 'ENTERPRISE' ? 'Gói Enterprise' : event.plan}</td>
                   <td>{event.amount}</td>
                   <td>
-                    <span className={['badge', `badge-${event.status}`].join(' ')}>{event.status}</span>
+                    <span className={['badge', `badge-${event.status}`].join(' ')}>{event.status === 'success' ? 'Thành công' : event.status === 'failed' ? 'Thất bại' : event.status}</span>
                   </td>
                 </tr>
               ))}

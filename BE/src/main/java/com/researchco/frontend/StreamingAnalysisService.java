@@ -80,7 +80,7 @@ public class StreamingAnalysisService {
             if (isSnapshotFresh) {
                 // Snapshot còn tươi → reuse (tiết kiệm token)
                 sendEvent(emitter, "cache-hit", Map.of(
-                        "message", "Using cached data from " + formatTimeAgo(snapshot.getUpdatedAt()),
+                        "message", "Sử dụng dữ liệu lưu trữ từ " + formatTimeAgo(snapshot.getUpdatedAt()),
                         "cached", true
                 ));
             }
@@ -130,7 +130,7 @@ public class StreamingAnalysisService {
                 Thread.sleep(200);
             } else {
                 // No snapshot → Fetch live data via streaming instead of waiting for traditional fetch
-                sendEvent(emitter, "progress", Map.of("message", "Fetching live market data...", "stage", "2.5/5"));
+                sendEvent(emitter, "progress", Map.of("message", "Đang lấy dữ liệu thị trường trực tiếp...", "stage", "2.5/5"));
                 
                 FrontendDtos.AnalysisResponse response = frontendService.getAnalysis(keyword);
                 
@@ -165,7 +165,7 @@ public class StreamingAnalysisService {
                     120,
                     sourceCount,
                     snapshot != null ? 65 : 35,
-                    snapshot != null ? "Medium confidence" : "Low confidence"
+                    snapshot != null ? "Độ tin cậy trung bình" : "Độ tin cậy thấp"
             );
 
             sendEvent(emitter, "data-quality", Map.of(
@@ -242,20 +242,20 @@ public class StreamingAnalysisService {
     }
 
     private String formatTimeAgo(LocalDateTime dateTime) {
-        if (dateTime == null) return "unknown time";
+        if (dateTime == null) return "không rõ thời gian";
         LocalDateTime now = LocalDateTime.now();
         long hoursAgo = java.time.temporal.ChronoUnit.HOURS.between(dateTime, now);
         long minutesAgo = java.time.temporal.ChronoUnit.MINUTES.between(dateTime, now);
         
         if (hoursAgo > 24) {
             long daysAgo = hoursAgo / 24;
-            return daysAgo + " day(s) ago";
+            return daysAgo + " ngày trước";
         } else if (hoursAgo > 0) {
-            return hoursAgo + " hour(s) ago";
+            return hoursAgo + " giờ trước";
         } else if (minutesAgo > 0) {
-            return minutesAgo + " minute(s) ago";
+            return minutesAgo + " phút trước";
         } else {
-            return "just now";
+            return "vừa xong";
         }
     }
 }

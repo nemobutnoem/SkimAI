@@ -6,24 +6,24 @@ import { useAuth } from '../hooks/useAuth'
 /* ─── Route configs for each context ─── */
 
 const PUBLIC_LINKS = [
-  { to: ROUTES.HOME, label: 'Overview' },
-  { to: ROUTES.ANALYSIS, label: 'Market Research' },
-  { to: ROUTES.PRICING, label: 'Pricing' },
+  { to: ROUTES.HOME, label: 'Tổng quan' },
+  { to: ROUTES.ANALYSIS, label: 'Nghiên cứu thị trường' },
+  { to: ROUTES.PRICING, label: 'Bảng giá' },
 ]
 
 const USER_LINKS = [
-  { to: ROUTES.HOME, label: 'Overview' },
+  { to: ROUTES.HOME, label: 'Tổng quan' },
   { to: ROUTES.DASHBOARD, label: 'Workspace' },
-  { to: ROUTES.ANALYSIS, label: 'Market Research' },
+  { to: ROUTES.ANALYSIS, label: 'Nghiên cứu thị trường' },
   { to: ROUTES.DEEP_INSIGHT, label: 'Deep Insight' },
-  { to: ROUTES.ACCOUNT, label: 'Billing' },
+  { to: ROUTES.ACCOUNT, label: 'Tài khoản' },
 ]
 
 const ADMIN_LINKS = [
-  { to: ROUTES.ADMIN_DASHBOARD, label: 'Dashboard' },
-  { to: ROUTES.ADMIN_REPORTS, label: 'Reports' },
-  { to: ROUTES.ADMIN_USERS, label: 'Users' },
-  { to: ROUTES.ADMIN_REVENUE, label: 'Revenue' },
+  { to: ROUTES.ADMIN_DASHBOARD, label: 'Tổng quan' },
+  { to: ROUTES.ADMIN_REPORTS, label: 'Báo cáo' },
+  { to: ROUTES.ADMIN_USERS, label: 'Người dùng' },
+  { to: ROUTES.ADMIN_REVENUE, label: 'Doanh thu' },
 ]
 
 /* Helper: get initials from user */
@@ -62,32 +62,32 @@ function AvatarDropdown({ user, isAdmin, isOnAdminPage, onLogout }) {
       {open && (
         <div className="dropdown-menu">
           <div className="dropdown-header">
-            <strong>{user?.name || user?.email || 'User'}</strong>
+            <strong>{user?.name || user?.email || 'Người dùng'}</strong>
             {user?.email && <span className="dropdown-email">{user.email}</span>}
           </div>
           <div className="dropdown-divider" />
 
           {isAdmin && isOnAdminPage && (
             <button className="dropdown-item" onClick={() => { navigate(ROUTES.ADMIN_SETTINGS); setOpen(false) }}>
-              ⚙️ Settings
+              ⚙️ Cài đặt
             </button>
           )}
 
           {isAdmin && !isOnAdminPage && (
             <button className="dropdown-item" onClick={() => { navigate(ROUTES.ACCOUNT); setOpen(false) }}>
-              👤 Account
+              👤 Tài khoản
             </button>
           )}
 
           {!isAdmin && (
             <button className="dropdown-item" onClick={() => { navigate(ROUTES.ACCOUNT); setOpen(false) }}>
-              👤 Account
+              👤 Tài khoản
             </button>
           )}
 
           <div className="dropdown-divider" />
           <button className="dropdown-item dropdown-item-danger" onClick={() => { onLogout(); setOpen(false) }}>
-            🚪 Logout
+            🚪 Đăng xuất
           </button>
         </div>
       )}
@@ -145,10 +145,10 @@ export function Navbar() {
 
           <div className="app-header-right">
             <NavLink to={ROUTES.DASHBOARD} className="app-back-link">
-              ← User View
+              ← Giao diện User
             </NavLink>
-            <button className="icon-btn" title="Search">🔍</button>
-            <button className="icon-btn" title="Notifications">🔔</button>
+            <button className="icon-btn" title="Tìm kiếm">🔍</button>
+            <button className="icon-btn" title="Thông báo">🔔</button>
             <AvatarDropdown user={user} isAdmin={isAdmin} isOnAdminPage={isOnAdminPage} onLogout={handleLogout} />
           </div>
         </div>
@@ -195,7 +195,7 @@ export function Navbar() {
           </nav>
 
           <div className="app-header-right">
-            <button className="icon-btn" title="Notifications">🔔</button>
+            <button className="icon-btn" title="Thông báo">🔔</button>
             <AvatarDropdown user={user} isAdmin={isAdmin} isOnAdminPage={isOnAdminPage} onLogout={handleLogout} />
           </div>
         </div>
@@ -232,7 +232,7 @@ export function Navbar() {
 
         <div className="app-header-right">
           <NavLink to={ROUTES.LOGIN} className="btn btn-primary">
-            Login
+            Đăng nhập
           </NavLink>
         </div>
       </div>
