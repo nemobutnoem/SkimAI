@@ -120,4 +120,9 @@ public class FrontendController {
     public FrontendDtos.PricingCheckoutResponse confirmCheckout(@RequestBody FrontendDtos.PricingCheckoutConfirmRequest request) {
         return frontendService.confirmCheckout(request);
     }
+
+    @PostMapping("/payment/payos-webhook")
+    public Map<String, Object> payosWebhook(@RequestBody Map<String, Object> payload) {
+        return frontendService.handlePayOsWebhook(payload);
+    }
 }

@@ -85,6 +85,33 @@ public class FrontendService {
     private final HttpClient httpClient = HttpClient.newHttpClient();
     private final String stripeSecretKey;
     private final String frontendBaseUrl;
+
+    @Value("${app.payment.bank.id:MB}")
+    private String paymentBankId;
+
+    @Value("${app.payment.bank.account-no:0868222999}")
+    private String paymentBankAccountNo;
+
+    @Value("${app.payment.bank.account-name:SKIMAI LABS}")
+    private String paymentBankAccountName;
+
+    @Value("${app.payment.momo.phone:0868222999}")
+    private String paymentMomoPhone;
+
+    @Value("${app.payment.momo.account-name:SKIMAI LABS}")
+    private String paymentMomoAccountName;
+
+    @Value("${integration.payos.client-id:}")
+    private String payosClientId;
+
+    @Value("${integration.payos.api-key:}")
+    private String payosApiKey;
+
+    @Value("${integration.payos.checksum-key:}")
+    private String payosChecksumKey;
+
+    @Value("${app.payment.test-mode:false}")
+    private boolean paymentTestMode;
     private final AtomicReference<Map<String, Boolean>> notificationSettings = new AtomicReference<>(
             new LinkedHashMap<>(Map.of(
                     "emailUpdates", true,
@@ -169,7 +196,7 @@ public class FrontendService {
                 .map(tx -> new FrontendDtos.InvoiceItem(
                         "inv_" + tx.getId().toString().substring(0, 8),
                         tx.getCreatedAt() != null ? tx.getCreatedAt().toLocalDate().toString() : LocalDateTime.now().toLocalDate().toString(),
-                        "$" + tx.getAmount().intValue(),
+                        java.text.NumberFormat.getNumberInstance(new java.util.Locale("vi", "VN")).format(tx.getAmount().multiply(new java.math.BigDecimal("25000")).setScale(0, java.math.RoundingMode.HALF_UP)) + " đ",
                         displayPaymentStatus(tx.getStatus())
                 ))
                 .toList();
@@ -186,7 +213,7 @@ public class FrontendService {
                 new FrontendDtos.Profile(user.getFullName(), user.getEmail(), "SkimAI Labs"),
                 new FrontendDtos.CurrentSubscription(
                         plan != null ? plan.getName().toLowerCase(Locale.ROOT) : "free",
-                        titleCase(plan != null ? plan.getName() : "FREE"),
+                        displayPlanName(plan != null ? plan.getName() : "FREE"),
                         currentSubscription != null ? currentSubscription.getStatus() : "ACTIVE",
                         billingCycle,
                         renewsAt
@@ -635,16 +662,23 @@ public class FrontendService {
         return planRepository.findAll().stream()
                 .filter(plan -> List.of("FREE", "STARTER", "TEAM").contains(plan.getName().toUpperCase(Locale.ROOT)))
                 .sorted(Comparator.comparingInt(plan -> planTier(plan.getName())))
-                .map(plan -> new FrontendDtos.PricingPlan(
-                        plan.getName().toLowerCase(Locale.ROOT),
-                        titleCase(plan.getName()),
-                        priceLabel(plan.getPrice()),
-                        priceLabel(plan.getPrice() != null ? plan.getPrice().multiply(new BigDecimal("10")) : BigDecimal.ZERO),
-                        pricingFeatures(plan),
-                        plan.getName().equalsIgnoreCase(currentPlanId),
-                        plan.getName().equalsIgnoreCase(currentPlanId) ? "Current plan" :
-                                "ENTERPRISE".equalsIgnoreCase(plan.getName()) ? "Contact sales" : "Start now"
-                ))
+                .map(plan -> {
+                    String displayName = displayPlanName(plan.getName());
+                    java.math.BigDecimal priceVnd = plan.getPrice().multiply(new java.math.BigDecimal("25000")).setScale(0, java.math.RoundingMode.HALF_UP);
+                    String monthlyLabel = "FREE".equalsIgnoreCase(plan.getName()) ? "0 đ" : java.text.NumberFormat.getNumberInstance(new java.util.Locale("vi", "VN")).format(priceVnd) + " đ";
+                    String yearlyLabel = "FREE".equalsIgnoreCase(plan.getName()) ? "0 đ" : java.text.NumberFormat.getNumberInstance(new java.util.Locale("vi", "VN")).format(priceVnd.multiply(new java.math.BigDecimal("10"))) + " đ";
+
+                    return new FrontendDtos.PricingPlan(
+                            plan.getName().toLowerCase(Locale.ROOT),
+                            displayName,
+                            monthlyLabel,
+                            yearlyLabel,
+                            pricingFeatures(plan),
+                            plan.getName().equalsIgnoreCase(currentPlanId),
+                            plan.getName().equalsIgnoreCase(currentPlanId) ? "Current plan" :
+                                    "ENTERPRISE".equalsIgnoreCase(plan.getName()) ? "Contact sales" : "Start now"
+                    );
+                })
                 .toList();
     }
 
@@ -666,7 +700,162 @@ public class FrontendService {
                     moneyForCycle(plan, cycle),
                     null,
                     null,
-                    null
+                    null,
+                    null, null, null, null, null
+            );
+        }
+
+        String paymentProvider = request.provider() == null ? "STRIPE" : request.provider().trim().toUpperCase(Locale.ROOT);
+        UserEntity user = preferredUser();
+
+        if ("MOMO".equalsIgnoreCase(paymentProvider)) {
+            PaymentTransactionEntity payment = PaymentTransactionEntity.builder()
+                    .user(user)
+                    .plan(plan)
+                    .billingCycle(cycle)
+                    .provider("MOMO")
+                    .amount(resolveAmount(plan, cycle))
+                    .status("PENDING")
+                    .build();
+            payment = paymentTransactionRepository.save(payment);
+            payment.setProviderSessionId(payment.getId().toString());
+            payment.setCheckoutUrl("momo_mock_checkout");
+            paymentTransactionRepository.save(payment);
+
+            java.math.BigDecimal amountVnd = payment.getAmount().multiply(new java.math.BigDecimal("25000")).setScale(0, java.math.RoundingMode.HALF_UP);
+
+            return new FrontendDtos.PricingCheckoutResponse(
+                    "pending_payment",
+                    "MoMo checkout session created. Please scan QR to complete.",
+                    plan.getName().toLowerCase(Locale.ROOT),
+                    titleCase(plan.getName()),
+                    cycle,
+                    "inv_" + payment.getId().toString().substring(0, 8),
+                    java.text.NumberFormat.getNumberInstance(new java.util.Locale("vi", "VN")).format(amountVnd) + " đ",
+                    null,
+                    "momo_mock_checkout",
+                    payment.getId().toString(),
+                    null, null, null, paymentMomoPhone, paymentMomoAccountName
+            );
+        } else if ("BANK".equalsIgnoreCase(paymentProvider)) {
+            boolean isPayOsEnabled = payosClientId != null && !payosClientId.trim().isEmpty()
+                    && payosApiKey != null && !payosApiKey.trim().isEmpty()
+                    && payosChecksumKey != null && !payosChecksumKey.trim().isEmpty();
+
+            if (isPayOsEnabled) {
+                PaymentTransactionEntity payment = PaymentTransactionEntity.builder()
+                        .user(user)
+                        .plan(plan)
+                        .billingCycle(cycle)
+                        .provider("BANK")
+                        .amount(resolveAmount(plan, cycle))
+                        .status("PENDING")
+                        .build();
+                payment = paymentTransactionRepository.save(payment);
+
+                long orderCode = (System.currentTimeMillis() & 0xfffffffL) * 100 + new java.util.Random().nextInt(100);
+                payment.setProviderSessionId(String.valueOf(orderCode));
+
+                String shortId = payment.getId().toString().substring(0, 8);
+                String addInfo = "SKIMAI " + shortId;
+                java.math.BigDecimal amountVnd = payment.getAmount().multiply(new java.math.BigDecimal("25000")).setScale(0, java.math.RoundingMode.HALF_UP);
+                
+                String cancelUrl = frontendBaseUrl + "/pricing?payment=cancelled";
+                String returnUrl = frontendBaseUrl + "/pricing?payment=success&session_id=" + orderCode;
+                String signature = calculatePayOsSignature(orderCode, amountVnd.intValue(), addInfo, cancelUrl, returnUrl);
+
+                try {
+                    Map<String, Object> bodyMap = new LinkedHashMap<>();
+                    bodyMap.put("orderCode", orderCode);
+                    bodyMap.put("amount", amountVnd.intValue());
+                    bodyMap.put("description", addInfo);
+                    bodyMap.put("cancelUrl", cancelUrl);
+                    bodyMap.put("returnUrl", returnUrl);
+                    bodyMap.put("signature", signature);
+
+                    String requestBody = objectMapper.writeValueAsString(bodyMap);
+
+                    HttpRequest requestPayOs = HttpRequest.newBuilder()
+                            .uri(URI.create("https://api-merchant.payos.vn/v2/payment-requests"))
+                            .header("x-client-id", payosClientId)
+                            .header("x-api-key", payosApiKey)
+                            .header("Content-Type", "application/json")
+                            .POST(HttpRequest.BodyPublishers.ofString(requestBody))
+                            .build();
+
+                    HttpResponse<String> response = httpClient.send(requestPayOs, HttpResponse.BodyHandlers.ofString());
+                    if (response.statusCode() < 300) {
+                        JsonNode root = objectMapper.readTree(response.body());
+                        String code = root.path("code").asText();
+                        if ("00".equals(code) || "0".equals(code)) {
+                            JsonNode dataNode = root.path("data");
+                            String payOsCheckoutUrl = dataNode.path("checkoutUrl").asText();
+                            
+                            payment.setCheckoutUrl(payOsCheckoutUrl);
+                            paymentTransactionRepository.save(payment);
+
+                            return new FrontendDtos.PricingCheckoutResponse(
+                                    "pending_payment",
+                                    "PayOS payment link created successfully.",
+                                    plan.getName().toLowerCase(Locale.ROOT),
+                                    titleCase(plan.getName()),
+                                    cycle,
+                                    "inv_" + payment.getId().toString().substring(0, 8),
+                                    java.text.NumberFormat.getNumberInstance(new java.util.Locale("vi", "VN")).format(amountVnd) + " đ",
+                                    null,
+                                    payOsCheckoutUrl,
+                                    String.valueOf(orderCode),
+                                    paymentBankId, paymentBankAccountNo, paymentBankAccountName, null, null
+                            );
+                        }
+                    }
+                } catch (Exception e) {
+                    e.printStackTrace();
+                    // If PayOS fails, fallback to offline mock QR code
+                }
+            }
+
+            PaymentTransactionEntity payment = PaymentTransactionEntity.builder()
+                    .user(user)
+                    .plan(plan)
+                    .billingCycle(cycle)
+                    .provider("BANK")
+                    .amount(resolveAmount(plan, cycle))
+                    .status("PENDING")
+                    .build();
+            payment = paymentTransactionRepository.save(payment);
+            payment.setProviderSessionId(payment.getId().toString());
+
+            String shortId = payment.getId().toString().substring(0, 8);
+            String addInfo = "SKIMAI " + shortId;
+            java.math.BigDecimal amountVnd = payment.getAmount().multiply(new java.math.BigDecimal("25000")).setScale(0, java.math.RoundingMode.HALF_UP);
+            String qrUrl = "";
+            try {
+                qrUrl = String.format("https://img.vietqr.io/image/%s-%s-compact.png?amount=%d&addInfo=%s&accountName=%s",
+                        paymentBankId != null ? paymentBankId.trim() : "MB",
+                        paymentBankAccountNo != null ? paymentBankAccountNo.trim() : "0868222999",
+                        amountVnd.longValue(),
+                        URLEncoder.encode(addInfo, StandardCharsets.UTF_8.toString()),
+                        URLEncoder.encode(paymentBankAccountName != null ? paymentBankAccountName.trim() : "SKIMAI LABS", StandardCharsets.UTF_8.toString()));
+            } catch (Exception ignored) {
+                qrUrl = "https://img.vietqr.io/image/MB-0868222999-compact.png?amount=" + amountVnd.longValue() + "&addInfo=SKIMAI_" + shortId;
+            }
+
+            payment.setCheckoutUrl(qrUrl);
+            paymentTransactionRepository.save(payment);
+
+            return new FrontendDtos.PricingCheckoutResponse(
+                    "pending_payment",
+                    "Bank transfer checkout session created. Please transfer via VietQR.",
+                    plan.getName().toLowerCase(Locale.ROOT),
+                    titleCase(plan.getName()),
+                    cycle,
+                    "inv_" + payment.getId().toString().substring(0, 8),
+                    java.text.NumberFormat.getNumberInstance(new java.util.Locale("vi", "VN")).format(amountVnd) + " đ",
+                    null,
+                    qrUrl,
+                    payment.getId().toString(),
+                    paymentBankId, paymentBankAccountNo, paymentBankAccountName, null, null
             );
         }
 
@@ -674,7 +863,6 @@ public class FrontendService {
             throw new AppException(HttpStatus.BAD_REQUEST, "Stripe secret key is missing. Add STRIPE_SECRET_KEY before using checkout.");
         }
 
-        UserEntity user = preferredUser();
         PaymentTransactionEntity payment = PaymentTransactionEntity.builder()
                 .user(user)
                 .plan(plan)
@@ -700,7 +888,8 @@ public class FrontendService {
                 moneyForCycle(plan, cycle),
                 null,
                 session.url(),
-                session.id()
+                session.id(),
+                null, null, null, null, null
         );
     }
 
@@ -741,6 +930,113 @@ public class FrontendService {
         PaymentTransactionEntity payment = paymentTransactionRepository.findByProviderSessionId(request.providerSessionId())
                 .orElseThrow(() -> new AppException(HttpStatus.NOT_FOUND, "Payment session not found"));
 
+        if (!"STRIPE".equalsIgnoreCase(payment.getProvider())) {
+            boolean isPayOsEnabled = payosClientId != null && !payosClientId.trim().isEmpty()
+                    && payosApiKey != null && !payosApiKey.trim().isEmpty()
+                    && payosChecksumKey != null && !payosChecksumKey.trim().isEmpty();
+
+            if ("BANK".equalsIgnoreCase(payment.getProvider()) && isPayOsEnabled) {
+                try {
+                    HttpRequest requestPayOs = HttpRequest.newBuilder()
+                            .uri(URI.create("https://api-merchant.payos.vn/v2/payment-requests/" + payment.getProviderSessionId()))
+                            .header("x-client-id", payosClientId)
+                            .header("x-api-key", payosApiKey)
+                            .GET()
+                            .build();
+
+                    HttpResponse<String> response = httpClient.send(requestPayOs, HttpResponse.BodyHandlers.ofString());
+                    if (response.statusCode() < 300) {
+                        JsonNode root = objectMapper.readTree(response.body());
+                        String payosStatus = root.path("data").path("status").asText();
+                        if ("PAID".equalsIgnoreCase(payosStatus)) {
+                            if (!"PAID".equalsIgnoreCase(payment.getStatus())) {
+                                LocalDateTime now = LocalDateTime.now();
+                                List<UserSubscriptionEntity> activeSubscriptions = userSubscriptionRepository.findByUserAndStatus(payment.getUser(), "ACTIVE");
+                                for (UserSubscriptionEntity active : activeSubscriptions) {
+                                    active.setStatus("ENDED");
+                                    active.setEndDate(now);
+                                }
+                                userSubscriptionRepository.saveAll(activeSubscriptions);
+
+                                LocalDateTime renewsAt = "yearly".equals(payment.getBillingCycle()) ? now.plusYears(1) : now.plusMonths(1);
+                                UserSubscriptionEntity nextSubscription = UserSubscriptionEntity.builder()
+                                        .user(payment.getUser())
+                                        .plan(payment.getPlan())
+                                        .status("ACTIVE")
+                                        .startDate(now)
+                                        .endDate(renewsAt)
+                                        .build();
+                                userSubscriptionRepository.save(nextSubscription);
+
+                                payment.setStatus("PAID");
+                                payment.setCompletedAt(now);
+                                paymentTransactionRepository.save(payment);
+                            }
+                        } else {
+                            payment.setStatus("PENDING");
+                            paymentTransactionRepository.save(payment);
+                            return new FrontendDtos.PricingCheckoutResponse(
+                                    "pending_payment",
+                                    "Payment has not been completed on PayOS yet. Current status: " + payosStatus,
+                                    payment.getPlan().getName().toLowerCase(Locale.ROOT),
+                                    titleCase(payment.getPlan().getName()),
+                                    payment.getBillingCycle(),
+                                    "inv_" + payment.getId().toString().substring(0, 8),
+                                    "$" + priceLabel(payment.getAmount()),
+                                    null,
+                                    payment.getCheckoutUrl(),
+                                    payment.getProviderSessionId(),
+                                    null, null, null, null, null
+                            );
+                        }
+                    }
+                } catch (Exception e) {
+                    e.printStackTrace();
+                }
+            } else {
+                if (!"PAID".equalsIgnoreCase(payment.getStatus())) {
+                    LocalDateTime now = LocalDateTime.now();
+                    List<UserSubscriptionEntity> activeSubscriptions = userSubscriptionRepository.findByUserAndStatus(payment.getUser(), "ACTIVE");
+                    for (UserSubscriptionEntity active : activeSubscriptions) {
+                        active.setStatus("ENDED");
+                        active.setEndDate(now);
+                    }
+                    userSubscriptionRepository.saveAll(activeSubscriptions);
+
+                    LocalDateTime renewsAt = "yearly".equals(payment.getBillingCycle()) ? now.plusYears(1) : now.plusMonths(1);
+                    UserSubscriptionEntity nextSubscription = UserSubscriptionEntity.builder()
+                            .user(payment.getUser())
+                            .plan(payment.getPlan())
+                            .status("ACTIVE")
+                            .startDate(now)
+                            .endDate(renewsAt)
+                            .build();
+                    userSubscriptionRepository.save(nextSubscription);
+
+                    payment.setStatus("PAID");
+                    payment.setCompletedAt(now);
+                    paymentTransactionRepository.save(payment);
+                }
+            }
+
+            LocalDateTime renewsAt = "yearly".equals(payment.getBillingCycle())
+                    ? payment.getCompletedAt().plusYears(1)
+                    : payment.getCompletedAt().plusMonths(1);
+            return new FrontendDtos.PricingCheckoutResponse(
+                    "success",
+                    titleCase(payment.getPlan().getName()) + " plan activated successfully.",
+                    payment.getPlan().getName().toLowerCase(Locale.ROOT),
+                    titleCase(payment.getPlan().getName()),
+                    payment.getBillingCycle(),
+                    "inv_" + payment.getId().toString().substring(0, 8),
+                    "$" + priceLabel(payment.getAmount()),
+                    renewsAt.toString(),
+                    null,
+                    payment.getProviderSessionId(),
+                    null, null, null, null, null
+            );
+        }
+
         StripeSessionStatus session = fetchStripeSessionStatus(request.providerSessionId());
         if (!"paid".equalsIgnoreCase(session.paymentStatus())) {
             payment.setStatus("CANCELLED".equalsIgnoreCase(payment.getStatus()) ? payment.getStatus() : "PENDING");
@@ -755,7 +1051,8 @@ public class FrontendService {
                 "$" + priceLabel(payment.getAmount()),
                 null,
                 null,
-                payment.getProviderSessionId()
+                payment.getProviderSessionId(),
+                null, null, null, null, null
             );
         }
 
@@ -796,7 +1093,8 @@ public class FrontendService {
                 "$" + priceLabel(payment.getAmount()),
                 renewsAt.toString(),
                 null,
-                payment.getProviderSessionId()
+                payment.getProviderSessionId(),
+                null, null, null, null, null
         );
     }
 
@@ -1699,6 +1997,18 @@ public class FrontendService {
 
     private record StripeSessionStatus(String id, String status, String paymentStatus) {}
 
+    private String displayPlanName(String name) {
+        if (name == null) {
+            return "Miễn Phí";
+        }
+        return switch (name.toUpperCase(Locale.ROOT)) {
+            case "FREE" -> "Miễn Phí";
+            case "STARTER" -> "Pro";
+            case "TEAM" -> "Premium";
+            default -> titleCase(name);
+        };
+    }
+
     private int planTier(String name) {
         if (name == null) {
             return 99;
@@ -1797,5 +2107,60 @@ public class FrontendService {
             e.printStackTrace();
             return Map.of("success", false, "error", e.getMessage() != null ? e.getMessage() : e.getClass().getName(), "cause", e.getCause() != null ? e.getCause().getMessage() : "none");
         }
+    }
+
+    @Transactional
+    public Map<String, Object> handlePayOsWebhook(Map<String, Object> payload) {
+        try {
+            if (payload == null || !payload.containsKey("data")) {
+                return Map.of("success", false, "message", "Invalid payload");
+            }
+            Map<?, ?> data = (Map<?, ?>) payload.get("data");
+            Object orderCodeObj = data.get("orderCode");
+            if (orderCodeObj == null) {
+                return Map.of("success", false, "message", "Missing orderCode");
+            }
+            String orderCode = String.valueOf(orderCodeObj);
+
+            Optional<PaymentTransactionEntity> paymentOpt = paymentTransactionRepository.findByProviderSessionId(orderCode);
+            if (paymentOpt.isPresent()) {
+                PaymentTransactionEntity payment = paymentOpt.get();
+                if (!"PAID".equalsIgnoreCase(payment.getStatus())) {
+                    FrontendDtos.PricingCheckoutConfirmRequest confirmReq = new FrontendDtos.PricingCheckoutConfirmRequest(orderCode);
+                    confirmCheckout(confirmReq);
+                }
+                return Map.of("success", true, "message", "Transaction updated");
+            }
+            return Map.of("success", false, "message", "Transaction not found");
+        } catch (Exception e) {
+            e.printStackTrace();
+            return Map.of("success", false, "message", e.getMessage() != null ? e.getMessage() : "Internal error");
+        }
+    }
+
+    private String calculatePayOsSignature(long orderCode, int amount, String description, String cancelUrl, String returnUrl) {
+        String data = String.format("amount=%d&cancelUrl=%s&description=%s&orderCode=%d&returnUrl=%s",
+                amount, cancelUrl, description, orderCode, returnUrl);
+        return hmacSha256(data, payosChecksumKey);
+    }
+
+    private String hmacSha256(String data, String key) {
+        try {
+            javax.crypto.spec.SecretKeySpec secretKeySpec = new javax.crypto.spec.SecretKeySpec(key.getBytes(java.nio.charset.StandardCharsets.UTF_8), "HmacSHA256");
+            javax.crypto.Mac mac = javax.crypto.Mac.getInstance("HmacSHA256");
+            mac.init(secretKeySpec);
+            byte[] rawHmac = mac.doFinal(data.getBytes(java.nio.charset.StandardCharsets.UTF_8));
+            return bytesToHex(rawHmac);
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to calculate hmac-sha256", e);
+        }
+    }
+
+    private String bytesToHex(byte[] bytes) {
+        StringBuilder sb = new StringBuilder();
+        for (byte b : bytes) {
+            sb.append(String.format("%02x", b));
+        }
+        return sb.toString();
     }
 }

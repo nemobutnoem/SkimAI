@@ -1,6 +1,13 @@
-# Run backend with Google OAuth from FE .env
-# Usage: .\run.ps1
-
+# Run backend with env variables from .env
+if (Test-Path '.env') {
+    Get-Content '.env' | ForEach-Object {
+        if ($_ -match '^([^#=]+)=(.*)$') {
+            $key = $Matches[1].Trim()
+            $val = $Matches[2].Trim()
+            [System.Environment]::SetEnvironmentVariable($key, $val)
+        }
+    }
+}
 $feEnv = Join-Path '..' 'FE\.env'
 if (Test-Path $feEnv) {
   $line = (Select-String -Path $feEnv -Pattern '^VITE_GOOGLE_CLIENT_ID=' | Select-Object -First 1)

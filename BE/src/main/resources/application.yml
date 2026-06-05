@@ -35,6 +35,15 @@ app:
   jwt:
     secret: 56737450-04d2-4593-922a-c5c29b528799
     expiration-ms: ${JWT_EXPIRATION_MS:86400000}
+  payment:
+    test-mode: ${PAYMENT_TEST_MODE:false}
+    bank:
+      id: ${PAYMENT_BANK_ID:MB}
+      account-no: ${PAYMENT_BANK_ACCOUNT_NO:0868222999}
+      account-name: ${PAYMENT_BANK_ACCOUNT_NAME:SKIMAI LABS}
+    momo:
+      phone: ${PAYMENT_MOMO_PHONE:0868222999}
+      account-name: ${PAYMENT_MOMO_ACCOUNT_NAME:SKIMAI LABS}
 
 integration:
   serpapi:
@@ -43,6 +52,10 @@ integration:
     news-max-results: ${SERPAPI_NEWS_MAX_RESULTS:5}
   stripe:
     secret-key: sk_test_51TE5tTFPLOVqZ09p5aHfArf13WxrgrMhcgEISGszZBLnvSAvWWTvfXR30qXva6ZxfcEpu6DDE2MOp0yEJ31L7yx200t837c2a5
+  payos:
+    client-id: ${PAYOS_CLIENT_ID:}
+    api-key: ${PAYOS_API_KEY:}
+    checksum-key: ${PAYOS_CHECKSUM_KEY:}
   gemini:
     api-key: ${GEMINI_API_KEY:AIzaSyC2Ft90bO2auKp-1Z6YhrMPv7Af5ZkHrKo}
     model: ${GEMINI_MODEL:gemini-2.5-flash}

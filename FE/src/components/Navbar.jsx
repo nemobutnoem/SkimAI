@@ -16,6 +16,7 @@ const USER_LINKS = [
   { to: ROUTES.DASHBOARD, label: 'Workspace' },
   { to: ROUTES.ANALYSIS, label: 'Nghiên cứu thị trường' },
   { to: ROUTES.DEEP_INSIGHT, label: 'Deep Insight' },
+  { to: ROUTES.PRICING, label: 'Bảng giá' },
   { to: ROUTES.ACCOUNT, label: 'Tài khoản' },
 ]
 

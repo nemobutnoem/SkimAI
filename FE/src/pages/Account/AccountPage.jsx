@@ -24,9 +24,29 @@ export function AccountPage() {
         </div>
         <div className="account-plan-summary">
           <span className="account-plan-label">Gói đang hoạt động</span>
-          <strong>{subscription?.planName?.toUpperCase() === 'FREE' ? 'Miễn phí' : subscription?.planName?.toUpperCase() === 'STARTER' ? 'Starter' : subscription?.planName?.toUpperCase() === 'TEAM' ? 'Team' : subscription?.planName ?? 'Miễn phí'}</strong>
+          <strong>{subscription?.planName ?? 'Miễn phí'}</strong>
           <span>Thanh toán {subscription?.billingCycle === 'monthly' ? 'hàng tháng' : subscription?.billingCycle === 'yearly' ? 'hàng năm' : subscription?.billingCycle ?? 'hàng tháng'}</span>
-          <small>Gia hạn ngày {billingDate}</small>
+          <small style={{ marginBottom: '12px', display: 'block' }}>Gia hạn ngày {billingDate}</small>
+          <button 
+            type="button" 
+            onClick={() => window.location.href = '/pricing'}
+            style={{ 
+              width: '100%', 
+              marginTop: '12px', 
+              padding: '8px 16px', 
+              fontSize: '13px', 
+              background: 'var(--primary)', 
+              color: 'var(--white)', 
+              border: 'none', 
+              borderRadius: '8px', 
+              cursor: 'pointer', 
+              fontWeight: '600',
+              textAlign: 'center',
+              display: 'inline-block'
+            }}
+          >
+            Nâng cấp / Thay đổi gói
+          </button>
         </div>
       </section>
 
@@ -47,7 +67,7 @@ export function AccountPage() {
             <div className="account-plan-pill">
               <span className="badge badge-success">{subscription.status === 'active' ? 'Đang hoạt động' : subscription.status}</span>
               <span>
-                Gói {subscription.planName?.toUpperCase() === 'FREE' ? 'Miễn phí' : subscription.planName?.toUpperCase() === 'STARTER' ? 'Starter' : subscription.planName?.toUpperCase() === 'TEAM' ? 'Team' : subscription.planName} • {subscription.billingCycle === 'monthly' ? 'hàng tháng' : subscription.billingCycle === 'yearly' ? 'hàng năm' : subscription.billingCycle} • Gia hạn ngày {billingDate}
+                Gói {subscription.planName} • {subscription.billingCycle === 'monthly' ? 'hàng tháng' : subscription.billingCycle === 'yearly' ? 'hàng năm' : subscription.billingCycle} • Gia hạn ngày {billingDate}
               </span>
             </div>
           ) : null}

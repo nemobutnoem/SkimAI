@@ -209,7 +209,8 @@ public class FrontendDtos {
 
     public record PricingCheckoutRequest(
             String planId,
-            String billingCycle
+            String billingCycle,
+            String provider
     ) {
     }
 
@@ -223,7 +224,12 @@ public class FrontendDtos {
             String amount,
             String renewsAt,
             String checkoutUrl,
-            String providerSessionId
+            String providerSessionId,
+            String bankId,
+            String bankAccountNo,
+            String bankAccountName,
+            String momoPhone,
+            String momoAccountName
     ) {
     }
 
