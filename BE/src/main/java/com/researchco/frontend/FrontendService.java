@@ -209,6 +209,30 @@ public class FrontendService {
                 ? "yearly"
                 : "monthly";
 
+        int apiLimit = plan != null && plan.getSearchLimit() != null ? plan.getSearchLimit() : 10;
+        int apiUsagePct = Math.min(100, (int) Math.round((double) queryCount * 100.0 / apiLimit));
+
+        int exportLimit = plan != null && plan.getExportLimit() != null ? plan.getExportLimit() : 0;
+        int storageUsagePct = 0;
+        if (exportLimit > 0) {
+            storageUsagePct = Math.min(100, (int) Math.round((double) reportCount * 100.0 / exportLimit));
+        }
+
+        int membersUsed = 1;
+        int memberLimit = 1;
+        String planName = plan != null ? plan.getName().toUpperCase(Locale.ROOT) : "FREE";
+        if ("STARTER".equals(planName)) {
+            membersUsed = 1;
+            memberLimit = 5;
+        } else if ("TEAM".equals(planName)) {
+            membersUsed = 2;
+            memberLimit = 15;
+        } else if ("ENTERPRISE".equals(planName)) {
+            membersUsed = 8;
+            memberLimit = 50;
+        }
+        int memberUsagePct = (int) Math.round((double) membersUsed * 100.0 / memberLimit);
+
         return new FrontendDtos.AccountOverviewResponse(
                 new FrontendDtos.Profile(user.getFullName(), user.getEmail(), "SkimAI Labs"),
                 new FrontendDtos.CurrentSubscription(
@@ -219,9 +243,9 @@ public class FrontendService {
                         renewsAt
                 ),
                 List.of(
-                        new FrontendDtos.UsageItem("Yêu cầu API", Math.min(95, (int) queryCount * 18 + 24)),
-                        new FrontendDtos.UsageItem("Lưu trữ", Math.min(95, (int) reportCount * 22 + 18)),
-                        new FrontendDtos.UsageItem("Thành viên", "ENTERPRISE".equalsIgnoreCase(plan != null ? plan.getName() : "") ? 80 : 30)
+                        new FrontendDtos.UsageItem("Yêu cầu API", apiUsagePct),
+                        new FrontendDtos.UsageItem("Lưu trữ", storageUsagePct),
+                        new FrontendDtos.UsageItem("Thành viên", memberUsagePct)
                 ),
                 invoices,
                 new LinkedHashMap<>(notificationSettings.get())
@@ -1714,14 +1738,14 @@ public class FrontendService {
         if ("FREE".equals(planName)) {
             throw new AppException(
                     HttpStatus.FORBIDDEN,
-                    "Gói Miễn phí bao gồm " + maxQuota + " lượt sử dụng AI/tháng. Bạn đã sử dụng hết " + maxQuota + " lượt. Vui lòng nâng cấp gói để tiếp tục."
+                    "Gói Miễn phí bao gồm " + maxQuota + " lượt sử dụng AI/tuần. Bạn đã sử dụng hết " + maxQuota + " lượt. Vui lòng nâng cấp gói để tiếp tục."
             );
         }
 
         throw new AppException(
                 HttpStatus.FORBIDDEN,
-                "Bạn đã sử dụng hết " + maxQuota + " lượt sử dụng AI trong tháng này cho gói "
-                        + titleCase(planName) + ". Vui lòng mua thêm lượt sử dụng AI."
+                "Bạn đã sử dụng hết " + maxQuota + " lượt sử dụng AI trong tuần này cho gói "
+                        + titleCase(planName) + ". Vui lòng mua thêm hoặc nâng cấp gói."
         );
     }
 
@@ -1733,7 +1757,10 @@ public class FrontendService {
     }
 
     private AiUsageEntity aiUsageRecord(UserEntity user) {
-        String periodKey = YearMonth.now().toString();
+        java.time.temporal.WeekFields weekFields = java.time.temporal.WeekFields.of(Locale.ROOT);
+        int week = LocalDateTime.now().get(weekFields.weekOfWeekBasedYear());
+        int year = LocalDateTime.now().get(weekFields.weekBasedYear());
+        String periodKey = year + "-W" + String.format(Locale.ROOT, "%02d", week);
         return aiUsageRepository.findByUserAndFeatureAndPeriodKey(user, "DEEP_INSIGHT", periodKey)
                 .orElseGet(() -> aiUsageRepository.save(
                         AiUsageEntity.builder()
@@ -1747,7 +1774,13 @@ public class FrontendService {
     }
 
     private int resolveDeepInsightQuota(UserSubscriptionEntity subscription) {
-        return 2;
+        String planName = resolvePlanName(subscription);
+        return switch (planName) {
+            case "STARTER" -> 2;       // Pro (STARTER)
+            case "TEAM" -> 10;         // Premium (TEAM)
+            case "ENTERPRISE" -> 9999; // Enterprise
+            default -> 0;              // Free
+        };
     }
 
     private String resolvePlanName(UserSubscriptionEntity subscription) {
@@ -2034,15 +2067,15 @@ public class FrontendService {
             );
             case "STARTER" -> List.of(
                     "100 lượt tìm kiếm/tháng",
+                    "Phân tích sâu AI (2 lần/tuần)",
                     "Phân tích thị trường cơ bản",
-                    "Tóm tắt bằng AI",
                     "Xuất báo cáo PDF"
             );
             case "TEAM" -> List.of(
                     "500 lượt tìm kiếm/tháng",
+                    "Phân tích sâu AI (10 lần/tuần)",
                     "Phân tích sâu bằng AI nâng cao",
-                    "Xem đối thủ cạnh tranh",
-                    "Xử lý ưu tiên"
+                    "Xem đối thủ cạnh tranh"
             );
             case "ENTERPRISE" -> List.of(
                     "Không giới hạn tìm kiếm",
