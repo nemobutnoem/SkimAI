@@ -24,13 +24,23 @@ public class ProviderOrchestrator {
                                                 String countryCode,
                                                 String languageCode,
                                                 String timeRange) {
-        List<NormalizedSourceItem> items = new ArrayList<>();
-        for (String providerCode : activeProviderCodes) {
-            SearchProvider provider = providersByCode.get(providerCode);
-            if (provider != null) {
-                items.addAll(provider.search(keyword, countryCode, languageCode, timeRange));
-            }
-        }
-        return items;
+        List<java.util.concurrent.CompletableFuture<List<NormalizedSourceItem>>> futures = activeProviderCodes.stream()
+                .map(providersByCode::get)
+                .filter(java.util.Objects::nonNull)
+                .map(provider -> java.util.concurrent.CompletableFuture.supplyAsync(() -> {
+                    try {
+                        return provider.search(keyword, countryCode, languageCode, timeRange);
+                    } catch (Exception e) {
+                        System.err.println("[ERROR] Failed fetching from provider: " + provider.providerCode());
+                        e.printStackTrace();
+                        return List.<NormalizedSourceItem>of();
+                    }
+                }))
+                .toList();
+
+        return futures.stream()
+                .map(java.util.concurrent.CompletableFuture::join)
+                .flatMap(List::stream)
+                .collect(Collectors.toList());
     }
 }

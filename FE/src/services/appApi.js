@@ -97,12 +97,24 @@ const realApi = {
     return request(`/analysis/timeline?${query}`)
   },
   streamAnalysis(keyword, onEvent, onError) {
-    const query = new URLSearchParams({ keyword: keyword ?? '' }).toString()
+    let tokenParam = {}
+    try {
+      const raw = localStorage.getItem(STORAGE_KEYS.AUTH)
+      if (raw) {
+        const session = JSON.parse(raw)
+        if (session?.token) {
+          tokenParam = { token: session.token }
+        }
+      }
+    } catch (_) {}
+
+    const query = new URLSearchParams({
+      keyword: keyword ?? '',
+      ...tokenParam
+    }).toString()
     const url = `${API_BASE_URL}/analysis/stream?${query}`
     
     try {
-      // NOTE: Native EventSource does not support custom headers.
-      // Auth for this endpoint should be cookie-based or the endpoint should be public.
       const eventSource = new EventSource(url)
       
       eventSource.addEventListener('query-start', (e) => onEvent('query-start', JSON.parse(e.data)))

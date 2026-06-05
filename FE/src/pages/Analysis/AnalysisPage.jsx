@@ -764,7 +764,7 @@ ${evidenceItems.map(ev => `- [${ev.source}] ${ev.title}\n  Link: ${ev.url}`).joi
               ? (overall.marketState?.toLowerCase() === 'tăng trưởng' ? 'var(--green)' : overall.marketState?.toLowerCase() === 'giảm sút' ? 'var(--red)' : '#f59e0b') 
               : 'var(--text-muted)'
           }}>
-            {overall.hasData ? <TypewriterText text={overall.marketState} speed={40} /> : 'chưa đủ dữ liệu'}
+            {overall.hasData ? overall.marketState : 'chưa đủ dữ liệu'}
           </strong>
         </section>
         <section className="card prompt-summary-card">
@@ -775,7 +775,7 @@ ${evidenceItems.map(ev => `- [${ev.source}] ${ev.title}\n  Link: ${ev.url}`).joi
               ? (overall.interestLevel?.toLowerCase() === 'cao' ? 'var(--green)' : overall.interestLevel?.toLowerCase() === 'thấp' ? 'var(--red)' : '#f59e0b') 
               : 'var(--text-muted)'
           }}>
-            {overall.hasData ? <TypewriterText text={overall.interestLevel} speed={40} /> : 'chưa đủ dữ liệu'}
+            {overall.hasData ? overall.interestLevel : 'chưa đủ dữ liệu'}
           </strong>
         </section>
         <section className="card prompt-summary-card">
@@ -794,7 +794,7 @@ ${evidenceItems.map(ev => `- [${ev.source}] ${ev.title}\n  Link: ${ev.url}`).joi
             <div className="source-trend-row" key={row.source}>
               <div>
                 <strong>{row.source}</strong>
-                <p><TypewriterText text={row.summary} speed={20} /></p>
+                <p>{row.summary}</p>
               </div>
               <span className={`direction-pill direction-${directionClass(row.direction)}`}>
                 {directionLabel(row.direction)}
@@ -814,14 +814,14 @@ ${evidenceItems.map(ev => `- [${ev.source}] ${ev.title}\n  Link: ${ev.url}`).joi
             <div className="score-track">
               <div className="score-fill" style={{ width: `${overall.hasData ? overall.marketScore : 0}%` }} />
             </div>
-            <p>{overall.hasData ? <TypewriterText text={`Mức quan tâm: ${overall.interestLevel}`} speed={30} /> : noDataFor('mức độ quan tâm hiện tại')}</p>
+            <p>{overall.hasData ? `Mức quan tâm: ${overall.interestLevel}` : noDataFor('mức độ quan tâm hiện tại')}</p>
           </div>
           <div className="decision-verdict">
             <span className="decision-label">Đánh giá chung</span>
-            <h4>{overall.hasData ? <TypewriterText text={`Thị trường đang ${overall.marketState}`} speed={30} /> : noDataFor('đánh giá tổng thể')}</h4>
+            <h4>{overall.hasData ? `Thị trường đang ${overall.marketState}` : noDataFor('đánh giá tổng thể')}</h4>
             <p>
               {overall.hasData
-                ? <TypewriterText text={`Độ tin cậy ở mức ${overall.confidenceBand} (${overall.confidenceScore}/100), dựa trên độ phủ ${Number(overall.coverage)}%, ${overall.sourceCount} nguồn và ${formatNumber(overall.totalComments)} bình luận.`} speed={20} />
+                ? `Độ tin cậy ở mức ${overall.confidenceBand} (${overall.confidenceScore}/100), dựa trên độ phủ ${Number(overall.coverage)}%, ${overall.sourceCount} nguồn và ${formatNumber(overall.totalComments)} bình luận.`
                 : noDataFor('độ tin cậy')}
             </p>
           </div>

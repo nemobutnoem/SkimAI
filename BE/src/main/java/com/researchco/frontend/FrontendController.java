@@ -18,10 +18,16 @@ public class FrontendController {
 
     private final FrontendService frontendService;
     private final StreamingAnalysisService streamingAnalysisService;
+    private final java.util.concurrent.ConcurrentHashMap<String, Object> keywordLocks = new java.util.concurrent.ConcurrentHashMap<>();
 
     public FrontendController(FrontendService frontendService, StreamingAnalysisService streamingAnalysisService) {
         this.frontendService = frontendService;
         this.streamingAnalysisService = streamingAnalysisService;
+    }
+
+    private Object getLock(String keyword) {
+        String normalized = keyword == null ? "" : keyword.trim().toLowerCase(java.util.Locale.ROOT);
+        return keywordLocks.computeIfAbsent(normalized, k -> new Object());
     }
 
     @GetMapping("/dashboard")
@@ -41,7 +47,9 @@ public class FrontendController {
 
     @GetMapping("/analysis")
     public FrontendDtos.AnalysisResponse getAnalysis(@RequestParam(name = "keyword", defaultValue = "") String keyword) {
-        return frontendService.getAnalysis(keyword);
+        synchronized (getLock(keyword)) {
+            return frontendService.getAnalysis(keyword);
+        }
     }
 
     @PostMapping("/reports/export")
@@ -52,23 +60,33 @@ public class FrontendController {
     @GetMapping("/analysis/stream")
     public SseEmitter getAnalysisStream(@RequestParam(name = "keyword", defaultValue = "") String keyword) {
         SseEmitter emitter = new SseEmitter(300000L); // 5 min timeout
-        new Thread(() -> streamingAnalysisService.streamAnalysis(keyword, emitter)).start();
+        new Thread(() -> {
+            synchronized (getLock(keyword)) {
+                streamingAnalysisService.streamAnalysis(keyword, emitter);
+            }
+        }).start();
         return emitter;
     }
 
     @GetMapping("/analysis/project")
     public FrontendDtos.ProjectWorkflowResponse getProjectWorkflow(@RequestParam(name = "keyword", defaultValue = "") String keyword) {
-        return frontendService.getProjectWorkflow(keyword);
+        synchronized (getLock(keyword)) {
+            return frontendService.getProjectWorkflow(keyword);
+        }
     }
 
     @GetMapping("/analysis/alerts")
     public List<FrontendDtos.AlertItem> getAnalysisAlerts(@RequestParam(name = "keyword", defaultValue = "") String keyword) {
-        return frontendService.getAnalysisAlerts(keyword);
+        synchronized (getLock(keyword)) {
+            return frontendService.getAnalysisAlerts(keyword);
+        }
     }
 
     @GetMapping("/analysis/competitor")
     public List<FrontendDtos.CompetitorSignal> getCompetitorSignals(@RequestParam(name = "keyword", defaultValue = "") String keyword) {
-        return frontendService.getCompetitorSignals(keyword);
+        synchronized (getLock(keyword)) {
+            return frontendService.getCompetitorSignals(keyword);
+        }
     }
 
     @GetMapping("/analysis/evidence")
@@ -78,17 +96,23 @@ public class FrontendController {
 
     @GetMapping("/analysis/compare")
     public List<FrontendDtos.CompareItem> getAnalysisCompare(@RequestParam(name = "keyword", defaultValue = "") String keyword) {
-        return frontendService.getAnalysisCompare(keyword);
+        synchronized (getLock(keyword)) {
+            return frontendService.getAnalysisCompare(keyword);
+        }
     }
 
     @GetMapping("/analysis/timeline")
     public List<FrontendDtos.TimeSeriesPoint> getAnalysisTimeline(@RequestParam(name = "keyword", defaultValue = "") String keyword) {
-        return frontendService.getAnalysisTimeline(keyword);
+        synchronized (getLock(keyword)) {
+            return frontendService.getAnalysisTimeline(keyword);
+        }
     }
 
     @PostMapping("/deep-insight")
     public FrontendDtos.DeepInsightResponse getDeepInsight(@RequestBody FrontendDtos.DeepInsightRequest request) {
-        return frontendService.getDeepInsight(request);
+        synchronized (getLock(request.keyword())) {
+            return frontendService.getDeepInsight(request);
+        }
     }
 
     @GetMapping("/experts")
