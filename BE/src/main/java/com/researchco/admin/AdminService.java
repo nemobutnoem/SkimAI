@@ -42,6 +42,7 @@ public class AdminService {
     private final PaymentTransactionRepository paymentTransactionRepository;
     private final AdminActionRepository adminActionRepository;
     private final PlanRepository planRepository;
+    private final SystemSettingRepository systemSettingRepository;
 
     public AdminService(UserRepository userRepository,
                         SearchQueryRepository searchQueryRepository,
@@ -49,7 +50,8 @@ public class AdminService {
                         UserSubscriptionRepository userSubscriptionRepository,
                         PaymentTransactionRepository paymentTransactionRepository,
                         AdminActionRepository adminActionRepository,
-                        PlanRepository planRepository) {
+                        PlanRepository planRepository,
+                        SystemSettingRepository systemSettingRepository) {
         this.userRepository = userRepository;
         this.searchQueryRepository = searchQueryRepository;
         this.reportRepository = reportRepository;
@@ -57,6 +59,7 @@ public class AdminService {
         this.paymentTransactionRepository = paymentTransactionRepository;
         this.adminActionRepository = adminActionRepository;
         this.planRepository = planRepository;
+        this.systemSettingRepository = systemSettingRepository;
     }
 
     public List<AdminDtos.AdminPlanItem> getPlans() {
@@ -487,5 +490,21 @@ public class AdminService {
         }
         String lower = value.toLowerCase(Locale.ROOT);
         return Character.toUpperCase(lower.charAt(0)) + lower.substring(1);
+    }
+
+    public Map<String, String> getSettings() {
+        return systemSettingRepository.findAll().stream()
+                .collect(Collectors.toMap(SystemSettingEntity::getKey, SystemSettingEntity::getValue));
+    }
+
+    @Transactional
+    public Map<String, String> updateSettings(Map<String, String> settings) {
+        settings.forEach((key, value) -> {
+            SystemSettingEntity entity = systemSettingRepository.findById(key)
+                    .orElseGet(() -> SystemSettingEntity.builder().key(key).build());
+            entity.setValue(value);
+            systemSettingRepository.save(entity);
+        });
+        return getSettings();
     }
 }

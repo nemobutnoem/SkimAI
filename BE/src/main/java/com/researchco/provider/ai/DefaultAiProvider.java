@@ -2,6 +2,8 @@ package com.researchco.provider.ai;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.researchco.admin.SystemSettingEntity;
+import com.researchco.admin.SystemSettingRepository;
 import com.researchco.frontend.FrontendDtos;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpEntity;
@@ -25,14 +27,17 @@ public class DefaultAiProvider implements AiProvider {
 
     private final String apiKey;
     private final String model;
+    private final SystemSettingRepository systemSettingRepository;
     private final RestTemplate restTemplate = new RestTemplate();
     private final ObjectMapper mapper = new ObjectMapper();
 
     public DefaultAiProvider(
             @Value("${integration.gemini.api-key:}") String apiKey,
-            @Value("${integration.gemini.model:gemini-2.5-flash}") String model) {
+            @Value("${integration.gemini.model:gemini-2.5-flash}") String model,
+            SystemSettingRepository systemSettingRepository) {
         this.apiKey = apiKey == null ? "" : apiKey.trim();
         this.model = (model == null || model.isBlank()) ? "gemini-2.5-flash" : model.trim();
+        this.systemSettingRepository = systemSettingRepository;
     }
 
     @Override
@@ -40,7 +45,27 @@ public class DefaultAiProvider implements AiProvider {
             String source) {
         DeepInsightBlueprint blueprint = buildBlueprint(contextData, source);
 
-        if (apiKey.isBlank()) {
+        String activeProvider = systemSettingRepository.findById("ai_provider")
+                .map(SystemSettingEntity::getValue)
+                .map(String::toUpperCase)
+                .orElse("GEMINI");
+
+        String activeModel = systemSettingRepository.findById("ai_model")
+                .map(SystemSettingEntity::getValue)
+                .filter(v -> !v.isBlank())
+                .orElse(this.model);
+
+        String activeApiKey = systemSettingRepository.findById("ai_api_key")
+                .map(SystemSettingEntity::getValue)
+                .filter(v -> !v.isBlank())
+                .orElse(this.apiKey);
+
+        String activeEndpoint = systemSettingRepository.findById("ai_endpoint")
+                .map(SystemSettingEntity::getValue)
+                .filter(v -> !v.isBlank())
+                .orElse("");
+
+        if (activeApiKey.isBlank()) {
             return blueprint.toResponse();
         }
 
@@ -152,21 +177,48 @@ public class DefaultAiProvider implements AiProvider {
                 newsSummary.isBlank() ? "- No recent headlines available." : newsSummary,
                 suggestedActions.isBlank() ? "- No suggested actions available." : suggestedActions);
 
-        Map<String, Object> requestBody = Map.of(
-                "contents", List.of(Map.of("parts", List.of(Map.of("text", prompt)))),
-                "generationConfig", Map.of("responseMimeType", "application/json"));
-
-        HttpHeaders headers = new HttpHeaders();
-        headers.setContentType(MediaType.APPLICATION_JSON);
-        HttpEntity<Map<String, Object>> requestEntity = new HttpEntity<>(requestBody, headers);
-        String url = "https://generativelanguage.googleapis.com/v1beta/models/" + model
-                + ":generateContent?key=" + apiKey;
-
+        String responseText = "";
         try {
-            ResponseEntity<String> response = restTemplate.postForEntity(url, requestEntity, String.class);
-            JsonNode root = mapper.readTree(response.getBody());
-            String responseText = root.path("candidates").get(0).path("content").path("parts").get(0).path("text")
-                    .asText();
+            if ("OPENAI".equalsIgnoreCase(activeProvider)) {
+                Map<String, Object> requestBody = Map.of(
+                        "model", activeModel,
+                        "messages", List.of(Map.of("role", "user", "content", prompt)),
+                        "response_format", Map.of("type", "json_object")
+                );
+
+                HttpHeaders headers = new HttpHeaders();
+                headers.setContentType(MediaType.APPLICATION_JSON);
+                headers.setBearerAuth(activeApiKey);
+                HttpEntity<Map<String, Object>> requestEntity = new HttpEntity<>(requestBody, headers);
+
+                String url = activeEndpoint.isBlank() ? "https://api.openai.com/v1/chat/completions" : activeEndpoint;
+                if (!activeEndpoint.isBlank() && !url.toLowerCase(Locale.ROOT).contains("/chat/completions")) {
+                    url = url.endsWith("/") ? url + "chat/completions" : url + "/chat/completions";
+                }
+                ResponseEntity<String> response = restTemplate.postForEntity(url, requestEntity, String.class);
+                JsonNode root = mapper.readTree(response.getBody());
+                responseText = root.path("choices").get(0).path("message").path("content").asText();
+            } else {
+                Map<String, Object> requestBody = Map.of(
+                        "contents", List.of(Map.of("parts", List.of(Map.of("text", prompt)))),
+                        "generationConfig", Map.of("responseMimeType", "application/json"));
+
+                HttpHeaders headers = new HttpHeaders();
+                headers.setContentType(MediaType.APPLICATION_JSON);
+                HttpEntity<Map<String, Object>> requestEntity = new HttpEntity<>(requestBody, headers);
+
+                String url;
+                if (activeEndpoint.isBlank()) {
+                    url = "https://generativelanguage.googleapis.com/v1beta/models/" + activeModel + ":generateContent?key=" + activeApiKey;
+                } else {
+                    url = activeEndpoint.endsWith("/") ? activeEndpoint + activeModel + ":generateContent?key=" + activeApiKey 
+                            : activeEndpoint + "/" + activeModel + ":generateContent?key=" + activeApiKey;
+                }
+
+                ResponseEntity<String> response = restTemplate.postForEntity(url, requestEntity, String.class);
+                JsonNode root = mapper.readTree(response.getBody());
+                responseText = root.path("candidates").get(0).path("content").path("parts").get(0).path("text").asText();
+            }
 
             if (responseText.startsWith("```json")) {
                 responseText = responseText.substring(7);

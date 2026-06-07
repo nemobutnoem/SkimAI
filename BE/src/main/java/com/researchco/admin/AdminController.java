@@ -11,6 +11,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 @RestController
@@ -60,5 +61,15 @@ public class AdminController {
     public AdminDtos.AdminPlanItem updatePlan(@PathVariable UUID planId,
                                               @Valid @RequestBody AdminDtos.UpdatePlanRequest request) {
         return adminService.updatePlan(planId, request);
+    }
+
+    @GetMapping("/settings")
+    public Map<String, String> getSettings() {
+        return adminService.getSettings();
+    }
+
+    @PutMapping("/settings")
+    public Map<String, String> updateSettings(@RequestBody Map<String, String> settings) {
+        return adminService.updateSettings(settings);
     }
 }

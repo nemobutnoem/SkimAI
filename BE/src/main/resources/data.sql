@@ -20,3 +20,11 @@ ON CONFLICT (provider_code) DO UPDATE SET is_active = EXCLUDED.is_active;
 
 -- Reset usage tracking for testing convenience on startup
 DELETE FROM ai_usage;
+
+INSERT INTO system_settings (setting_key, setting_value)
+VALUES
+    ('ai_provider', 'GEMINI'),
+    ('ai_model', 'gemini-2.5-flash'),
+    ('ai_api_key', ''),
+    ('ai_endpoint', '')
+ON CONFLICT (setting_key) DO NOTHING;

@@ -203,6 +203,12 @@ const realApi = {
       body: data,
     })
   },
+  getAdminSettings() {
+    return request('/admin/settings')
+  },
+  updateAdminSettings(payload) {
+    return request('/admin/settings', { method: 'PUT', body: payload })
+  },
   getAdminUsersMetrics() {
     return request('/admin/users/metrics')
   },

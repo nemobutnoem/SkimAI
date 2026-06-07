@@ -9,6 +9,15 @@ export function AdminSettingsPage() {
   const [loadingPlans, setLoadingPlans] = useState(false)
   const [saveStatus, setSaveStatus] = useState(null)
 
+  const [settings, setSettings] = useState({
+    ai_provider: 'GEMINI',
+    ai_model: 'gemini-2.5-flash',
+    ai_api_key: '',
+    ai_endpoint: '',
+  })
+  const [loadingSettings, setLoadingSettings] = useState(false)
+  const [settingsSaveStatus, setSettingsSaveStatus] = useState(null)
+
   useEffect(() => {
     if (activeTab === 'packages') {
       setLoadingPlans(true)
@@ -20,6 +29,23 @@ export function AdminSettingsPage() {
           console.error("Lỗi tải gói:", err)
         })
         .finally(() => setLoadingPlans(false))
+    } else if (activeTab === 'content') {
+      setLoadingSettings(true)
+      appApi.getAdminSettings()
+        .then(data => {
+          if (data) {
+            setSettings({
+              ai_provider: data.ai_provider || 'GEMINI',
+              ai_model: data.ai_model || 'gemini-2.5-flash',
+              ai_api_key: data.ai_api_key || '',
+              ai_endpoint: data.ai_endpoint || '',
+            })
+          }
+        })
+        .catch(err => {
+          console.error("Lỗi tải cấu hình:", err)
+        })
+        .finally(() => setLoadingSettings(false))
     }
   }, [activeTab])
 
@@ -45,6 +71,18 @@ export function AdminSettingsPage() {
     } catch (err) {
       console.error("Lỗi khi lưu gói:", err)
       setSaveStatus('error')
+    }
+  }
+
+  const handleSaveSettings = async () => {
+    setSettingsSaveStatus('saving')
+    try {
+      await appApi.updateAdminSettings(settings)
+      setSettingsSaveStatus('success')
+      setTimeout(() => setSettingsSaveStatus(null), 3000)
+    } catch (err) {
+      console.error("Lỗi khi lưu cấu hình AI:", err)
+      setSettingsSaveStatus('error')
     }
   }
 
@@ -107,31 +145,79 @@ export function AdminSettingsPage() {
 
       {activeTab === 'content' && (
         <div className="grid grid-2">
-          <Card title="Mô hình AI & Tích hợp">
+          <Card title="Cấu hình AI Phân tích (Deep Insight)">
             <div className="stack">
-              <label className="field">
-                <span>Mô hình tạo nội dung OpenAI</span>
-                <select defaultValue="gpt-4o">
-                  <option value="gpt-4o">GPT-4o (Chất lượng cao, Chi phí cao)</option>
-                  <option value="gpt-4o-mini">GPT-4o-mini (Nhanh, Chi phí thấp)</option>
-                  <option value="gpt-3.5-turbo">GPT-3.5-Turbo (Kế thừa)</option>
-                </select>
-              </label>
-              <label className="field">
-                <span>Khóa SerpAPI (Tìm kiếm thời gian thực)</span>
-                <input type="password" defaultValue="sk-live-1234567890" />
-              </label>
-              <div className="list-item">
-                <span>Kết nối OpenAI</span>
-                <span className="badge badge-active">Đã kết nối ✔️</span>
-              </div>
-              <div className="list-item">
-                <span>Kết nối SerpAPI</span>
-                <span className="badge badge-active">Đã kết nối ✔️</span>
-              </div>
-              <div className="flex-row">
-                <Button>Lưu cấu hình</Button>
-              </div>
+              {settingsSaveStatus === 'success' && (
+                <div className="inline-notice inline-notice-success" style={{ marginBottom: '16px' }}>
+                  Cập nhật cấu hình AI thành công!
+                </div>
+              )}
+              {settingsSaveStatus === 'error' && (
+                <div className="inline-notice inline-notice-error" style={{ marginBottom: '16px' }}>
+                  Có lỗi xảy ra khi lưu cấu hình AI.
+                </div>
+              )}
+
+              {loadingSettings ? (
+                <div style={{ textAlign: 'center', padding: '20px 0', color: 'var(--text-secondary)' }}>
+                  Đang tải cấu hình AI...
+                </div>
+              ) : (
+                <>
+                  <label className="field">
+                    <span>Nhà cung cấp dịch vụ AI (Provider)</span>
+                    <select 
+                      value={settings.ai_provider} 
+                      onChange={(e) => setSettings({ ...settings, ai_provider: e.target.value })}
+                    >
+                      <option value="GEMINI">Google Gemini API (Mặc định)</option>
+                      <option value="OPENAI">OpenAI / Tương thích OpenAI (DeepSeek, Groq, OpenRouter, v.v.)</option>
+                    </select>
+                  </label>
+
+                  <label className="field">
+                    <span>Tên mô hình AI (Model Name)</span>
+                    <input 
+                      type="text" 
+                      placeholder={settings.ai_provider === 'GEMINI' ? 'Ví dụ: gemini-2.5-flash' : 'Ví dụ: gpt-4o'} 
+                      value={settings.ai_model} 
+                      onChange={(e) => setSettings({ ...settings, ai_model: e.target.value })}
+                    />
+                    <span className="hint">Mã định danh mô hình chính xác (ví dụ: <code>gemini-2.5-flash</code> hoặc <code>gpt-4o</code> hoặc <code>deepseek-chat</code>)</span>
+                  </label>
+
+                  <label className="field">
+                    <span>Khóa API (API Key)</span>
+                    <input 
+                      type="password" 
+                      placeholder="Nhập API Key ở đây"
+                      value={settings.ai_api_key} 
+                      onChange={(e) => setSettings({ ...settings, ai_api_key: e.target.value })}
+                    />
+                    <span className="hint">Mã hóa bảo mật. Dùng để gọi API dịch vụ AI đã chọn</span>
+                  </label>
+
+                  <label className="field">
+                    <span>Đường dẫn API tùy chỉnh (Endpoint URL - Tùy chọn)</span>
+                    <input 
+                      type="text" 
+                      placeholder={settings.ai_provider === 'GEMINI' ? 'Để trống nếu dùng mặc định' : 'Ví dụ: https://api.deepseek.com/v1'} 
+                      value={settings.ai_endpoint} 
+                      onChange={(e) => setSettings({ ...settings, ai_endpoint: e.target.value })}
+                    />
+                    <span className="hint">Chỉ điền khi dùng Proxy, hoặc các nhà cung cấp tương thích OpenAI (DeepSeek, OpenRouter, Groq, v.v.)</span>
+                  </label>
+
+                  <div className="flex-row">
+                    <Button 
+                      onClick={handleSaveSettings} 
+                      disabled={settingsSaveStatus === 'saving'}
+                    >
+                      {settingsSaveStatus === 'saving' ? 'Đang lưu...' : 'Lưu cấu hình AI'}
+                    </Button>
+                  </div>
+                </>
+              )}
             </div>
           </Card>
 
