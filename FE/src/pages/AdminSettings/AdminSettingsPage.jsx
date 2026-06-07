@@ -17,16 +17,21 @@ export function AdminSettingsPage() {
   })
   const [loadingSettings, setLoadingSettings] = useState(false)
   const [settingsSaveStatus, setSettingsSaveStatus] = useState(null)
+  const [revenueData, setRevenueData] = useState(null)
 
   useEffect(() => {
     if (activeTab === 'packages') {
       setLoadingPlans(true)
-      appApi.getAdminPlans()
-        .then(data => {
-          setPlans(data || [])
+      Promise.all([
+        appApi.getAdminPlans(),
+        appApi.getAdminRevenue()
+      ])
+        .then(([plansData, revData]) => {
+          setPlans(plansData || [])
+          setRevenueData(revData)
         })
         .catch(err => {
-          console.error("Lỗi tải gói:", err)
+          console.error("Lỗi tải cấu hình hoặc doanh thu gói:", err)
         })
         .finally(() => setLoadingPlans(false))
     } else if (activeTab === 'content') {
@@ -306,21 +311,39 @@ export function AdminSettingsPage() {
 
       {activeTab === 'packages' && (
         <div className="stack">
-          <Card title="Tích hợp doanh thu Stripe">
+          <Card title="Cấu hình & Tích hợp Doanh thu">
             <div className="grid grid-2">
               <div className="stack">
-                <label className="field">
-                  <span>Khóa bí mật Stripe</span>
-                  <input type="password" defaultValue="sk_live_51NQo9y..." />
-                </label>
-                <div className="flex-row">
-                  <Button>Kiểm tra kết nối</Button>
+                <div className="list-item">
+                  <div style={{ display: 'flex', flexDirection: 'column' }}>
+                    <span>Cổng thanh toán PayOS (VietQR)</span>
+                    <span className="hint">Xử lý thanh toán quét mã ngân hàng tự động</span>
+                  </div>
+                  <span className="badge badge-active">Đang chạy (Test Mode)</span>
+                </div>
+                <div className="list-item">
+                  <div style={{ display: 'flex', flexDirection: 'column' }}>
+                    <span>Ví điện tử MoMo</span>
+                    <span className="hint">Xử lý thanh toán ví điện tử giả lập</span>
+                  </div>
+                  <span className="badge badge-active">Sẵn sàng</span>
+                </div>
+                <div className="list-item">
+                  <div style={{ display: 'flex', flexDirection: 'column' }}>
+                    <span>Chuyển khoản Ngân hàng Trực tiếp</span>
+                    <span className="hint">Mã VietQR cá nhân (đối soát thủ công)</span>
+                  </div>
+                  <span className="badge badge-active">Sẵn sàng</span>
                 </div>
               </div>
               <div style={{ background: 'var(--primary-bg)', padding: '20px', borderRadius: '12px', border: '1px solid var(--primary)' }}>
                 <h4 style={{ margin: '0 0 10px', color: 'var(--primary)' }}>Doanh thu định kỳ hàng tháng (MRR)</h4>
-                <div style={{ fontSize: '32px', fontWeight: '800', color: 'var(--text-primary)' }}>$4,250.00</div>
-                <p className="hint" style={{ marginTop: '8px' }}>+12.5% so với tháng trước. Tự động đồng bộ từ Stripe.</p>
+                <div style={{ fontSize: '32px', fontWeight: '800', color: 'var(--text-primary)' }}>
+                  {revenueData ? (revenueData.metrics?.find(m => m.label === 'MRR')?.value || '$0.00') : '$0.00'}
+                </div>
+                <p className="hint" style={{ marginTop: '8px' }}>
+                  {revenueData ? `Tỷ lệ nâng cấp: ${revenueData.metrics?.find(m => m.label === 'Upgrade Rate')?.value || '0.0%'}` : 'Tỷ lệ nâng cấp: 0.0%'} • Tự động tổng hợp từ lịch sử giao dịch (PayOS, VietQR, MoMo).
+                </p>
               </div>
             </div>
           </Card>

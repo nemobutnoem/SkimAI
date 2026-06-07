@@ -12,6 +12,8 @@ import com.researchco.subscription.UserSubscriptionRepository;
 import com.researchco.user.UserRepository;
 import com.researchco.plan.PlanEntity;
 import com.researchco.plan.PlanRepository;
+import com.researchco.usage.AiUsageRepository;
+import com.researchco.user.UserEntity;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -43,6 +45,7 @@ public class AdminService {
     private final AdminActionRepository adminActionRepository;
     private final PlanRepository planRepository;
     private final SystemSettingRepository systemSettingRepository;
+    private final AiUsageRepository aiUsageRepository;
 
     public AdminService(UserRepository userRepository,
                         SearchQueryRepository searchQueryRepository,
@@ -51,7 +54,8 @@ public class AdminService {
                         PaymentTransactionRepository paymentTransactionRepository,
                         AdminActionRepository adminActionRepository,
                         PlanRepository planRepository,
-                        SystemSettingRepository systemSettingRepository) {
+                        SystemSettingRepository systemSettingRepository,
+                        AiUsageRepository aiUsageRepository) {
         this.userRepository = userRepository;
         this.searchQueryRepository = searchQueryRepository;
         this.reportRepository = reportRepository;
@@ -60,6 +64,7 @@ public class AdminService {
         this.adminActionRepository = adminActionRepository;
         this.planRepository = planRepository;
         this.systemSettingRepository = systemSettingRepository;
+        this.aiUsageRepository = aiUsageRepository;
     }
 
     public List<AdminDtos.AdminPlanItem> getPlans() {
@@ -506,5 +511,48 @@ public class AdminService {
             systemSettingRepository.save(entity);
         });
         return getSettings();
+    }
+
+    @Transactional
+    public void cleanupTestUsers() {
+        List<UserEntity> testUsers = userRepository.findAll().stream()
+                .filter(u -> !"ADMIN".equalsIgnoreCase(u.getRole()))
+                .filter(u -> u.getEmail() == null || !u.getEmail().toLowerCase(Locale.ROOT).endsWith("@fpt.edu.vn"))
+                .toList();
+
+        for (UserEntity user : testUsers) {
+            // 1. admin_actions
+            adminActionRepository.findAll().stream()
+                    .filter(a -> a.getAdminUser() != null && a.getAdminUser().getId().equals(user.getId()))
+                    .forEach(adminActionRepository::delete);
+
+            // 2. ai_usage
+            aiUsageRepository.findAll().stream()
+                    .filter(u -> u.getUser() != null && u.getUser().getId().equals(user.getId()))
+                    .forEach(aiUsageRepository::delete);
+
+            // 3. payment_transactions
+            paymentTransactionRepository.findAll().stream()
+                    .filter(t -> t.getUser() != null && t.getUser().getId().equals(user.getId()))
+                    .forEach(paymentTransactionRepository::delete);
+
+            // 4. user_subscriptions
+            userSubscriptionRepository.findAll().stream()
+                    .filter(s -> s.getUser() != null && s.getUser().getId().equals(user.getId()))
+                    .forEach(userSubscriptionRepository::delete);
+
+            // 5. reports
+            reportRepository.findAll().stream()
+                    .filter(r -> r.getUser() != null && r.getUser().getId().equals(user.getId()))
+                    .forEach(reportRepository::delete);
+
+            // 6. search_queries
+            searchQueryRepository.findAll().stream()
+                    .filter(q -> q.getUser() != null && q.getUser().getId().equals(user.getId()))
+                    .forEach(searchQueryRepository::delete);
+
+            // 7. user entity itself
+            userRepository.delete(user);
+        }
     }
 }

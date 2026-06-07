@@ -72,4 +72,10 @@ public class AdminController {
     public Map<String, String> updateSettings(@RequestBody Map<String, String> settings) {
         return adminService.updateSettings(settings);
     }
+
+    @PostMapping("/cleanup-test-users")
+    public Map<String, Object> cleanupTestUsers() {
+        adminService.cleanupTestUsers();
+        return Map.of("status", "success", "message", "Đã dọn dẹp các tài khoản test và giao dịch tương ứng thành công.");
+    }
 }

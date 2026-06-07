@@ -64,18 +64,13 @@ export function PricingPage() {
       setShowEnterpriseForm(true)
       return
     }
-    setSelectedPlanForPayment(plan)
-    setShowPaymentMethodModal(true)
-  }
-
-  const executePaymentCheckout = async (provider) => {
-    setShowPaymentMethodModal(false)
-    setSubmittingPlanId(selectedPlanForPayment.id)
+    
+    setSubmittingPlanId(plan.id)
     try {
       const result = await appApi.checkoutPricing({
-        planId: selectedPlanForPayment.id,
+        planId: plan.id,
         billingCycle: cycle,
-        provider
+        provider: 'BANK' // Directly use PayOS/VietQR
       })
       
       if (result.checkoutUrl && result.checkoutUrl.startsWith('http') && !result.checkoutUrl.includes('img.vietqr.io')) {
@@ -84,12 +79,13 @@ export function PricingPage() {
       }
 
       setQrDetails({
-        provider,
+        provider: 'BANK',
         checkoutUrl: result.checkoutUrl,
         providerSessionId: result.providerSessionId,
         amount: result.amount,
         invoiceId: result.invoiceId
       })
+      setSelectedPlanForPayment(plan)
       setShowQrCodeModal(true)
     } catch (error) {
       setNotice({ tone: 'error', text: error.message || 'Không thể hoàn tất thanh toán lúc này.' })
@@ -268,102 +264,7 @@ export function PricingPage() {
         ))}
       </div>
 
-      {/* Payment Method Selector Modal */}
-      {showPaymentMethodModal && selectedPlanForPayment && (
-        <div className="upgrade-modal-overlay">
-          <div className="upgrade-modal" style={{ width: '480px' }}>
-            <h3 style={{ fontSize: '20px', fontWeight: '700', marginBottom: '8px' }}>
-              Chọn phương thức thanh toán
-            </h3>
-            <p style={{ marginBottom: '20px', fontSize: '14px', color: 'var(--text-secondary)' }}>
-              Bạn đang nâng cấp lên gói <strong>{selectedPlanForPayment.name}</strong> ({cycle === 'monthly' ? 'Thanh toán hàng tháng' : 'Thanh toán hàng năm'}).
-            </p>
-            
-            <div style={{ display: 'grid', gap: '12px', marginBottom: '20px' }}>
-              <button
-                type="button"
-                className="btn btn-secondary"
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '14px',
-                  padding: '16px',
-                  borderRadius: '12px',
-                  border: '1px solid var(--border-color)',
-                  background: 'var(--white)',
-                  textAlign: 'left',
-                  cursor: 'pointer',
-                  width: '100%',
-                  transition: 'all 0.2s ease',
-                }}
-                onClick={() => executePaymentCheckout('BANK')}
-              >
-                <span style={{ fontSize: '24px' }}>🏦</span>
-                <div>
-                  <strong style={{ display: 'block', color: 'var(--text-primary)', fontSize: '15px' }}>Chuyển khoản Ngân hàng (VietQR)</strong>
-                  <span style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>Tự động kích hoạt ngay lập tức qua mã QR</span>
-                </div>
-              </button>
-
-              <button
-                type="button"
-                className="btn btn-secondary"
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '14px',
-                  padding: '16px',
-                  borderRadius: '12px',
-                  border: '1px solid var(--border-color)',
-                  background: 'var(--white)',
-                  textAlign: 'left',
-                  cursor: 'pointer',
-                  width: '100%',
-                  transition: 'all 0.2s ease',
-                }}
-                onClick={() => executePaymentCheckout('MOMO')}
-              >
-                <span style={{ fontSize: '24px' }}>💖</span>
-                <div>
-                  <strong style={{ display: 'block', color: 'var(--text-primary)', fontSize: '15px' }}>Ví điện tử MoMo</strong>
-                  <span style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>Thanh toán qua ví MoMo cực nhanh</span>
-                </div>
-              </button>
-
-              <button
-                type="button"
-                className="btn btn-secondary"
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '14px',
-                  padding: '16px',
-                  borderRadius: '12px',
-                  border: '1px solid var(--border-color)',
-                  background: 'var(--white)',
-                  textAlign: 'left',
-                  cursor: 'pointer',
-                  width: '100%',
-                  transition: 'all 0.2s ease',
-                }}
-                onClick={() => executePaymentCheckout('STRIPE')}
-              >
-                <span style={{ fontSize: '24px' }}>💳</span>
-                <div>
-                  <strong style={{ display: 'block', color: 'var(--text-primary)', fontSize: '15px' }}>Thẻ quốc tế (Visa/Mastercard/Stripe)</strong>
-                  <span style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>Cổng thanh toán quốc tế Stripe an toàn</span>
-                </div>
-              </button>
-            </div>
-
-            <div className="upgrade-modal-actions">
-              <Button variant="secondary" onClick={() => setShowPaymentMethodModal(false)}>
-                Hủy bỏ
-              </Button>
-            </div>
-          </div>
-        </div>
-      )}
+      {/* Selector modal bypassed since PayOS/VietQR is the only active checkout provider */}
 
       {/* QR Code and Instructions Modal */}
       {showQrCodeModal && qrDetails && (
