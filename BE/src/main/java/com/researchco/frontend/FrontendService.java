@@ -218,20 +218,12 @@ public class FrontendService {
             storageUsagePct = Math.min(100, (int) Math.round((double) reportCount * 100.0 / exportLimit));
         }
 
-        int membersUsed = 1;
-        int memberLimit = 1;
-        String planName = plan != null ? plan.getName().toUpperCase(Locale.ROOT) : "FREE";
-        if ("STARTER".equals(planName)) {
-            membersUsed = 1;
-            memberLimit = 5;
-        } else if ("TEAM".equals(planName)) {
-            membersUsed = 2;
-            memberLimit = 15;
-        } else if ("ENTERPRISE".equals(planName)) {
-            membersUsed = 8;
-            memberLimit = 50;
-        }
-        int memberUsagePct = (int) Math.round((double) membersUsed * 100.0 / memberLimit);
+        AiUsageEntity usage = aiUsageRecord(user);
+        int baseQuota = resolveDeepInsightQuota(currentSubscription);
+        int addonCredits = usage.getAddonCredits() == null ? 0 : usage.getAddonCredits();
+        int usedCount = usage.getUsedCount() == null ? 0 : usage.getUsedCount();
+        int maxQuota = baseQuota + Math.max(0, addonCredits);
+        int aiUsagePct = maxQuota > 0 ? Math.min(100, (int) Math.round((double) usedCount * 100.0 / maxQuota)) : (usedCount > 0 ? 100 : 0);
 
         return new FrontendDtos.AccountOverviewResponse(
                 new FrontendDtos.Profile(user.getFullName(), user.getEmail(), "SkimAI Labs"),
@@ -245,7 +237,7 @@ public class FrontendService {
                 List.of(
                         new FrontendDtos.UsageItem("Yêu cầu API", apiUsagePct),
                         new FrontendDtos.UsageItem("Lưu trữ", storageUsagePct),
-                        new FrontendDtos.UsageItem("Thành viên", memberUsagePct)
+                        new FrontendDtos.UsageItem("Lượt sử dụng AI", aiUsagePct)
                 ),
                 invoices,
                 new LinkedHashMap<>(notificationSettings.get())
@@ -445,8 +437,34 @@ public class FrontendService {
                     )
             );
         }
+
+        // 1. Check if cached report exists in reports table for this user, keyword and source
+        String targetTitle = request.source().trim() + " Deep Insight";
+        Optional<com.researchco.report.ReportEntity> cachedReport = reportRepository.findAll().stream()
+                .filter(r -> r.getUser().getId().equals(user.getId()))
+                .filter(r -> "DEEP_INSIGHT".equals(r.getStatus()))
+                .filter(r -> r.getSearchQuery() != null && r.getSearchQuery().getKeyword().trim().equalsIgnoreCase(request.keyword().trim()))
+                .filter(r -> r.getTitle() != null && r.getTitle().trim().equalsIgnoreCase(targetTitle))
+                .findFirst();
+
+        if (cachedReport.isPresent()) {
+            return objectMapper.convertValue(cachedReport.get().getReportContent(), FrontendDtos.DeepInsightResponse.class);
+        }
+
+        // 2. If not cached, enforce quota, call AI provider, and cache it
         enforceDeepInsightQuota(user, subscription);
         FrontendDtos.DeepInsightResponse response = aiProvider.generateDeepInsight(analysis, request.source());
+
+        SearchQueryEntity queryEntity = searchQueryRepository.findById(UUID.fromString(analysis.searchQueryId())).orElse(null);
+        com.researchco.report.ReportEntity report = com.researchco.report.ReportEntity.builder()
+                .user(user)
+                .searchQuery(queryEntity)
+                .title(targetTitle)
+                .status("DEEP_INSIGHT")
+                .reportContent(objectMapper.convertValue(response, Map.class))
+                .build();
+        reportRepository.save(report);
+
         consumeDeepInsightQuota(user);
         return response;
     }
@@ -1745,7 +1763,7 @@ public class FrontendService {
         throw new AppException(
                 HttpStatus.FORBIDDEN,
                 "Bạn đã sử dụng hết " + maxQuota + " lượt sử dụng AI trong tuần này cho gói "
-                        + titleCase(planName) + ". Vui lòng mua thêm hoặc nâng cấp gói."
+                        + displayPlanName(planName) + ". Vui lòng mua thêm hoặc nâng cấp gói."
         );
     }
 
@@ -1774,13 +1792,10 @@ public class FrontendService {
     }
 
     private int resolveDeepInsightQuota(UserSubscriptionEntity subscription) {
-        String planName = resolvePlanName(subscription);
-        return switch (planName) {
-            case "STARTER" -> 2;       // Pro (STARTER)
-            case "TEAM" -> 10;         // Premium (TEAM)
-            case "ENTERPRISE" -> 9999; // Enterprise
-            default -> 0;              // Free
-        };
+        if (subscription != null && subscription.getPlan() != null && subscription.getPlan().getDeepInsightLimit() != null) {
+            return subscription.getPlan().getDeepInsightLimit();
+        }
+        return 0;
     }
 
     private String resolvePlanName(UserSubscriptionEntity subscription) {
@@ -2080,7 +2095,7 @@ public class FrontendService {
             case "ENTERPRISE" -> List.of(
                     "Không giới hạn tìm kiếm",
                     "Không giới hạn xuất báo cáo",
-                    "Sử dụng nhóm",
+                    "Tích hợp API tùy chỉnh",
                     "Bảng điều khiển quản trị",
                     "Hỗ trợ ưu tiên"
             );

@@ -1,40 +1,51 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Card } from '../../components/Card'
 import { Button } from '../../components/Button'
+import { appApi } from '../../services/appApi'
 
 export function AdminSettingsPage() {
   const [activeTab, setActiveTab] = useState('packages')
+  const [plans, setPlans] = useState([])
+  const [loadingPlans, setLoadingPlans] = useState(false)
+  const [saveStatus, setSaveStatus] = useState(null)
 
-  // Sample data for packages config
-  const [packages, setPackages] = useState([
-    {
-      id: 'free',
-      name: 'Gói Miễn Phí',
-      price: '$0',
-      period: 'Vô thời hạn',
-      aiLimit: 2, // Mới chỉnh lại thành 2 theo yêu cầu người dùng
-      features: 'Nghiên cứu thị trường cơ bản\nLịch sử 3 ngày\nHỗ trợ thông thường',
-    },
-    {
-      id: 'standard',
-      name: 'Gói Tiêu Chuẩn (Pro)',
-      price: '$20',
-      period: '/ tháng',
-      aiLimit: 50,
-      features: 'Nghiên cứu thị trường đầy đủ\nCông cụ Deep Insight\nLịch sử 1 năm\nHỗ trợ ưu tiên',
-    },
-    {
-      id: 'premium',
-      name: 'Gói Premium / Đội Nhóm',
-      price: '$60',
-      period: '/ tháng',
-      aiLimit: 200,
-      features: 'Tất cả tính năng gói Tiêu chuẩn\nHỏi chuyên gia (GPT-4o)\nTruy cập API\nXuất báo cáo PDF/CSV\nQuản lý hỗ trợ riêng',
-    },
-  ])
+  useEffect(() => {
+    if (activeTab === 'packages') {
+      setLoadingPlans(true)
+      appApi.getAdminPlans()
+        .then(data => {
+          setPlans(data || [])
+        })
+        .catch(err => {
+          console.error("Lỗi tải gói:", err)
+        })
+        .finally(() => setLoadingPlans(false))
+    }
+  }, [activeTab])
 
-  const handlePackageChange = (id, field, value) => {
-    setPackages(packages.map(pkg => pkg.id === id ? { ...pkg, [field]: value } : pkg))
+  const handlePlanChange = (id, field, value) => {
+    setPlans(prevPlans => prevPlans.map(plan => plan.id === id ? { ...plan, [field]: value } : plan))
+  }
+
+  const handleSavePlans = async () => {
+    setSaveStatus('saving')
+    try {
+      for (const plan of plans) {
+        const payload = {
+          price: Number(plan.price),
+          searchLimit: Number(plan.searchLimit),
+          exportLimit: Number(plan.exportLimit),
+          deepInsightLimit: Number(plan.deepInsightLimit),
+          description: plan.description || ''
+        }
+        await appApi.updateAdminPlan(plan.id, payload)
+      }
+      setSaveStatus('success')
+      setTimeout(() => setSaveStatus(null), 3000)
+    } catch (err) {
+      console.error("Lỗi khi lưu gói:", err)
+      setSaveStatus('error')
+    }
   }
 
   return (
@@ -229,51 +240,106 @@ export function AdminSettingsPage() {
           </Card>
 
           <h3 style={{ marginTop: '20px' }}>Cấu hình các Gói dịch vụ</h3>
-          <div className="grid grid-3">
-            {packages.map((pkg) => (
-              <Card key={pkg.id}>
-                <div className="stack">
-                  <label className="field">
-                    <span>Tên gói dịch vụ</span>
-                    <input value={pkg.name} onChange={(e) => handlePackageChange(pkg.id, 'name', e.target.value)} />
-                  </label>
-                  <div className="grid grid-2">
-                    <label className="field">
-                      <span>Giá tiền</span>
-                      <input value={pkg.price} onChange={(e) => handlePackageChange(pkg.id, 'price', e.target.value)} />
-                    </label>
-                    <label className="field">
-                      <span>Chu kỳ</span>
-                      <input value={pkg.period} onChange={(e) => handlePackageChange(pkg.id, 'period', e.target.value)} />
-                    </label>
-                  </div>
-                  <label className="field">
-                    <span>Giới hạn lượt chạy AI (Hàng tháng)</span>
-                    <input type="number" value={pkg.aiLimit} onChange={(e) => handlePackageChange(pkg.id, 'aiLimit', e.target.value)} />
-                    <span className="hint">Đặt bằng 0 nếu không giới hạn.</span>
-                  </label>
-                  <label className="field">
-                    <span>Các tính năng đi kèm (Mỗi tính năng 1 dòng)</span>
-                    <textarea 
-                      rows={5} 
-                      value={pkg.features} 
-                      onChange={(e) => handlePackageChange(pkg.id, 'features', e.target.value)} 
-                      style={{ padding: '10px', borderRadius: '8px', border: '1px solid var(--border-color)', resize: 'vertical' }}
-                    />
-                  </label>
-                  <label className="login-checkbox" style={{ marginTop: '10px' }}>
-                    <input type="checkbox" defaultChecked />
-                    <span>Hiển thị trên Trang bảng giá</span>
-                  </label>
-                </div>
-              </Card>
-            ))}
-          </div>
           
-          <div className="flex-row" style={{ marginTop: '16px', justifyContent: 'flex-end' }}>
-            <Button variant="secondary">Khôi phục mặc định</Button>
-            <Button>Lưu gói dịch vụ & Quy tắc bảng giá</Button>
-          </div>
+          {saveStatus === 'success' && (
+            <div className="inline-notice inline-notice-success" style={{ marginBottom: '16px' }}>
+              Cập nhật cấu hình các gói thành công!
+            </div>
+          )}
+          {saveStatus === 'error' && (
+            <div className="inline-notice inline-notice-error" style={{ marginBottom: '16px' }}>
+              Có lỗi xảy ra khi lưu cấu hình các gói.
+            </div>
+          )}
+
+          {loadingPlans ? (
+            <div style={{ textAlign: 'center', padding: '40px 0', color: 'var(--text-secondary)' }}>
+              Đang tải danh sách gói từ cơ sở dữ liệu...
+            </div>
+          ) : (
+            <>
+              <div className="grid grid-3" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))' }}>
+                {plans.map((plan) => {
+                  const getPlanDisplayName = (n) => {
+                    switch (n?.toUpperCase()) {
+                      case 'FREE': return 'Miễn Phí'
+                      case 'STARTER': return 'Pro'
+                      case 'TEAM': return 'Premium'
+                      case 'ENTERPRISE': return 'Enterprise'
+                      default: return n || ''
+                    }
+                  }
+
+                  return (
+                    <Card key={plan.id} title={`Gói ${getPlanDisplayName(plan.name)}`}>
+                      <div className="stack">
+                        <label className="field">
+                          <span>Tên mã gói (Read-only)</span>
+                          <input value={plan.name} readOnly disabled />
+                        </label>
+                        <div className="grid grid-2">
+                          <label className="field">
+                            <span>Giá tiền (USD)</span>
+                            <input 
+                              type="number" 
+                              step="0.01" 
+                              value={plan.price || 0} 
+                              onChange={(e) => handlePlanChange(plan.id, 'price', e.target.value)} 
+                            />
+                            <span className="hint">~ {(Number(plan.price || 0) * 25000).toLocaleString('vi-VN')} đ</span>
+                          </label>
+                          <label className="field">
+                            <span>Deep Insight / tuần</span>
+                            <input 
+                              type="number" 
+                              value={plan.deepInsightLimit || 0} 
+                              onChange={(e) => handlePlanChange(plan.id, 'deepInsightLimit', e.target.value)} 
+                            />
+                          </label>
+                        </div>
+                        <div className="grid grid-2">
+                          <label className="field">
+                            <span>Tìm kiếm / tháng</span>
+                            <input 
+                              type="number" 
+                              value={plan.searchLimit || 0} 
+                              onChange={(e) => handlePlanChange(plan.id, 'searchLimit', e.target.value)} 
+                            />
+                          </label>
+                          <label className="field">
+                            <span>Xuất báo cáo / tháng</span>
+                            <input 
+                              type="number" 
+                              value={plan.exportLimit || 0} 
+                              onChange={(e) => handlePlanChange(plan.id, 'exportLimit', e.target.value)} 
+                            />
+                          </label>
+                        </div>
+                        <label className="field">
+                          <span>Mô tả ngắn</span>
+                          <textarea 
+                            rows={3} 
+                            value={plan.description || ''} 
+                            onChange={(e) => handlePlanChange(plan.id, 'description', e.target.value)} 
+                            style={{ padding: '10px', borderRadius: '8px', border: '1px solid var(--border-color)', resize: 'vertical' }}
+                          />
+                        </label>
+                      </div>
+                    </Card>
+                  )
+                })}
+              </div>
+              
+              <div className="flex-row" style={{ marginTop: '16px', justifyContent: 'flex-end' }}>
+                <Button 
+                  onClick={handleSavePlans} 
+                  disabled={saveStatus === 'saving'}
+                >
+                  {saveStatus === 'saving' ? 'Đang lưu...' : 'Lưu cấu hình các Gói'}
+                </Button>
+              </div>
+            </>
+          )}
         </div>
       )}
 

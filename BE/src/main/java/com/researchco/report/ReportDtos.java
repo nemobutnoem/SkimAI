@@ -22,4 +22,23 @@ public class ReportDtos {
             LocalDateTime createdAt
     ) {
     }
+
+    public record UserReportResponse(
+            String id,
+            String title,
+            String status,
+            String keyword,
+            LocalDateTime createdAt
+    ) {
+    }
+
+    public record ReportDetailsResponse(
+            String id,
+            String title,
+            String status,
+            String keyword,
+            java.util.Map<String, Object> reportContent,
+            LocalDateTime createdAt
+    ) {
+    }
 }

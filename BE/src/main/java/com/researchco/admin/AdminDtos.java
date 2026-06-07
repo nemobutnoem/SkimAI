@@ -101,4 +101,21 @@ public class AdminDtos {
             java.util.List<RevenueEvent> events
     ) {
     }
+    public record AdminPlanItem(
+            String id,
+            String name,
+            java.math.BigDecimal price,
+            Integer searchLimit,
+            Integer exportLimit,
+            Integer deepInsightLimit,
+            String description
+    ) {}
+
+    public record UpdatePlanRequest(
+            java.math.BigDecimal price,
+            Integer searchLimit,
+            Integer exportLimit,
+            Integer deepInsightLimit,
+            String description
+    ) {}
 }

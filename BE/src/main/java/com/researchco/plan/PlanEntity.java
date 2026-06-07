@@ -43,6 +43,9 @@ public class PlanEntity {
     @Column(name = "export_limit", nullable = false)
     private Integer exportLimit;
 
+    @Column(name = "deep_insight_limit")
+    private Integer deepInsightLimit;
+
     @Column
     private String description;
 

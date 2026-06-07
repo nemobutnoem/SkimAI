@@ -13,6 +13,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
@@ -82,6 +83,56 @@ public class ReportService {
                 snapshot.getId().toString(),
                 report.getTitle(),
                 report.getStatus(),
+                report.getCreatedAt()
+        );
+    }
+
+    @Transactional(readOnly = true)
+    public List<ReportDtos.UserReportResponse> getUserReports(String status) {
+        UUID userId = SecurityUtils.currentUserId();
+        if (userId == null) {
+            throw new AppException(HttpStatus.UNAUTHORIZED, "Unauthorized");
+        }
+
+        List<ReportEntity> reports;
+        if (status != null && !status.trim().isEmpty() && !"all".equalsIgnoreCase(status)) {
+            reports = reportRepository.findByUserIdAndStatusIgnoreCaseOrderByCreatedAtDesc(userId, status.trim());
+        } else {
+            reports = reportRepository.findByUserIdOrderByCreatedAtDesc(userId);
+        }
+
+        return reports.stream()
+                .map(r -> new ReportDtos.UserReportResponse(
+                        r.getId().toString(),
+                        r.getTitle(),
+                        r.getStatus(),
+                        r.getSearchQuery() != null ? r.getSearchQuery().getKeyword() : "",
+                        r.getCreatedAt()
+                ))
+                .toList();
+    }
+
+    @Transactional(readOnly = true)
+    public ReportDtos.ReportDetailsResponse getUserReportById(UUID reportId) {
+        UUID userId = SecurityUtils.currentUserId();
+        String role = SecurityUtils.currentRole();
+        if (userId == null) {
+            throw new AppException(HttpStatus.UNAUTHORIZED, "Unauthorized");
+        }
+
+        ReportEntity report = reportRepository.findById(reportId)
+                .orElseThrow(() -> new AppException(HttpStatus.NOT_FOUND, "Report not found"));
+
+        if (!report.getUser().getId().equals(userId) && !"ADMIN".equalsIgnoreCase(role)) {
+            throw new AppException(HttpStatus.FORBIDDEN, "Forbidden");
+        }
+
+        return new ReportDtos.ReportDetailsResponse(
+                report.getId().toString(),
+                report.getTitle(),
+                report.getStatus(),
+                report.getSearchQuery() != null ? report.getSearchQuery().getKeyword() : "",
+                report.getReportContent(),
                 report.getCreatedAt()
         );
     }

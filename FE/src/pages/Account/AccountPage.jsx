@@ -73,12 +73,12 @@ export function AccountPage() {
           ) : null}
         </Card>
 
-        <Card title="Mức sử dụng Workspace" className="account-usage-card">
+        <Card title="Mức sử dụng tài nguyên" className="account-usage-card">
           <div className="stack account-usage-list">
             {(data?.usage ?? []).map((item) => (
               <div key={item.label} className="account-usage-item">
                 <div className="progress-label">
-                  <span>{item.label === 'API Calls' ? 'Yêu cầu API' : item.label === 'Storage' ? 'Lưu trữ' : item.label === 'Team Seats' ? 'Thành viên' : item.label}</span>
+                  <span>{item.label}</span>
                   <span>{item.value}%</span>
                 </div>
                 <div className="progress-bar">

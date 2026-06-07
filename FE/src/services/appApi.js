@@ -194,6 +194,15 @@ const realApi = {
   getAdminRevenue() {
     return request('/admin/revenue')
   },
+  getAdminPlans() {
+    return request('/admin/plans')
+  },
+  updateAdminPlan(planId, data) {
+    return request(`/admin/plans/${planId}`, {
+      method: 'PUT',
+      body: data,
+    })
+  },
   getAdminUsersMetrics() {
     return request('/admin/users/metrics')
   },

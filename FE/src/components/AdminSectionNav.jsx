@@ -6,6 +6,7 @@ const ADMIN_LINKS = [
   { to: ROUTES.ADMIN_REPORTS, label: 'Reports' },
   { to: ROUTES.ADMIN_USERS, label: 'Users' },
   { to: ROUTES.ADMIN_REVENUE, label: 'Revenue' },
+  { to: ROUTES.ADMIN_SETTINGS, label: 'Settings' },
 ]
 
 export function AdminSectionNav() {

@@ -1526,10 +1526,32 @@ textarea { resize: vertical; }
   gap: 14px;
 }
 
-.dashboard-action-list,
+.dashboard-action-list {
+  display: grid;
+  gap: 12px;
+}
+
 .dashboard-recent-list {
   display: grid;
   gap: 12px;
+  max-height: 380px;
+  overflow-y: auto;
+  padding-right: 6px;
+}
+
+/* Custom scrollbar for recent list */
+.dashboard-recent-list::-webkit-scrollbar {
+  width: 6px;
+}
+.dashboard-recent-list::-webkit-scrollbar-track {
+  background: transparent;
+}
+.dashboard-recent-list::-webkit-scrollbar-thumb {
+  background-color: var(--gray-300);
+  border-radius: var(--radius-full);
+}
+.dashboard-recent-list::-webkit-scrollbar-thumb:hover {
+  background-color: var(--gray-500);
 }
 
 .dashboard-action-item,

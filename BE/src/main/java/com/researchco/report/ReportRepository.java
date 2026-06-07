@@ -9,6 +9,10 @@ import java.util.UUID;
 public interface ReportRepository extends JpaRepository<ReportEntity, UUID> {
     long countByUserId(UUID userId);
 
+    List<ReportEntity> findByUserIdOrderByCreatedAtDesc(UUID userId);
+
+    List<ReportEntity> findByUserIdAndStatusIgnoreCaseOrderByCreatedAtDesc(UUID userId, String status);
+
     long countByCreatedAtBetween(LocalDateTime start, LocalDateTime end);
 
     List<ReportEntity> findTop3ByStatusIgnoreCaseOrderByCreatedAtDesc(String status);

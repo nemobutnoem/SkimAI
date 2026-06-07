@@ -14,7 +14,6 @@ export function PricingPage() {
     contactName: '',
     workEmail: '',
     companyName: '',
-    teamSize: '',
     note: '',
   })
   const [showEnterpriseForm, setShowEnterpriseForm] = useState(false)
@@ -127,7 +126,6 @@ export function PricingPage() {
         planId: 'enterprise',
         billingCycle: cycle,
         ...enterpriseForm,
-        teamSize: enterpriseForm.teamSize ? Number(enterpriseForm.teamSize) : null,
       })
       setNotice({
         tone: 'success',
@@ -138,7 +136,6 @@ export function PricingPage() {
         contactName: '',
         workEmail: '',
         companyName: '',
-        teamSize: '',
         note: '',
       })
     } catch (error) {
@@ -206,27 +203,15 @@ export function PricingPage() {
               </label>
             </div>
 
-            <div className="grid grid-2">
-              <label className="field">
-                <span>Tên công ty</span>
-                <input
-                  value={enterpriseForm.companyName}
-                  onChange={(event) => setEnterpriseForm((prev) => ({ ...prev, companyName: event.target.value }))}
-                  placeholder="AISKIM Labs"
-                  required
-                />
-              </label>
-              <label className="field">
-                <span>Số lượng thành viên</span>
-                <input
-                  type="number"
-                  min="1"
-                  value={enterpriseForm.teamSize}
-                  onChange={(event) => setEnterpriseForm((prev) => ({ ...prev, teamSize: event.target.value }))}
-                  placeholder="25"
-                />
-              </label>
-            </div>
+            <label className="field">
+              <span>Tên công ty</span>
+              <input
+                value={enterpriseForm.companyName}
+                onChange={(event) => setEnterpriseForm((prev) => ({ ...prev, companyName: event.target.value }))}
+                placeholder="AISKIM Labs"
+                required
+              />
+            </label>
 
             <label className="field">
               <span>Ghi chú</span>

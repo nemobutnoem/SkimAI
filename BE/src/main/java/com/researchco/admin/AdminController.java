@@ -4,6 +4,7 @@ import jakarta.validation.Valid;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -48,5 +49,16 @@ public class AdminController {
     @GetMapping("/revenue")
     public AdminDtos.RevenueResponse revenue() {
         return adminService.revenue();
+    }
+
+    @GetMapping("/plans")
+    public List<AdminDtos.AdminPlanItem> getPlans() {
+        return adminService.getPlans();
+    }
+
+    @PutMapping("/plans/{planId}")
+    public AdminDtos.AdminPlanItem updatePlan(@PathVariable UUID planId,
+                                              @Valid @RequestBody AdminDtos.UpdatePlanRequest request) {
+        return adminService.updatePlan(planId, request);
     }
 }

@@ -25,6 +25,7 @@ const ADMIN_LINKS = [
   { to: ROUTES.ADMIN_REPORTS, label: 'Báo cáo' },
   { to: ROUTES.ADMIN_USERS, label: 'Người dùng' },
   { to: ROUTES.ADMIN_REVENUE, label: 'Doanh thu' },
+  { to: ROUTES.ADMIN_SETTINGS, label: 'Cài đặt' },
 ]
 
 /* Helper: get initials from user */

@@ -70,8 +70,8 @@ public class DefaultAiProvider implements AiProvider {
 
         String prompt = String.format(
                 """
-                Act as a senior market research strategist.
-
+                Act as a senior market research strategist. You are writing a professional, comprehensive deep market insight report in Vietnamese.
+                
                 You are NOT analyzing only the keyword. You must synthesize the full research context that has already been collected from external APIs for the keyword "%s".
 
                 Selected source focus: %s
@@ -92,21 +92,54 @@ public class DefaultAiProvider implements AiProvider {
                 %s
 
                 Your task:
-                - synthesize the entire evidence set above
-                - identify demand signals, audience behavior, competitive patterns, and marketable angles
-                - avoid repeating the keyword alone without evidence
-                - write concrete research-grade findings, not generic filler
+                - synthesize the entire evidence set above in Vietnamese.
+                - write concrete research-grade findings, not generic filler. All texts, opportunities, recommendations, and labels MUST be in Vietnamese.
+                - do not repeat the keyword alone without evidence.
 
                 Return only valid JSON with this exact structure:
                 {
-                  "marketInsight": "A dense 3-4 sentence synthesis that combines the strongest signals from the provided insight cards, keyword metrics, and recent headlines.",
+                  "marketInsight": "Một đoạn phân tích sâu sắc từ 4-5 câu tiếng Việt tổng hợp các tín hiệu mạnh mẽ nhất từ dữ liệu nguồn, phân tích rõ lý do nhu cầu tăng/giảm...",
                   "opportunities": [
-                    "Specific market opportunity 1 grounded in the provided data",
-                    "Specific market opportunity 2 grounded in the provided data",
-                    "Specific market opportunity 3 grounded in the provided data",
-                    "Specific market opportunity 4 grounded in the provided data"
+                    "Cơ hội thị trường cụ thể 1 bằng tiếng Việt (ví dụ: phát triển nội dung ngách, ý tưởng sản phẩm...)",
+                    "Cơ hội thị trường cụ thể 2 bằng tiếng Việt...",
+                    "Cơ hội thị trường cụ thể 3 bằng tiếng Việt...",
+                    "Cơ hội thị trường cụ thể 4 bằng tiếng Việt..."
                   ],
-                  "recommendation": "A concrete strategic recommendation that tells the user what to test, position, or prioritize next based on the combined evidence."
+                  "recommendation": "Khuyến nghị chiến lược cụ thể bằng tiếng Việt, hướng dẫn chi tiết người dùng nên thử nghiệm, định vị hoặc ưu tiên hành động gì tiếp theo...",
+                  "stats": [
+                    { "value": "Giá trị chỉ số 1 (ví dụ: 85%% hoặc Cao/Thấp)", "label": "Tên chỉ số 1 (ví dụ: Điểm tiềm năng thị trường)" },
+                    { "value": "Giá trị chỉ số 2", "label": "Tên chỉ số 2 (ví dụ: Mức độ cạnh tranh)" },
+                    { "value": "Giá trị chỉ số 3", "label": "Tên chỉ số 3 (ví dụ: Khả năng sinh lời)" }
+                  ],
+                  "mediaSignals": [
+                    { "title": "Tên tín hiệu 1 (ví dụ: Tín hiệu nhu cầu)", "desc": "Mô tả chi tiết tín hiệu nhu cầu từ dữ liệu bằng tiếng Việt..." },
+                    { "title": "Tên tín hiệu 2 (víệu: Động lực thảo luận)", "desc": "Mô tả chi tiết động lực thảo luận bằng tiếng Việt..." },
+                    { "title": "Tên tín hiệu 3 (ví dụ: Hệ quả cạnh tranh)", "desc": "Mô tả chi tiết hệ quả cạnh tranh bằng tiếng Việt..." }
+                  ],
+                  "trendPoints": [
+                    { "label": "Từ khóa liên quan 1", "value": 85, "note": "Ghi chú xu hướng bằng tiếng Việt (ví dụ: +25%% lượt thảo luận)" },
+                    { "label": "Từ khóa liên quan 2", "value": 70, "note": "Ghi chú xu hướng bằng tiếng Việt..." },
+                    { "label": "Từ khóa liên quan 3", "value": 60, "note": "Ghi chú xu hướng bằng tiếng Việt..." },
+                    { "label": "Từ khóa liên quan 4", "value": 50, "note": "Ghi chú xu hướng bằng tiếng Việt..." },
+                    { "label": "Từ khóa liên quan 5", "value": 40, "note": "Ghi chú xu hướng bằng tiếng Việt..." },
+                    { "label": "Từ khóa liên quan 6", "value": 30, "note": "Ghi chú xu hướng bằng tiếng Việt..." }
+                  ],
+                  "sentiment": {
+                    "positivePct": 65,
+                    "neutralPct": 25,
+                    "negativePct": 10,
+                    "topics": [
+                      { "name": "Chủ đề thảo luận ngách 1", "change": "+35%% lượng đề cập" },
+                      { "name": "Chủ đề thảo luận ngách 2", "change": "+18%% lượng đề cập" },
+                      { "name": "Chủ đề thảo luận ngách 3", "change": "+12%% lượng đề cập" },
+                      { "name": "Chủ đề thảo luận ngách 4", "change": "+8%% lượng đề cập" }
+                    ]
+                  },
+                  "strategicStats": [
+                    { "value": "Giá trị chỉ số chiến lược 1", "label": "Tên chỉ số chiến lược 1 (ví dụ: Quy mô tương tác)" },
+                    { "value": "Giá trị chỉ số chiến lược 2", "label": "Tên chỉ số chiến lược 2 (ví dụ: Lượng thảo luận tích cực)" },
+                    { "value": "Giá trị chỉ số chiến lược 3", "label": "Tên chỉ số chiến lược 3 (ví dụ: Chủ đề phụ tốt nhất)" }
+                  ]
                 }
                 """,
                 contextData.keyword(),
@@ -135,7 +168,6 @@ public class DefaultAiProvider implements AiProvider {
             String responseText = root.path("candidates").get(0).path("content").path("parts").get(0).path("text")
                     .asText();
 
-            // Lọc bỏ markdown codeblock nếu Gemini cố tình trả về
             if (responseText.startsWith("```json")) {
                 responseText = responseText.substring(7);
             }
@@ -148,21 +180,70 @@ public class DefaultAiProvider implements AiProvider {
             List<String> opportunities = new ArrayList<>();
             jsonResult.path("opportunities").forEach(node -> opportunities.add(node.asText()));
 
+            final List<FrontendDtos.StatItem> statsList = new ArrayList<>();
+            jsonResult.path("stats").forEach(node -> statsList.add(new FrontendDtos.StatItem(
+                    node.path("value").asText(),
+                    node.path("label").asText()
+            )));
+            List<FrontendDtos.StatItem> stats = statsList.isEmpty() ? blueprint.stats() : statsList;
+
+            final List<FrontendDtos.SignalItem> mediaSignalsList = new ArrayList<>();
+            jsonResult.path("mediaSignals").forEach(node -> mediaSignalsList.add(new FrontendDtos.SignalItem(
+                    node.path("title").asText(),
+                    node.path("desc").asText()
+            )));
+            List<FrontendDtos.SignalItem> mediaSignals = mediaSignalsList.isEmpty() ? blueprint.mediaSignals() : mediaSignalsList;
+
+            final List<FrontendDtos.TrendPoint> trendPointsList = new ArrayList<>();
+            jsonResult.path("trendPoints").forEach(node -> trendPointsList.add(new FrontendDtos.TrendPoint(
+                    node.path("label").asText(),
+                    node.path("value").asInt(50),
+                    node.path("note").asText()
+            )));
+            List<FrontendDtos.TrendPoint> trendPoints = trendPointsList.isEmpty() ? blueprint.trendPoints() : trendPointsList;
+
+            JsonNode sentNode = jsonResult.path("sentiment");
+            int pos = sentNode.path("positivePct").asInt(60);
+            int neu = sentNode.path("neutralPct").asInt(30);
+            int neg = sentNode.path("negativePct").asInt(10);
+            
+            List<FrontendDtos.SentimentBar> bars = List.of(
+                    new FrontendDtos.SentimentBar("Tích cực", pos, "var(--green)", "text-green"),
+                    new FrontendDtos.SentimentBar("Trung lập", neu, "var(--gray-500)", ""),
+                    new FrontendDtos.SentimentBar("Tiêu cực", neg, "var(--red)", "text-red")
+            );
+
+            final List<FrontendDtos.TopicItem> topicsList = new ArrayList<>();
+            sentNode.path("topics").forEach(node -> topicsList.add(new FrontendDtos.TopicItem(
+                    node.path("name").asText(),
+                    node.path("change").asText()
+            )));
+            List<FrontendDtos.TopicItem> topics = topicsList.isEmpty() ? blueprint.sentiment().topics() : topicsList;
+
+            FrontendDtos.SentimentBlock sentiment = new FrontendDtos.SentimentBlock(bars, topics);
+
+            final List<FrontendDtos.StatItem> strategicStatsList = new ArrayList<>();
+            jsonResult.path("strategicStats").forEach(node -> strategicStatsList.add(new FrontendDtos.StatItem(
+                    node.path("value").asText(),
+                    node.path("label").asText()
+            )));
+            List<FrontendDtos.StatItem> strategicStats = strategicStatsList.isEmpty() ? blueprint.strategicStats() : strategicStatsList;
+
             return new FrontendDtos.DeepInsightResponse(
                     contextData.keyword(),
                     source,
                     jsonResult.path("marketInsight").asText("No insight available."),
                     opportunities.isEmpty() ? List.of("No opportunities found.") : opportunities,
                     jsonResult.path("recommendation").asText("No recommendation available."),
-                    blueprint.stats(),
-                    blueprint.mediaSignals(),
-                    blueprint.trendPoints(),
-                    blueprint.sentiment(),
+                    stats,
+                    mediaSignals,
+                    trendPoints,
+                    sentiment,
                     buildOpportunityCards(opportunities, blueprint.keyword()),
                     new FrontendDtos.StrategicRecommendation(
-                            "AI-generated direction",
+                            "Hướng đi chiến lược từ AI",
                             jsonResult.path("recommendation").asText("No recommendation available."),
-                            blueprint.strategicStats()
+                            strategicStats
                     ));
 
         } catch (Exception e) {
@@ -334,69 +415,69 @@ public class DefaultAiProvider implements AiProvider {
 
         String marketInsight = String.format(
                 Locale.ROOT,
-                "Based on current %s signals, \"%s\" shows %d related keyword mentions and about %s aggregated views. Average engagement is %.2f%%, suggesting %s.",
+                "Dựa trên các tín hiệu hiện tại từ %s, từ khóa \"%s\" ghi nhận %d lượt đề cập và khoảng %s lượt xem tổng hợp. Tương tác trung bình đạt %.2f%%, cho thấy %s.",
                 source,
                 keyword,
                 totalMentions,
                 formatCompact(totalViews),
                 avgEngagement * 100,
-                avgEngagement >= 0.04 ? "healthy audience interest with strong interaction" : "an emerging topic that still needs deeper validation"
+                avgEngagement >= 0.04 ? "sự quan tâm mạnh mẽ từ khách hàng mục tiêu với tỷ lệ tương tác cao" : "đây là một xu hướng mới nổi cần theo dõi thêm để đánh giá tiềm năng thực tế"
         );
 
         List<String> opportunities = new ArrayList<>();
         if (!topKeywords.isBlank()) {
-            opportunities.add("Create content clusters around " + topKeywords + " to capture adjacent intent around \"" + keyword + "\".");
+            opportunities.add("Xây dựng nhóm nội dung xoay quanh " + topKeywords + " để tối ưu hóa lưu lượng tìm kiếm ngách cho \"" + keyword + "\".");
         }
         if (!news.isEmpty()) {
-            opportunities.add("Use the strongest narrative from recent coverage such as \"" + news.get(0) + "\" to anchor campaigns or content tests.");
+            opportunities.add("Tận dụng thông điệp chính từ tin tức nổi bật \"" + news.get(0) + "\" để triển khai chiến dịch truyền thông hoặc kiểm thử thông điệp quảng cáo.");
         }
         if (!summaryLines.isEmpty()) {
-            opportunities.add("Turn the top insight into an experiment brief: " + summaryLines.get(0));
+            opportunities.add("Chuyển đổi nhận định hàng đầu thành định hướng thử nghiệm sản phẩm: " + summaryLines.get(0));
         }
-        opportunities.add("Benchmark creator momentum and comment activity before expanding budget on \"" + keyword + "\".");
+        opportunities.add("Đo lường đà tương tác của người sáng tạo nội dung trước khi gia tăng ngân sách quảng cáo cho từ khóa \"" + keyword + "\".");
 
         String recommendation = String.format(
-                "Prioritize a focused test campaign for \"%s\" using %s as the primary signal, then expand into the best-performing related keyword themes.",
+                "Ưu tiên chạy chiến dịch thử nghiệm quy mô nhỏ cho từ khóa \"%s\" tập trung vào nguồn %s để kiểm chứng tỷ lệ chuyển đổi, sau đó mở rộng sang các từ khóa liên quan.",
                 keyword,
                 source.toLowerCase(Locale.ROOT)
         );
 
         List<FrontendDtos.StatItem> stats = List.of(
-                new FrontendDtos.StatItem(formatCompact(totalViews), "Aggregated Views"),
-                new FrontendDtos.StatItem(String.valueOf(totalMentions), "Keyword Mentions"),
-                new FrontendDtos.StatItem(String.format(Locale.ROOT, "%.2f%%", avgEngagement * 100), "Avg Engagement")
+                new FrontendDtos.StatItem(formatCompact(totalViews), "Tổng lượt xem"),
+                new FrontendDtos.StatItem(String.valueOf(totalMentions), "Số lượt đề cập"),
+                new FrontendDtos.StatItem(String.format(Locale.ROOT, "%.2f%%", avgEngagement * 100), "Tương tác trung bình")
         );
 
         List<FrontendDtos.SignalItem> mediaSignals = new ArrayList<>();
         mediaSignals.add(new FrontendDtos.SignalItem(
-                "Audience demand signal",
+                "Tín hiệu nhu cầu khách hàng",
                 String.format(
                         Locale.ROOT,
-                        "\"%s\" is generating %s views across related keyword clusters, which suggests measurable user curiosity and content consumption.",
+                        "Từ khóa \"%s\" đang tạo ra %s lượt xem trên các cụm chủ đề liên quan, chứng tỏ có lượng cầu thực tế rõ ràng.",
                         keyword,
                         formatCompact(totalViews)
                 )
         ));
         mediaSignals.add(new FrontendDtos.SignalItem(
-                "Conversation driver",
+                "Động lực thảo luận",
                 news.isEmpty()
-                        ? "Recent public narratives are still limited, so growth is being driven mainly by discoverability and related keyword intent."
-                        : "Recent narratives such as \"" + news.get(0) + "\" are shaping attention around the topic."
+                        ? "Các chủ đề tin tức công khai còn hạn chế, lượng thảo luận chủ yếu được thúc đẩy bởi nhu cầu tìm kiếm tự nhiên của người dùng."
+                        : "Các bài viết gần đây như \"" + news.get(0) + "\" đang thu hút lượng thảo luận tích cực trên mạng xã hội."
         ));
         mediaSignals.add(new FrontendDtos.SignalItem(
-                "Competitive implication",
+                "Hệ quả cạnh tranh",
                 topKeywords.isBlank()
-                        ? "The topic still needs broader source coverage before we can identify clear adjacent segments."
-                        : "Adjacent search intent around " + topKeywords + " suggests the market is fragmenting into sub-needs that competitors can target."
+                        ? "Thị trường ngách này chưa có đối thủ thống trị rõ ràng, mở ra cơ hội lớn cho người đi đầu."
+                        : "Sự xuất hiện của các từ khóa ngách như " + topKeywords + " cho thấy thị trường đang phân mảnh thành các nhu cầu nhỏ hơn."
         ));
 
         int positive = clamp((int) Math.round(45 + avgEngagement * 900), 35, 82);
         int negative = clamp((int) Math.round(8 + Math.max(0, 0.03 - avgEngagement) * 400), 6, 24);
         int neutral = Math.max(0, 100 - positive - negative);
         List<FrontendDtos.SentimentBar> bars = List.of(
-                new FrontendDtos.SentimentBar("Positive", positive, "var(--green)", "text-green"),
-                new FrontendDtos.SentimentBar("Neutral", neutral, "var(--gray-500)", ""),
-                new FrontendDtos.SentimentBar("Negative", negative, "var(--red)", "text-red")
+                new FrontendDtos.SentimentBar("Tích cực", positive, "var(--green)", "text-green"),
+                new FrontendDtos.SentimentBar("Trung lập", neutral, "var(--gray-500)", ""),
+                new FrontendDtos.SentimentBar("Tiêu cực", negative, "var(--red)", "text-red")
         );
         List<FrontendDtos.TopicItem> topics = keywordMetrics.stream()
                 .sorted(Comparator.comparingLong(FrontendDtos.KeywordMetric::totalViews).reversed())
@@ -418,7 +499,7 @@ public class DefaultAiProvider implements AiProvider {
                             : clamp(metric.mentionCount() * 12, 12, 100);
                     String note = String.format(
                             Locale.ROOT,
-                            "%s views • %d mentions",
+                            "%s lượt xem • %d đề cập",
                             formatCompact(metric.totalViews()),
                             metric.mentionCount()
                     );
@@ -426,9 +507,9 @@ public class DefaultAiProvider implements AiProvider {
                 })
                 .toList();
         List<FrontendDtos.StatItem> strategicStats = List.of(
-                new FrontendDtos.StatItem(formatCompact(totalLikes), "Total Likes"),
-                new FrontendDtos.StatItem(formatCompact(totalComments), "Total Comments"),
-                new FrontendDtos.StatItem(topKeywords.isBlank() ? keyword : topKeywords, "Best Adjacent Themes")
+                new FrontendDtos.StatItem(formatCompact(totalLikes), "Tổng lượt thích"),
+                new FrontendDtos.StatItem(formatCompact(totalComments), "Tổng bình luận"),
+                new FrontendDtos.StatItem(topKeywords.isBlank() ? keyword : topKeywords, "Chủ đề phụ tiềm năng")
         );
 
         return new DeepInsightBlueprint(
@@ -440,7 +521,7 @@ public class DefaultAiProvider implements AiProvider {
                 stats,
                 mediaSignals,
                 trendPoints.isEmpty()
-                        ? List.of(new FrontendDtos.TrendPoint(keyword, 52, "Baseline trend signal"))
+                        ? List.of(new FrontendDtos.TrendPoint(keyword, 52, "Tín hiệu cơ sở"))
                         : trendPoints,
                 new FrontendDtos.SentimentBlock(
                         bars,
@@ -467,8 +548,8 @@ public class DefaultAiProvider implements AiProvider {
         if (opportunities == null || opportunities.isEmpty()) {
             return List.of(
                     new FrontendDtos.OpportunityCard(
-                            "AI Opportunity 1",
-                            "Create a dedicated experiment around \"" + keyword + "\" to validate audience demand.",
+                            "Cơ hội AI 1",
+                            "Thử nghiệm một dự án chuyên biệt xoay quanh \"" + keyword + "\" để kiểm chứng nhu cầu khách hàng.",
                             "green"
                     )
             );
@@ -478,7 +559,7 @@ public class DefaultAiProvider implements AiProvider {
         List<FrontendDtos.OpportunityCard> cards = new ArrayList<>();
         for (int i = 0; i < Math.min(4, opportunities.size()); i++) {
             cards.add(new FrontendDtos.OpportunityCard(
-                    "AI Opportunity " + (i + 1),
+                    "Cơ hội AI " + (i + 1),
                     opportunities.get(i),
                     themes.get(i % themes.size())
             ));

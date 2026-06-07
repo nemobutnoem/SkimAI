@@ -10,6 +10,8 @@ import com.researchco.subscription.UserSubscriptionEntity;
 import com.researchco.search.SearchQueryRepository;
 import com.researchco.subscription.UserSubscriptionRepository;
 import com.researchco.user.UserRepository;
+import com.researchco.plan.PlanEntity;
+import com.researchco.plan.PlanRepository;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -37,21 +39,67 @@ public class AdminService {
     private final SearchQueryRepository searchQueryRepository;
     private final ReportRepository reportRepository;
     private final UserSubscriptionRepository userSubscriptionRepository;
-        private final PaymentTransactionRepository paymentTransactionRepository;
-        private final AdminActionRepository adminActionRepository;
+    private final PaymentTransactionRepository paymentTransactionRepository;
+    private final AdminActionRepository adminActionRepository;
+    private final PlanRepository planRepository;
 
     public AdminService(UserRepository userRepository,
                         SearchQueryRepository searchQueryRepository,
                         ReportRepository reportRepository,
                         UserSubscriptionRepository userSubscriptionRepository,
                         PaymentTransactionRepository paymentTransactionRepository,
-                        AdminActionRepository adminActionRepository) {
+                        AdminActionRepository adminActionRepository,
+                        PlanRepository planRepository) {
         this.userRepository = userRepository;
         this.searchQueryRepository = searchQueryRepository;
         this.reportRepository = reportRepository;
         this.userSubscriptionRepository = userSubscriptionRepository;
         this.paymentTransactionRepository = paymentTransactionRepository;
         this.adminActionRepository = adminActionRepository;
+        this.planRepository = planRepository;
+    }
+
+    public List<AdminDtos.AdminPlanItem> getPlans() {
+        return planRepository.findAll().stream()
+                .filter(plan -> List.of("FREE", "STARTER", "TEAM").contains(plan.getName().toUpperCase(java.util.Locale.ROOT)))
+                .sorted((p1, p2) -> {
+                    List<String> order = List.of("FREE", "STARTER", "TEAM");
+                    return Integer.compare(
+                            order.indexOf(p1.getName().toUpperCase(java.util.Locale.ROOT)),
+                            order.indexOf(p2.getName().toUpperCase(java.util.Locale.ROOT))
+                    );
+                })
+                .map(plan -> new AdminDtos.AdminPlanItem(
+                        plan.getId().toString(),
+                        plan.getName(),
+                        plan.getPrice(),
+                        plan.getSearchLimit(),
+                        plan.getExportLimit(),
+                        plan.getDeepInsightLimit(),
+                        plan.getDescription()
+                ))
+                .toList();
+    }
+
+    @Transactional
+    public AdminDtos.AdminPlanItem updatePlan(UUID planId, AdminDtos.UpdatePlanRequest request) {
+        PlanEntity plan = planRepository.findById(planId)
+                .orElseThrow(() -> new AppException(HttpStatus.NOT_FOUND, "Plan not found"));
+        plan.setPrice(request.price());
+        plan.setSearchLimit(request.searchLimit());
+        plan.setExportLimit(request.exportLimit());
+        plan.setDeepInsightLimit(request.deepInsightLimit());
+        plan.setDescription(request.description());
+        planRepository.save(plan);
+        return new AdminDtos.AdminPlanItem(
+                plan.getId().toString(),
+                plan.getName(),
+                plan.getPrice(),
+                plan.getSearchLimit(),
+                plan.getExportLimit(),
+                plan.getDeepInsightLimit(),
+                plan.getDescription()
+        );
     }
 
     public AdminDtos.DashboardResponse dashboard() {

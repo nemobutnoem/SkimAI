@@ -6,6 +6,7 @@ import { appApi } from '../../services/appApi'
 
 export function DashboardPage() {
   const [data, setData] = useState(null)
+  const [reports, setReports] = useState([])
   const [error, setError] = useState('')
 
   useEffect(() => {
@@ -19,6 +20,13 @@ export function DashboardPage() {
       .catch((e) => {
         if (alive) setError(e?.message ?? 'Tải thông tin bảng điều khiển thất bại')
       })
+
+    appApi
+      .getReports()
+      .then((r) => {
+        if (alive) setReports(r)
+      })
+      .catch(console.error)
 
     return () => {
       alive = false
@@ -102,6 +110,44 @@ export function DashboardPage() {
           </div>
         </Card>
       </div>
+
+      <Card title="Báo cáo & Phân tích Chuyên sâu đã lưu" className="dashboard-section-card">
+        <div className="dashboard-recent-list">
+          {reports.length ? (
+            reports.map((item) => {
+              const isDeepInsight = item.status === 'DEEP_INSIGHT';
+              const source = isDeepInsight && item.title ? item.title.replace(" Deep Insight", "") : '';
+              const linkTo = isDeepInsight 
+                ? `${ROUTES.DEEP_INSIGHT}?keyword=${encodeURIComponent(item.keyword)}${source ? `&source=${encodeURIComponent(source)}` : ''}`
+                : `${ROUTES.ANALYSIS}?keyword=${encodeURIComponent(item.keyword)}`;
+              
+              return (
+                <Link
+                  key={item.id}
+                  to={linkTo}
+                  className="dashboard-recent-item"
+                  style={{ textDecoration: 'none', color: 'inherit', display: 'flex', alignItems: 'center' }}
+                >
+                  <div>
+                    <strong style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      {isDeepInsight ? '⚡ Phân tích chuyên sâu:' : '📊 Báo cáo thị trường:'} {item.keyword}
+                      <span className={`badge ${isDeepInsight ? 'badge-published' : 'badge-draft'}`} style={{ fontSize: '11px', padding: '2px 6px' }}>
+                        {isDeepInsight ? 'AI Deep Insight' : 'Báo cáo'}
+                      </span>
+                    </strong>
+                    <p>{isDeepInsight ? `Nguồn phân tích: ${source || 'Đa nguồn'}` : 'Báo cáo nghiên cứu thị trường chi tiết'}</p>
+                  </div>
+                  <time>{new Date(item.createdAt).toLocaleString('vi-VN')}</time>
+                </Link>
+              );
+            })
+          ) : (
+            <div className="dashboard-empty-state">
+              Chưa có báo cáo hoặc phân tích chuyên sâu nào được lưu.
+            </div>
+          )}
+        </div>
+      </Card>
     </div>
   )
 }
