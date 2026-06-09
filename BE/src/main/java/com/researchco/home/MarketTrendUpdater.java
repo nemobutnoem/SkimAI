@@ -11,7 +11,9 @@ import org.springframework.transaction.annotation.Transactional;
 import java.util.Arrays;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 @Component
 public class MarketTrendUpdater {
@@ -31,11 +33,7 @@ public class MarketTrendUpdater {
     @EventListener(ApplicationReadyEvent.class)
     @Transactional
     public void warmUp() {
-        boolean needsBackfill = marketTrendRepository.findAll().stream()
-                .anyMatch(trend -> trend.getMarket() == null || trend.getMarket().isBlank());
-        if (marketTrendRepository.count() == 0 || needsBackfill) {
-            refresh();
-        }
+        refresh();
     }
 
     @Transactional
@@ -45,13 +43,6 @@ public class MarketTrendUpdater {
     )
     public void refresh() {
         List<MarketSeed> seeds = parseSeeds(seedKeywords);
-        if (seeds.isEmpty()) {
-            seedFallbackTrends();
-            return;
-        }
-
-        marketTrendRepository.deleteByMarketNotIn(seeds.stream().map(MarketSeed::market).toList());
-
         LinkedHashMap<String, List<String>> seedMap = new LinkedHashMap<>();
         seeds.forEach(seed -> seedMap.put(seed.market(), seed.queries()));
 
@@ -61,69 +52,84 @@ public class MarketTrendUpdater {
             return;
         }
 
+        // Cache old trends to preserve previous scores
+        Map<String, Long> oldScores = marketTrendRepository.findAll().stream()
+                .filter(t -> t.getMarket() != null)
+                .collect(Collectors.toMap(
+                        t -> t.getMarket().toLowerCase(java.util.Locale.ROOT),
+                        MarketTrendEntity::getTrendScore,
+                        (s1, s2) -> s1
+                ));
+
+        marketTrendRepository.deleteAll();
+
         for (AiProvider.LiveTrendSignal signal : signals) {
-            upsertTrend(signal, seedMap.getOrDefault(signal.market(), List.of(signal.keyword())));
+            String market = signal.market() == null || signal.market().isBlank() ? "Emerging Market" : signal.market();
+            String keyword = signal.keyword() == null || signal.keyword().isBlank() ? market : signal.keyword();
+            
+            long previous = oldScores.getOrDefault(market.toLowerCase(java.util.Locale.ROOT), 0L);
+            long score = Math.max(50L, signal.trendScore());
+            if (previous == 0L) {
+                double factor = 1.0 + (signal.changePct() / 100.0);
+                previous = Math.round(score / factor);
+            }
+
+            MarketTrendEntity trend = MarketTrendEntity.builder()
+                    .keyword(keyword)
+                    .market(market)
+                    .previousScore(previous)
+                    .trendScore(score)
+                    .sourceCount(Math.max(1, signal.sourceCount()))
+                    .changePct(signal.changePct())
+                    .sentiment(normalizeSentiment(signal.sentiment()))
+                    .build();
+
+            marketTrendRepository.save(trend);
         }
-    }
-
-    private void upsertTrend(AiProvider.LiveTrendSignal signal, List<String> seedKeywords) {
-        String market = signal.market() == null || signal.market().isBlank() ? "Emerging Market" : signal.market();
-        String resolvedKeyword = signal.keyword();
-        if (resolvedKeyword == null || resolvedKeyword.isBlank()) {
-            resolvedKeyword = seedKeywords.isEmpty() ? market : seedKeywords.get(0);
-        }
-        final String keyword = resolvedKeyword;
-
-        MarketTrendEntity trend = marketTrendRepository.findByMarket(market)
-                .or(() -> marketTrendRepository.findByKeyword(keyword))
-                .orElseGet(() -> MarketTrendEntity.builder()
-                        .keyword(keyword)
-                        .market(market)
-                        .previousScore(0L)
-                        .build());
-
-        String uniqueKeyword = ensureUniqueKeyword(keyword, market, trend.getId(), seedKeywords);
-
-        long previous = trend.getTrendScore();
-        long score = Math.max(50L, signal.trendScore());
-        trend.setKeyword(uniqueKeyword);
-        trend.setMarket(market);
-        trend.setPreviousScore(previous);
-        trend.setTrendScore(score);
-        trend.setSourceCount(Math.max(1, signal.sourceCount()));
-        int aiChangePct = signal.changePct();
-        trend.setChangePct(aiChangePct == 0 ? computeChangePct(previous, score) : clamp(aiChangePct, -99, 250));
-        trend.setSentiment(normalizeSentiment(signal.sentiment()));
-        marketTrendRepository.save(trend);
     }
 
     private void seedFallbackTrends() {
-        List<MarketSeed> defaults = List.of(
-            new MarketSeed("Market Research", List.of("consumer demand")),
-                new MarketSeed("Mobility & Consumer", List.of("Electric bike")),
-                new MarketSeed("Commerce & Platforms", List.of("TikTok Shop trends")),
-                new MarketSeed("Food & Lifestyle", List.of("Pho"))
+        List<FallbackSeed> allFallbacks = List.of(
+            new FallbackSeed("Artificial Intelligence", "Generative AI tools", "positive", 180, 24),
+            new FallbackSeed("Green Tech", "Electric bikes", "positive", 140, 15),
+            new FallbackSeed("E-commerce", "TikTok Shop trends", "neutral", 210, 18),
+            new FallbackSeed("Food & Lifestyle", "Pho", "positive", 110, 8),
+            new FallbackSeed("Personal Finance", "Digital gold investment", "neutral", 95, 2),
+            new FallbackSeed("Health & Wellness", "Plant-based milk", "positive", 130, 12),
+            new FallbackSeed("Smart Home", "IoT security devices", "neutral", 115, 6),
+            new FallbackSeed("Travel & Tourism", "Glamping trends", "positive", 150, 21),
+            new FallbackSeed("Entertainment", "Short-form video editing", "positive", 175, 30),
+            new FallbackSeed("EdTech", "AI coding assistants", "positive", 160, 27)
         );
-        int seedScore = 100;
-        marketTrendRepository.deleteByMarketNotIn(defaults.stream().map(MarketSeed::market).toList());
-        for (MarketSeed seed : defaults) {
-            MarketTrendEntity trend = marketTrendRepository.findByMarket(seed.market())
-                    .or(() -> marketTrendRepository.findByKeyword(seed.primaryQuery()))
-                    .orElseGet(() -> MarketTrendEntity.builder()
-                            .keyword(seed.primaryQuery())
-                            .market(seed.market())
-                            .build());
-            trend.setKeyword(seed.primaryQuery());
-            trend.setMarket(seed.market());
-            trend.setPreviousScore(trend.getTrendScore());
-            trend.setTrendScore(seedScore);
-            trend.setChangePct(seedScore == 100 ? 24 : 12);
-            trend.setSourceCount(3);
-            trend.setSentiment(seedScore >= 100 ? "positive" : "neutral");
+
+        long hourSeed = System.currentTimeMillis() / (1000L * 60L * 60L);
+        java.util.Random random = new java.util.Random(hourSeed);
+        
+        List<FallbackSeed> selected = new java.util.ArrayList<>(allFallbacks);
+        java.util.Collections.shuffle(selected, random);
+        List<FallbackSeed> subList = selected.subList(0, 4);
+
+        marketTrendRepository.deleteAll();
+        for (FallbackSeed seed : subList) {
+            long score = seed.baseScore() + random.nextInt(30);
+            int change = seed.baseChange() + random.nextInt(10);
+            long previous = Math.round(score / (1.0 + (change / 100.0)));
+            int sourceCount = 10 + random.nextInt(25);
+
+            MarketTrendEntity trend = MarketTrendEntity.builder()
+                    .keyword(seed.query())
+                    .market(seed.market())
+                    .previousScore(previous)
+                    .trendScore(score)
+                    .changePct(change)
+                    .sourceCount(sourceCount)
+                    .sentiment(seed.sentiment())
+                    .build();
             marketTrendRepository.save(trend);
-            seedScore -= 10;
         }
     }
+
+    private record FallbackSeed(String market, String query, String sentiment, int baseScore, int baseChange) {}
 
     private int computeChangePct(long previous, long current) {
         if (previous <= 0) {

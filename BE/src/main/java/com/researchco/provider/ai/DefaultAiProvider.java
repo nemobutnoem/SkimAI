@@ -308,52 +308,31 @@ public class DefaultAiProvider implements AiProvider {
     public List<LiveTrendSignal> generateLiveTrends(Map<String, List<String>> marketSeeds) {
         if (marketSeeds == null || marketSeeds.isEmpty()) {
             return List.of();
-        }
-
-        LinkedHashMap<String, List<String>> normalizedSeeds = new LinkedHashMap<>();
-        marketSeeds.forEach((market, keywords) -> {
-            if (market == null || market.isBlank()) {
-                return;
-            }
-            List<String> cleanKeywords = keywords == null
-                    ? List.of(market)
-                    : keywords.stream()
-                            .filter(value -> value != null && !value.isBlank())
-                            .distinct()
-                            .toList();
-            normalizedSeeds.put(market.trim(), cleanKeywords.isEmpty() ? List.of(market.trim()) : cleanKeywords);
-        });
-
-        if (normalizedSeeds.isEmpty()) {
-            return List.of();
-        }
-
         if (apiKey.isBlank()) {
-            return fallbackLiveTrends(normalizedSeeds);
+            return fallbackLiveTrends(new LinkedHashMap<>());
         }
 
-        String seedsText = normalizedSeeds.entrySet().stream()
+        String seedsText = marketSeeds.entrySet().stream()
                 .map(entry -> entry.getKey() + " => " + String.join(", ", entry.getValue()))
                 .collect(Collectors.joining("\n- ", "- ", ""));
 
         String prompt = String.format(
                 """
-                You are generating LIVE market hot trends for a market-research homepage.
+                You are generating 4 hot LIVE market trends for a market-research homepage.
 
-                Important:
-                - The output is AI-generated trend intelligence (not direct raw API metrics).
-                - Keep it realistic and business-oriented.
-                - Return exactly one trend per market provided.
+                Identify 4 distinct, popular, or emerging industries/markets currently trending globally or in Vietnam (e.g. Artificial Intelligence, Green Energy, Sustainable Fashion, E-commerce, Food & Beverage, Smart Devices, etc.).
 
-                Market seeds:
+                For each market, identify a specific search keyword or topic that is driving this trend.
+
+                You can use these seed ideas for inspiration if you want, but you are free to generate completely new and hotter trending markets:
                 %s
 
-                Return only valid JSON:
+                Return exactly 4 trends in valid JSON format:
                 {
                   "trends": [
                     {
-                      "market": "AI & Automation",
-                      "keyword": "consumer demand",
+                      "market": "Tên ngành hàng/thị trường (ví dụ: Artificial Intelligence hoặc Năng lượng xanh)",
+                      "keyword": "Từ khóa tìm kiếm hot (ví dụ: Generative AI hoặc Xe máy điện)",
                       "trendScore": 160,
                       "changePct": 22,
                       "sentiment": "positive",
@@ -363,11 +342,11 @@ public class DefaultAiProvider implements AiProvider {
                 }
 
                 Constraints:
+                - Return exactly 4 trend entries.
                 - trendScore: integer from 50 to 320
                 - changePct: integer from -35 to 80
                 - sentiment: one of positive, neutral, negative
                 - sourceCount: integer from 6 to 60
-                - keyword should be one of the seed keywords for that market
                 """,
                 seedsText);
 
@@ -397,21 +376,13 @@ public class DefaultAiProvider implements AiProvider {
             JsonNode jsonResult = mapper.readTree(responseText);
             JsonNode trendsNode = jsonResult.path("trends");
             if (!trendsNode.isArray() || trendsNode.isEmpty()) {
-                return fallbackLiveTrends(normalizedSeeds);
+                return fallbackLiveTrends(new LinkedHashMap<>());
             }
 
             List<LiveTrendSignal> trends = new ArrayList<>();
             for (JsonNode node : trendsNode) {
-                String market = node.path("market").asText("");
-                if (!normalizedSeeds.containsKey(market)) {
-                    continue;
-                }
-
-                List<String> seedKeywords = normalizedSeeds.get(market);
-                String keyword = node.path("keyword").asText(seedKeywords.get(0));
-                if (!seedKeywords.contains(keyword)) {
-                    keyword = seedKeywords.get(0);
-                }
+                String market = node.path("market").asText("Emerging Market");
+                String keyword = node.path("keyword").asText(market);
 
                 long trendScore = clampLong(node.path("trendScore").asLong(120), 50, 320);
                 int changePct = clamp(node.path("changePct").asInt(0), -35, 80);
@@ -422,13 +393,47 @@ public class DefaultAiProvider implements AiProvider {
             }
 
             if (trends.isEmpty()) {
-                return fallbackLiveTrends(normalizedSeeds);
+                return fallbackLiveTrends(new LinkedHashMap<>());
             }
             return trends;
         } catch (Exception ignored) {
-            return fallbackLiveTrends(normalizedSeeds);
+            return fallbackLiveTrends(new LinkedHashMap<>());
         }
     }
+
+    private List<LiveTrendSignal> fallbackLiveTrends(LinkedHashMap<String, List<String>> seeds) {
+        List<FallbackSeed> allFallbacks = List.of(
+            new FallbackSeed("Artificial Intelligence", "Generative AI tools", "positive", 180, 24),
+            new FallbackSeed("Green Tech", "Electric bikes", "positive", 140, 15),
+            new FallbackSeed("E-commerce", "TikTok Shop trends", "neutral", 210, 18),
+            new FallbackSeed("Food & Lifestyle", "Pho", "positive", 110, 8),
+            new FallbackSeed("Personal Finance", "Digital gold investment", "neutral", 95, 2),
+            new FallbackSeed("Health & Wellness", "Plant-based milk", "positive", 130, 12),
+            new FallbackSeed("Smart Home", "IoT security devices", "neutral", 115, 6),
+            new FallbackSeed("Travel & Tourism", "Glamping trends", "positive", 150, 21),
+            new FallbackSeed("Entertainment", "Short-form video editing", "positive", 175, 30),
+            new FallbackSeed("EdTech", "AI coding assistants", "positive", 160, 27)
+        );
+
+        long hourSeed = System.currentTimeMillis() / (1000L * 60L * 60L);
+        Random random = new Random(hourSeed);
+
+        List<FallbackSeed> selected = new ArrayList<>(allFallbacks);
+        java.util.Collections.shuffle(selected, random);
+        List<FallbackSeed> subList = selected.subList(0, 4);
+
+        List<LiveTrendSignal> list = new ArrayList<>();
+        for (FallbackSeed seed : subList) {
+            long score = seed.baseScore() + random.nextInt(30);
+            int change = seed.baseChange() + random.nextInt(10);
+            int sourceCount = 10 + random.nextInt(25);
+            list.add(new LiveTrendSignal(seed.market(), seed.query(), score, change, seed.sentiment(), sourceCount));
+        }
+
+        return list;
+    }
+
+    private record FallbackSeed(String market, String query, String sentiment, int baseScore, int baseChange) {}
 
     private DeepInsightBlueprint buildBlueprint(FrontendDtos.AnalysisResponse contextData, String source) {
         String keyword = contextData.keyword();
