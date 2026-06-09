@@ -129,17 +129,27 @@ public class AdminService {
         long reportsCurrent = reportRepository.countByCreatedAtBetween(currentStart, currentEnd);
         long reportsPrev = reportRepository.countByCreatedAtBetween(prevStart, prevEnd);
 
-        long subscriptionsCurrent = userSubscriptionRepository.countByStartDateBetween(currentStart, currentEnd);
-        long subscriptionsPrev = userSubscriptionRepository.countByStartDateBetween(prevStart, prevEnd);
+        List<UserSubscriptionEntity> allSubscriptions = userSubscriptionRepository.findAll().stream()
+                .filter(sub -> sub.getUser() != null && !"ADMIN".equalsIgnoreCase(sub.getUser().getRole()))
+                .toList();
 
-        List<UserSubscriptionEntity> activeSubscriptions = userSubscriptionRepository.findByStatus("ACTIVE");
+        long subscriptionsCurrent = allSubscriptions.stream()
+                .filter(sub -> sub.getStartDate() != null && sub.getStartDate().isAfter(currentStart) && sub.getStartDate().isBefore(currentEnd))
+                .count();
+        long subscriptionsPrev = allSubscriptions.stream()
+                .filter(sub -> sub.getStartDate() != null && sub.getStartDate().isAfter(prevStart) && sub.getStartDate().isBefore(prevEnd))
+                .count();
+
+        List<UserSubscriptionEntity> activeSubscriptions = allSubscriptions.stream()
+                .filter(sub -> "ACTIVE".equalsIgnoreCase(sub.getStatus()))
+                .toList();
         long premiumActive = activeSubscriptions.stream()
                 .filter(sub -> sub.getPlan() != null && !"FREE".equalsIgnoreCase(sub.getPlan().getName()))
                 .count();
         int premiumPct = pct(premiumActive, activeSubscriptions.size());
         int standardPct = activeSubscriptions.isEmpty() ? 0 : Math.max(0, 100 - premiumPct);
 
-        Map<YearMonth, Long> premiumByMonth = userSubscriptionRepository.findAll().stream()
+        Map<YearMonth, Long> premiumByMonth = allSubscriptions.stream()
                 .filter(sub -> sub.getStartDate() != null)
                 .filter(sub -> sub.getPlan() != null && !"FREE".equalsIgnoreCase(sub.getPlan().getName()))
                 .collect(Collectors.groupingBy(sub -> YearMonth.from(sub.getStartDate()), Collectors.counting()));
@@ -167,7 +177,7 @@ public class AdminService {
                         stat("Users", countAllNonAdminUsers(), usersCurrent, usersPrev),
                         stat("Searches", searchQueryRepository.count(), searchesCurrent, searchesPrev),
                         stat("Reports", reportRepository.count(), reportsCurrent, reportsPrev),
-                        stat("Subscriptions", userSubscriptionRepository.count(), subscriptionsCurrent, subscriptionsPrev),
+                        stat("Subscriptions", allSubscriptions.size(), subscriptionsCurrent, subscriptionsPrev),
                         stat("Premium", premiumActive, premiumCurrent, premiumPrev)
                 ),
                 activities,
@@ -235,7 +245,9 @@ public class AdminService {
     }
 
     public AdminDtos.RevenueResponse revenue() {
-                List<UserSubscriptionEntity> activeSubscriptions = userSubscriptionRepository.findByStatus("ACTIVE");
+                List<UserSubscriptionEntity> activeSubscriptions = userSubscriptionRepository.findByStatus("ACTIVE").stream()
+                                .filter(sub -> sub.getUser() != null && !"ADMIN".equalsIgnoreCase(sub.getUser().getRole()))
+                                .toList();
                 BigDecimal mrr = activeSubscriptions.stream()
                                 .map(sub -> sub.getPlan() == null ? null : sub.getPlan().getPrice())
                                 .filter(Objects::nonNull)
