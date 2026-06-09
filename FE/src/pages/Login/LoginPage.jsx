@@ -29,11 +29,8 @@ function loadGoogleIdentityScript() {
 
 export function LoginPage() {
   const navigate = useNavigate()
-  const { login, loginWithGoogle, isAuthenticated, user } = useAuth()
+  const { loginWithGoogle, isAuthenticated, user } = useAuth()
 
-  const [mode, setMode] = useState('user') // 'user' | 'admin'
-  const [email, setEmail] = useState('')
-  const [password, setPassword] = useState('')
   const [error, setError] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
 
@@ -47,8 +44,6 @@ export function LoginPage() {
   }, [isAuthenticated, user, navigate])
 
   useEffect(() => {
-    if (mode !== 'user') return
-
     const clientId = import.meta.env.VITE_GOOGLE_CLIENT_ID
     if (!clientId) {
       setGoogleError('Thiếu VITE_GOOGLE_CLIENT_ID trong .env')
@@ -113,31 +108,7 @@ export function LoginPage() {
     return () => {
       cancelled = true
     }
-  }, [mode, loginWithGoogle, navigate])
-
-  const onSubmit = async (e) => {
-    e.preventDefault()
-    setError('')
-    setIsSubmitting(true)
-
-    try {
-      const session = await login({ email, password })
-      if (session?.user?.role === 'admin') {
-        navigate(ROUTES.ADMIN_DASHBOARD)
-      } else {
-        navigate(ROUTES.DASHBOARD)
-      }
-    } catch (err) {
-      setError(err?.message ?? 'Đăng nhập thất bại')
-    } finally {
-      setIsSubmitting(false)
-    }
-  }
-
-  const setPreset = (type) => {
-    setEmail(type === 'admin' ? 'admin@skimai.local' : 'demo@skimai.local')
-    setPassword('123456')
-  }
+  }, [loginWithGoogle, navigate])
 
   return (
     <div className="login-layout">
@@ -169,90 +140,15 @@ export function LoginPage() {
         <div className="login-form-inner">
           <div className="login-header">
             <h2>Chào mừng quay lại</h2>
-            <p>Vui lòng nhập thông tin chi tiết để đăng nhập.</p>
+            <p>Vui lòng đăng nhập bằng tài khoản Google để tiếp tục sử dụng dịch vụ.</p>
           </div>
 
-          <div className="login-mode-toggle" role="tablist" aria-label="Login mode">
-            <button
-              type="button"
-              className={mode === 'user' ? 'active' : ''}
-              onClick={() => {
-                setMode('user')
-                setError('')
-              }}
-            >
-              Người dùng (Google)
-            </button>
-            <button
-              type="button"
-              className={mode === 'admin' ? 'active' : ''}
-              onClick={() => {
-                setMode('admin')
-                setError('')
-              }}
-            >
-              Quản trị viên (Tài khoản)
-            </button>
+          <div className="login-google">
+            <div id="googleSignInBtn" style={{ minHeight: '40px', display: 'flex', justifyContent: 'center', width: '100%' }} />
+            {!googleReady && !googleError && <div className="login-google-hint">Đang tải Đăng nhập Google…</div>}
+            {googleError && <div className="login-error">{googleError}</div>}
+            {error && <div className="login-error">{error}</div>}
           </div>
-
-          {mode === 'user' && (
-            <div className="login-google">
-              <div id="googleSignInBtn" />
-              {!googleReady && !googleError && <div className="login-google-hint">Đang tải Đăng nhập Google…</div>}
-              {googleError && <div className="login-error">{googleError}</div>}
-              {error && <div className="login-error">{error}</div>}
-            </div>
-          )}
-
-          {mode === 'admin' && (
-            <>
-              <form onSubmit={onSubmit} className="login-form">
-                <div className="login-field">
-                  <label>Địa chỉ Email</label>
-                  <input
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    placeholder="Nhập email của bạn"
-                    autoComplete="email"
-                    required
-                  />
-                </div>
-
-                <div className="login-field">
-                  <label>Mật khẩu</label>
-                  <input
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    type="password"
-                    placeholder="••••••••"
-                    autoComplete="current-password"
-                    required
-                  />
-                </div>
-
-                {error && <div className="login-error">{error}</div>}
-
-                <div className="login-options">
-                  <label className="login-checkbox">
-                    <input type="checkbox" />
-                    <span>Ghi nhớ đăng nhập</span>
-                  </label>
-                  <a href="#" className="login-forgot">Quên mật khẩu?</a>
-                </div>
-
-                <button type="submit" className="login-submit-btn" disabled={isSubmitting}>
-                  {isSubmitting ? 'Đang đăng nhập...' : 'Đăng nhập'}
-                </button>
-              </form>
-
-              <div className="login-presets">
-                <p>Sử dụng tài khoản thử nghiệm nhanh:</p>
-                <div className="login-preset-btns">
-                  <button type="button" onClick={() => setPreset('admin')}>Demo Admin</button>
-                </div>
-              </div>
-            </>
-          )}
         </div>
       </div>
     </div>

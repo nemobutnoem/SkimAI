@@ -209,9 +209,6 @@ const realApi = {
   updateAdminSettings(payload) {
     return request('/admin/settings', { method: 'PUT', body: payload })
   },
-  cleanupTestUsers() {
-    return request('/admin/cleanup-test-users', { method: 'POST' })
-  },
   getAdminUsersMetrics() {
     return request('/admin/users/metrics')
   },

@@ -19,21 +19,12 @@ import { PricingPage } from '../pages/Pricing/PricingPage'
 import { PrivateRoute } from './PrivateRoute'
 import { useAuth } from '../hooks/useAuth'
 
-/* When admin visits /, send them to admin dashboard instead */
-function AdminHomeRedirect() {
-  const { isAuthenticated, user } = useAuth()
-  if (isAuthenticated && user?.role === 'admin') {
-    return <Navigate to={ROUTES.ADMIN_DASHBOARD} replace />
-  }
-  return <HomePage />
-}
-
 export function AppRouter() {
   return (
     <Routes>
       {/* Public-only pages (guest navbar) */}
       <Route element={<PublicLayout />}>
-        <Route path={ROUTES.HOME} element={<AdminHomeRedirect />} />
+        <Route path={ROUTES.HOME} element={<HomePage />} />
         <Route path={ROUTES.PRICING} element={<PricingPage />} />
       </Route>
 

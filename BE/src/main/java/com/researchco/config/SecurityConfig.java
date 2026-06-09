@@ -45,16 +45,15 @@ public class SecurityConfig {
                         .requestMatchers("/api/auth/**").permitAll()
                         .requestMatchers("/api/home/**").permitAll()
                         .requestMatchers(
-                                "/api/dashboard",
                                 "/api/analysis",
                                 "/api/analysis/**",
                                 "/api/deep-insight",
                                 "/api/experts/**",
                                 "/api/pricing",
                                 "/api/pricing/**",
-                                "/api/account/**",
-                                "/api/admin/**"
+                                "/api/payment/payos-webhook"
                         ).permitAll()
+                        .requestMatchers("/api/admin/**").hasRole("ADMIN")
                         .anyRequest().authenticated()
                 )
                 .authenticationProvider(authenticationProvider())

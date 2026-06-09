@@ -10,6 +10,7 @@ import com.researchco.subscription.UserSubscriptionRepository;
 import com.researchco.user.UserEntity;
 import com.researchco.user.UserRepository;
 import org.springframework.boot.CommandLineRunner;
+import org.springframework.context.annotation.Profile;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Component;
 
@@ -18,6 +19,7 @@ import java.util.List;
 import java.util.Map;
 
 @Component
+@Profile("!prod")
 public class DemoDataInitializer implements CommandLineRunner {
 
     private final UserRepository userRepository;
