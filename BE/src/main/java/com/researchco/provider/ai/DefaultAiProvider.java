@@ -28,7 +28,7 @@ public class DefaultAiProvider implements AiProvider {
     private final String apiKey;
     private final String model;
     private final SystemSettingRepository systemSettingRepository;
-    private final RestTemplate restTemplate = new RestTemplate();
+    private final RestTemplate restTemplate;
     private final ObjectMapper mapper = new ObjectMapper();
 
     public DefaultAiProvider(
@@ -38,6 +38,11 @@ public class DefaultAiProvider implements AiProvider {
         this.apiKey = apiKey == null ? "" : apiKey.trim();
         this.model = (model == null || model.isBlank()) ? "gemini-2.5-flash" : model.trim();
         this.systemSettingRepository = systemSettingRepository;
+        
+        org.springframework.http.client.SimpleClientHttpRequestFactory factory = new org.springframework.http.client.SimpleClientHttpRequestFactory();
+        factory.setConnectTimeout(5000);
+        factory.setReadTimeout(5000);
+        this.restTemplate = new RestTemplate(factory);
     }
 
     @Override

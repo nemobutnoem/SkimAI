@@ -31,12 +31,10 @@ public class MarketTrendUpdater {
     }
 
     @EventListener(ApplicationReadyEvent.class)
-    @Transactional
     public void warmUp() {
         refresh();
     }
 
-    @Transactional
     @Scheduled(
             fixedDelayString = "${home.live-trends.refresh-ms:3600000}",
             initialDelayString = "${home.live-trends.refresh-ms:3600000}"
@@ -48,10 +46,15 @@ public class MarketTrendUpdater {
 
         List<AiProvider.LiveTrendSignal> signals = aiProvider.generateLiveTrends(seedMap);
         if (signals.isEmpty()) {
-            seedFallbackTrends();
+            saveFallbackTrends();
             return;
         }
 
+        saveSignals(signals);
+    }
+
+    @Transactional
+    public void saveSignals(List<AiProvider.LiveTrendSignal> signals) {
         // Cache old trends to preserve previous scores
         Map<String, Long> oldScores = marketTrendRepository.findAll().stream()
                 .filter(t -> t.getMarket() != null)
@@ -88,7 +91,8 @@ public class MarketTrendUpdater {
         }
     }
 
-    private void seedFallbackTrends() {
+    @Transactional
+    public void saveFallbackTrends() {
         List<FallbackSeed> allFallbacks = List.of(
             new FallbackSeed("Artificial Intelligence", "Generative AI tools", "positive", 180, 24),
             new FallbackSeed("Green Tech", "Electric bikes", "positive", 140, 15),
