@@ -313,6 +313,7 @@ public class DefaultAiProvider implements AiProvider {
     public List<LiveTrendSignal> generateLiveTrends(Map<String, List<String>> marketSeeds) {
         if (marketSeeds == null || marketSeeds.isEmpty()) {
             return List.of();
+        }
         if (apiKey.isBlank()) {
             return fallbackLiveTrends(new LinkedHashMap<>());
         }
