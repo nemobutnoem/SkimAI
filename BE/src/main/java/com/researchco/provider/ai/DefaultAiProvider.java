@@ -648,24 +648,7 @@ public class DefaultAiProvider implements AiProvider {
         return "neutral";
     }
 
-    private List<LiveTrendSignal> fallbackLiveTrends(LinkedHashMap<String, List<String>> seeds) {
-        long hourSeed = System.currentTimeMillis() / (1000L * 60L * 60L);
-        Random random = new Random(hourSeed);
-        List<LiveTrendSignal> list = new ArrayList<>();
 
-        for (Map.Entry<String, List<String>> entry : seeds.entrySet()) {
-            String market = entry.getKey();
-            List<String> keywords = entry.getValue();
-            String keyword = keywords.get(random.nextInt(keywords.size()));
-            long score = 90 + random.nextInt(140);
-            int change = -10 + random.nextInt(42);
-            int sourceCount = 10 + random.nextInt(30);
-            String sentiment = change > 8 ? "positive" : (change < -5 ? "negative" : "neutral");
-            list.add(new LiveTrendSignal(market, keyword, score, change, sentiment, sourceCount));
-        }
-
-        return list;
-    }
 
     private record DeepInsightBlueprint(
             String keyword,
