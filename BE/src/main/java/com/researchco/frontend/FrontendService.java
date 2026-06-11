@@ -1724,7 +1724,7 @@ public class FrontendService {
         long likes = stats[2];
         long comments = stats[3];
         long interaction = views + likes + comments;
-        return interaction > 0 && mentions >= 2;
+        return interaction > 0 && mentions >= 1;
     }
 
     private long scoreKeywordStats(long[] stats) {
