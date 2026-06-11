@@ -119,6 +119,7 @@ public class FrontendService {
                     "usageAlerts", false
             ))
     );
+    private final Map<String, String> keywordCache = new java.util.concurrent.ConcurrentHashMap<>();
 
     public FrontendService(SearchQueryRepository searchQueryRepository,
                            AnalysisSnapshotRepository analysisSnapshotRepository,
@@ -256,12 +257,13 @@ public class FrontendService {
 
     @Transactional
     public FrontendDtos.AnalysisResponse getAnalysis(String keyword) {
-        LocaleProfile localeProfile = resolveLocaleProfile(keyword);
-        SearchQueryEntity trackedQuery = recordSearchActivity(keyword, localeProfile);
+        String normalizedKeyword = getNormalizedTopic(keyword);
+        LocaleProfile localeProfile = resolveLocaleProfile(normalizedKeyword);
+        SearchQueryEntity trackedQuery = recordSearchActivity(normalizedKeyword, localeProfile);
         
         // 1. TÌM SNAPSHOT FRESH TỪ BẤT KỲ USER NÀO (SHARE ACROSS USERS ĐỂ TIẾT KIỆM TOKEN)
         Optional<SearchQueryEntity> freshGlobalQueryOpt = searchQueryRepository.findAll().stream()
-                .filter(item -> item.getKeyword() != null && item.getKeyword().trim().equalsIgnoreCase(keyword.trim()))
+                .filter(item -> item.getKeyword() != null && item.getKeyword().trim().equalsIgnoreCase(normalizedKeyword.trim()))
                 .filter(item -> {
                     AnalysisSnapshotEntity s = analysisSnapshotRepository.findBySearchQueryId(item.getId()).orElse(null);
                     return s != null && isSnapshotFresh(s);
@@ -276,20 +278,22 @@ public class FrontendService {
         }
         
         // 2. Nếu không có snapshot fresh → fetch dữ liệu mới (live data)
-        List<NormalizedSourceItem> liveItems = fetchLiveSources(keyword);
+        List<NormalizedSourceItem> liveItems = fetchLiveSources(normalizedKeyword);
         if (!liveItems.isEmpty()) {
-            return buildLiveAnalysis(trackedQuery, keyword, liveItems);
+            FrontendDtos.AnalysisResponse response = buildLiveAnalysis(trackedQuery, normalizedKeyword, liveItems);
+            saveSnapshot(trackedQuery, liveItems, response.relatedKeywords());
+            return response;
         }
 
         // 3. Fallback: Nếu fetch live thất bại, tìm lại snapshot cũ (stale) từ user này hoặc user khác
-        SearchQueryEntity query = trackedQuery != null ? trackedQuery : findQueryByKeyword(keyword).orElseGet(() -> fallbackQuery(keyword));
+        SearchQueryEntity query = trackedQuery != null ? trackedQuery : findQueryByKeyword(normalizedKeyword).orElseGet(() -> fallbackQuery(normalizedKeyword));
         AnalysisSnapshotEntity snapshot = analysisSnapshotRepository.findBySearchQueryId(query.getId()).orElse(null);
         if (snapshot != null) {
             return buildAnalysisFromSnapshot(query, snapshot);
         }
 
         Optional<SearchQueryEntity> staleGlobalQueryOpt = searchQueryRepository.findAll().stream()
-                .filter(item -> item.getKeyword() != null && item.getKeyword().trim().equalsIgnoreCase(keyword.trim()))
+                .filter(item -> item.getKeyword() != null && item.getKeyword().trim().equalsIgnoreCase(normalizedKeyword.trim()))
                 .filter(item -> analysisSnapshotRepository.findBySearchQueryId(item.getId()).isPresent())
                 .findFirst();
         
@@ -337,10 +341,10 @@ public class FrontendService {
                 .limit(4)
                 .map(sk -> {
                     int hash = Math.abs(sk.getKeyword().hashCode());
-                    double pseudoEngagement = 0.05 + (hash % 100) / 1000.0;
-                    long pseudoViews = sk.getMentionCount() * 1500L + (hash % 5000);
-                    long pseudoComments = pseudoViews / 50;
-                    return new FrontendDtos.KeywordMetric(sk.getKeyword(), sk.getMentionCount(), pseudoViews, pseudoComments, 0L, pseudoEngagement);
+                    double engagement = sk.getAvgEngagement() != null ? sk.getAvgEngagement() : (0.05 + (hash % 100) / 1000.0);
+                    long views = sk.getTotalViews() != null ? sk.getTotalViews() : (sk.getMentionCount() * 1500L + (hash % 5000));
+                    long comments = sk.getTotalComments() != null ? sk.getTotalComments() : (views / 50);
+                    return new FrontendDtos.KeywordMetric(sk.getKeyword(), sk.getMentionCount(), views, comments, 0L, engagement);
                 })
                 .toList();
 
@@ -370,6 +374,58 @@ public class FrontendService {
                 ),
                 buildResearchGuard(kw, keywords, news, 120, Math.max(1, getAvailableAnalysisSources().size() - 1))
         );
+    }
+
+    @Transactional
+    public void saveSnapshot(SearchQueryEntity query, List<NormalizedSourceItem> items, List<FrontendDtos.KeywordMetric> relatedKeywords) {
+        if (query == null || query.getId() == null) {
+            return;
+        }
+        try {
+            AnalysisSnapshotEntity snapshot = analysisSnapshotRepository.findBySearchQueryId(query.getId()).orElse(null);
+            if (snapshot == null) {
+                snapshot = new AnalysisSnapshotEntity();
+                snapshot.setSearchQuery(query);
+            }
+            snapshot.setTotalSources(items.size());
+            
+            long positive = 0;
+            long negative = 0;
+            long neutral = 0;
+            for (NormalizedSourceItem item : items) {
+                String sentiment = item.sentimentLabel();
+                if ("POSITIVE".equalsIgnoreCase(sentiment)) positive++;
+                else if ("NEGATIVE".equalsIgnoreCase(sentiment)) negative++;
+                else neutral++;
+            }
+            snapshot.setPositiveCount((int) positive);
+            snapshot.setNeutralCount((int) neutral);
+            snapshot.setNegativeCount((int) negative);
+            snapshot.setSummaryText("Collected " + items.size() + " live sources for keyword '" + query.getKeyword() + "'.");
+            snapshot.setUpdatedAt(LocalDateTime.now());
+            
+            AnalysisSnapshotEntity savedSnapshot = analysisSnapshotRepository.save(snapshot);
+            
+            // Delete existing keywords for this snapshot
+            List<SnapshotKeywordEntity> existingKeywords = snapshotKeywordRepository.findBySnapshotId(savedSnapshot.getId());
+            snapshotKeywordRepository.deleteAll(existingKeywords);
+            
+            // Save new keywords
+            for (FrontendDtos.KeywordMetric km : relatedKeywords) {
+                SnapshotKeywordEntity sk = SnapshotKeywordEntity.builder()
+                        .snapshot(savedSnapshot)
+                        .keyword(km.keyword())
+                        .mentionCount(km.mentionCount())
+                        .totalViews(km.totalViews())
+                        .totalComments(km.totalComments())
+                        .avgEngagement(km.avgEngagement())
+                        .build();
+                snapshotKeywordRepository.save(sk);
+            }
+        } catch (Exception e) {
+            System.err.println("[ERROR] Failed to save analysis snapshot: " + e.getMessage());
+            e.printStackTrace();
+        }
     }
 
     private boolean isSnapshotFresh(AnalysisSnapshotEntity snapshot) {
@@ -1506,6 +1562,32 @@ public class FrontendService {
             case "YOUTUBE_API" -> "YouTube Signals";
             default -> titleCase(providerCode == null ? "Research Source" : providerCode.replace('_', ' '));
         };
+    }
+
+    public String getNormalizedTopic(String keyword) {
+        if (keyword == null || keyword.isBlank()) {
+            return "";
+        }
+        String clean = keyword.trim().toLowerCase(Locale.ROOT);
+        if (keywordCache.containsKey(clean)) {
+            return keywordCache.get(clean);
+        }
+
+        // Hardcoded common rules for speed
+        String normalized = clean;
+        if (clean.equals("ai") || clean.equals("artificial intelligence") || clean.equals("tri tue nhan tao") || clean.equals("trí tuệ nhân tạo")) {
+            normalized = "artificial intelligence";
+        } else if (clean.equals("bike") || clean.equals("electric bike") || clean.equals("xe dap dien") || clean.equals("xe đạp điện") || clean.equals("e-bike")) {
+            normalized = "electric bike";
+        } else {
+            try {
+                normalized = aiProvider.normalizeKeyword(keyword);
+            } catch (Exception e) {
+                normalized = clean;
+            }
+        }
+        keywordCache.put(clean, normalized);
+        return normalized;
     }
 
     private LocaleProfile resolveLocaleProfile(String keyword) {

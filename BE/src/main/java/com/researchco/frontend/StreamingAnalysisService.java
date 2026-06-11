@@ -56,9 +56,10 @@ public class StreamingAnalysisService {
     @Transactional
     public void streamAnalysis(String keyword, SseEmitter emitter) {
         try {
+            String normalizedKeyword = frontendService.getNormalizedTopic(keyword);
             // Stage 1: Send basic query info immediately
-            SearchQueryEntity query = findQueryByKeyword(keyword)
-                    .orElseGet(() -> fallbackQuery(keyword));
+            SearchQueryEntity query = findQueryByKeyword(normalizedKeyword)
+                    .orElseGet(() -> fallbackQuery(normalizedKeyword));
             
             String queryIdStr = query.getId() != null ? query.getId().toString() : java.util.UUID.randomUUID().toString();
 
@@ -92,17 +93,17 @@ public class StreamingAnalysisService {
             ));
 
             // Stage 3 & 4: Fetch and send keywords metrics and news
-            if (snapshot != null) {
+            if (snapshot != null && isSnapshotFresh) {
                 List<FrontendDtos.KeywordMetric> keywords = snapshotKeywordRepository
                         .findBySnapshotId(snapshot.getId()).stream()
                         .sorted(Comparator.comparing(SnapshotKeywordEntity::getMentionCount).reversed())
                         .limit(4)
                         .map(sk -> {
                             int hash = Math.abs(sk.getKeyword().hashCode());
-                            double pseudoEngagement = 0.05 + (hash % 100) / 1000.0;
-                            long pseudoViews = sk.getMentionCount() * 1500L + (hash % 5000);
-                            long pseudoComments = pseudoViews / 50;
-                            return new FrontendDtos.KeywordMetric(sk.getKeyword(), sk.getMentionCount(), pseudoViews, pseudoComments, 0L, pseudoEngagement);
+                            double engagement = sk.getAvgEngagement() != null ? sk.getAvgEngagement() : (0.05 + (hash % 100) / 1000.0);
+                            long views = sk.getTotalViews() != null ? sk.getTotalViews() : (sk.getMentionCount() * 1500L + (hash % 5000));
+                            long comments = sk.getTotalComments() != null ? sk.getTotalComments() : (views / 50);
+                            return new FrontendDtos.KeywordMetric(sk.getKeyword(), sk.getMentionCount(), views, comments, 0L, engagement);
                         })
                         .toList();
 
@@ -129,10 +130,10 @@ public class StreamingAnalysisService {
                 ));
                 Thread.sleep(200);
             } else {
-                // No snapshot → Fetch live data via streaming instead of waiting for traditional fetch
+                // No snapshot or snapshot is stale → Fetch live data via streaming instead of waiting for traditional fetch
                 sendEvent(emitter, "progress", Map.of("message", "Đang lấy dữ liệu thị trường trực tiếp...", "stage", "2.5/5"));
                 
-                FrontendDtos.AnalysisResponse response = frontendService.getAnalysis(keyword);
+                FrontendDtos.AnalysisResponse response = frontendService.getAnalysis(normalizedKeyword);
                 
                 sendEvent(emitter, "keywords", Map.of(
                         "keywords", response.relatedKeywords(),

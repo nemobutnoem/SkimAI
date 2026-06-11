@@ -648,7 +648,111 @@ public class DefaultAiProvider implements AiProvider {
         return "neutral";
     }
 
+    @Override
+    public String normalizeKeyword(String keyword) {
+        if (keyword == null || keyword.isBlank()) {
+            return "";
+        }
+        
+        String clean = keyword.trim().toLowerCase(Locale.ROOT);
+        
+        // Hardcoded common rules for instant response
+        if (clean.equals("ai") || clean.equals("artificial intelligence") || clean.equals("tri tue nhan tao") || clean.equals("trí tuệ nhân tạo")) {
+            return "artificial intelligence";
+        }
+        if (clean.equals("bike") || clean.equals("electric bike") || clean.equals("xe dap dien") || clean.equals("xe đạp điện") || clean.equals("e-bike")) {
+            return "electric bike";
+        }
 
+        String activeProvider = systemSettingRepository.findById("ai_provider")
+                .map(SystemSettingEntity::getValue)
+                .map(String::toUpperCase)
+                .orElse("GEMINI");
+
+        String activeModel = systemSettingRepository.findById("ai_model")
+                .map(SystemSettingEntity::getValue)
+                .filter(v -> !v.isBlank())
+                .orElse(this.model);
+
+        String activeApiKey = systemSettingRepository.findById("ai_api_key")
+                .map(SystemSettingEntity::getValue)
+                .filter(v -> !v.isBlank())
+                .orElse(this.apiKey);
+
+        String activeEndpoint = systemSettingRepository.findById("ai_endpoint")
+                .map(SystemSettingEntity::getValue)
+                .filter(v -> !v.isBlank())
+                .orElse("");
+
+        if (activeApiKey.isBlank()) {
+            return clean;
+        }
+
+        String prompt = String.format(
+                """
+                You are a search query normalizer. Your job is to translate and map the given search keyword/phrase to a standard, canonical, normalized topic name.
+                The canonical name should be the most common standard English name or standard noun phrase representing the core subject.
+                
+                Rules:
+                - Keep it lowercase.
+                - Do not include explanation, punctuation, or extra words.
+                - Return only the normalized string.
+                
+                Input Keyword: "%s"
+                Normalized Canonical Keyword:
+                """,
+                keyword
+        );
+
+        try {
+            String responseText = "";
+            if ("OPENAI".equalsIgnoreCase(activeProvider)) {
+                Map<String, Object> requestBody = Map.of(
+                        "model", activeModel,
+                        "messages", List.of(Map.of("role", "user", "content", prompt)),
+                        "temperature", 0.0
+                );
+
+                HttpHeaders headers = new HttpHeaders();
+                headers.setContentType(MediaType.APPLICATION_JSON);
+                headers.setBearerAuth(activeApiKey);
+                HttpEntity<Map<String, Object>> requestEntity = new HttpEntity<>(requestBody, headers);
+
+                String url = activeEndpoint.isBlank() ? "https://api.openai.com/v1/chat/completions" : activeEndpoint;
+                if (!activeEndpoint.isBlank() && !url.toLowerCase(Locale.ROOT).contains("/chat/completions")) {
+                    url = url.endsWith("/") ? url + "chat/completions" : url + "/chat/completions";
+                }
+                ResponseEntity<String> response = restTemplate.postForEntity(url, requestEntity, String.class);
+                JsonNode root = mapper.readTree(response.getBody());
+                responseText = root.path("choices").get(0).path("message").path("content").asText();
+            } else {
+                Map<String, Object> requestBody = Map.of(
+                        "contents", List.of(Map.of("parts", List.of(Map.of("text", prompt)))),
+                        "generationConfig", Map.of("temperature", 0.0));
+
+                HttpHeaders headers = new HttpHeaders();
+                headers.setContentType(MediaType.APPLICATION_JSON);
+                HttpEntity<Map<String, Object>> requestEntity = new HttpEntity<>(requestBody, headers);
+
+                String url;
+                if (activeEndpoint.isBlank()) {
+                    url = "https://generativelanguage.googleapis.com/v1beta/models/" + activeModel + ":generateContent?key=" + activeApiKey;
+                } else {
+                    url = activeEndpoint.endsWith("/") ? activeEndpoint + activeModel + ":generateContent?key=" + activeApiKey 
+                            : activeEndpoint + "/" + activeModel + ":generateContent?key=" + activeApiKey;
+                }
+
+                ResponseEntity<String> response = restTemplate.postForEntity(url, requestEntity, String.class);
+                JsonNode root = mapper.readTree(response.getBody());
+                responseText = root.path("candidates").get(0).path("content").path("parts").get(0).path("text").asText();
+            }
+
+            return responseText.trim().replaceAll("\"", "").toLowerCase(Locale.ROOT);
+        } catch (Exception e) {
+            System.err.println("[WARNING] Keyword normalization failed: " + e.getMessage());
+            return clean;
+        }
+    }
 
     private record DeepInsightBlueprint(
             String keyword,

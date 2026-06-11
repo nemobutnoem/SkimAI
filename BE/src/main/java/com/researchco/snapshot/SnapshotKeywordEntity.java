@@ -40,4 +40,13 @@ public class SnapshotKeywordEntity {
 
     @Column(name = "mention_count", nullable = false)
     private Integer mentionCount;
+
+    @Column(name = "total_views")
+    private Long totalViews;
+
+    @Column(name = "total_comments")
+    private Long totalComments;
+
+    @Column(name = "avg_engagement")
+    private Double avgEngagement;
 }

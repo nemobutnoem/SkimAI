@@ -16,6 +16,8 @@ public interface AiProvider {
 
     List<LiveTrendSignal> generateLiveTrends(Map<String, List<String>> marketSeeds);
 
+    String normalizeKeyword(String keyword);
+
     record LiveTrendSignal(
             String market,
             String keyword,
