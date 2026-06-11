@@ -168,10 +168,16 @@ function buildOverallRead(data, sourceRows, timelinePoints) {
   if (firstTimeline != null && lastTimeline != null) {
     if (lastTimeline > firstTimeline) marketState = 'tăng trưởng'
     if (lastTimeline < firstTimeline) marketState = 'giảm sút'
-  } else if (sourceRows.some((row) => row.direction === 'tăng')) {
-    marketState = 'tăng trưởng'
-  } else if (sourceRows.some((row) => row.direction === 'giảm')) {
-    marketState = 'giảm sút'
+  } else {
+    const upCount = sourceRows.filter((row) => row.direction === 'tăng').length
+    const downCount = sourceRows.filter((row) => row.direction === 'giảm').length
+    if (upCount > downCount) {
+      marketState = 'tăng trưởng'
+    } else if (downCount > upCount) {
+      marketState = 'giảm sút'
+    } else {
+      marketState = 'ổn định'
+    }
   }
 
   const viewScore = clamp(Math.round(Math.log10(Math.max(1, totalViews)) * 8), 0, 30)
