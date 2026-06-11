@@ -63,33 +63,35 @@ export function AdminUsersPage() {
       </Card>
 
       <Card title={`Người dùng (${users.length})`}>
-        {loading ? <div className="hint">Đang tải danh sách người dùng...</div> : null}
-        <table className="table">
-          <thead>
-            <tr>
-              <th>Tên</th>
-              <th>Email</th>
-              <th>Vai trò</th>
-              <th>Loại tài khoản</th>
-              <th>Trạng thái</th>
-              <th>Mức sử dụng</th>
-            </tr>
-          </thead>
-          <tbody>
-            {users.map((user) => (
-              <tr key={user.id}>
-                <td>{user.name}</td>
-                <td>{user.email}</td>
-                <td>{user.role === 'admin' || user.role === 'ADMIN' ? 'Quản trị viên' : user.role === 'user' || user.role === 'USER' || user.role === 'Member' || user.role === 'Thành viên' ? 'Thành viên' : user.role}</td>
-                <td>{user.type?.toUpperCase() === 'FREE' ? 'Miễn phí' : user.type?.toUpperCase() === 'STARTER' ? 'Gói Starter' : user.type?.toUpperCase() === 'TEAM' ? 'Gói Team' : user.type?.toUpperCase() === 'ENTERPRISE' ? 'Gói Enterprise' : user.type}</td>
-                <td>
-                  <span className={['badge', `badge-${user.status}`].join(' ')}>{user.status === 'active' ? 'Đang hoạt động' : user.status === 'suspended' ? 'Bị khóa' : user.status}</span>
-                </td>
-                <td>{user.usage}</td>
+        {loading ? <div className="hint" style={{ marginBottom: 12 }}>Đang tải danh sách người dùng...</div> : null}
+        <div style={{ maxHeight: '500px', overflowY: 'auto' }}>
+          <table className="table">
+            <thead>
+              <tr style={{ position: 'sticky', top: 0, backgroundColor: 'var(--card-bg, #fff)', zIndex: 1, boxShadow: '0 1px 0 var(--border-color)' }}>
+                <th>Tên</th>
+                <th>Email</th>
+                <th>Vai trò</th>
+                <th>Loại tài khoản</th>
+                <th>Trạng thái</th>
+                <th>Mức sử dụng</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {users.map((user) => (
+                <tr key={user.id}>
+                  <td>{user.name}</td>
+                  <td>{user.email}</td>
+                  <td>{user.role === 'admin' || user.role === 'ADMIN' ? 'Quản trị viên' : user.role === 'user' || user.role === 'USER' || user.role === 'Member' || user.role === 'Thành viên' ? 'Thành viên' : user.role}</td>
+                  <td>{user.type?.toUpperCase() === 'FREE' ? 'Miễn phí' : user.type?.toUpperCase() === 'STARTER' ? 'Gói Starter' : user.type?.toUpperCase() === 'TEAM' ? 'Gói Team' : user.type?.toUpperCase() === 'ENTERPRISE' ? 'Gói Enterprise' : user.type}</td>
+                  <td>
+                    <span className={['badge', `badge-${user.status}`].join(' ')}>{user.status === 'active' ? 'Đang hoạt động' : user.status === 'suspended' ? 'Bị khóa' : user.status}</span>
+                  </td>
+                  <td>{user.usage}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       </Card>
     </div>
   )

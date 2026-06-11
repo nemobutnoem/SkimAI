@@ -44,30 +44,32 @@ export function AdminRevenuePage() {
           <div className="hint" style={{ marginBottom: 12 }}>
             Giao dịch gần đây nhất từ luồng thanh toán.
           </div>
-          <table className="table">
-            <thead>
-              <tr>
-                <th>Người dùng</th>
-                <th>Sự kiện</th>
-                <th>Gói dịch vụ</th>
-                <th>Số tiền</th>
-                <th>Trạng thái</th>
-              </tr>
-            </thead>
-            <tbody>
-              {(data?.events ?? []).map((event) => (
-                <tr key={event.id}>
-                  <td>{event.user}</td>
-                  <td>{event.event === 'checkout_completed' ? 'Thanh toán hoàn tất' : event.event === 'checkout_failed' ? 'Thanh toán thất bại' : event.event === 'subscription_cancelled' ? 'Hủy gói dịch vụ' : event.event}</td>
-                  <td>{event.plan?.toUpperCase() === 'FREE' ? 'Miễn phí' : event.plan?.toUpperCase() === 'STARTER' ? 'Gói Starter' : event.plan?.toUpperCase() === 'TEAM' ? 'Gói Team' : event.plan?.toUpperCase() === 'ENTERPRISE' ? 'Gói Enterprise' : event.plan}</td>
-                  <td>{event.amount}</td>
-                  <td>
-                    <span className={['badge', `badge-${event.status}`].join(' ')}>{event.status === 'success' ? 'Thành công' : event.status === 'failed' ? 'Thất bại' : event.status}</span>
-                  </td>
+          <div style={{ maxHeight: '400px', overflowY: 'auto' }}>
+            <table className="table">
+              <thead>
+                <tr style={{ position: 'sticky', top: 0, backgroundColor: 'var(--card-bg, #fff)', zIndex: 1, boxShadow: '0 1px 0 var(--border-color)' }}>
+                  <th>Người dùng</th>
+                  <th>Sự kiện</th>
+                  <th>Gói dịch vụ</th>
+                  <th>Số tiền</th>
+                  <th>Trạng thái</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {(data?.events ?? []).map((event) => (
+                  <tr key={event.id}>
+                    <td>{event.user}</td>
+                    <td>{event.event === 'checkout_completed' ? 'Thanh toán hoàn tất' : event.event === 'checkout_failed' ? 'Thanh toán thất bại' : event.event === 'subscription_cancelled' ? 'Hủy gói dịch vụ' : event.event}</td>
+                    <td>{event.plan?.toUpperCase() === 'FREE' ? 'Miễn phí' : event.plan?.toUpperCase() === 'STARTER' ? 'Gói Starter' : event.plan?.toUpperCase() === 'TEAM' ? 'Gói Team' : event.plan?.toUpperCase() === 'ENTERPRISE' ? 'Gói Enterprise' : event.plan}</td>
+                    <td>{event.amount}</td>
+                    <td>
+                      <span className={['badge', `badge-${event.status}`].join(' ')}>{event.status === 'success' ? 'Thành công' : event.status === 'failed' ? 'Thất bại' : event.status}</span>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </Card>
       </div>
     </div>

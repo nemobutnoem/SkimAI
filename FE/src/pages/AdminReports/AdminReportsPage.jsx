@@ -91,7 +91,7 @@ export function AdminReportsPage() {
 
       <div className="grid admin-columns">
         <Card title="Danh sách Báo cáo">
-          <div className="stack">
+          <div className="stack" style={{ maxHeight: '500px', overflowY: 'auto', paddingRight: '4px' }}>
             {filteredReports.map((report) => (
               <button
                 key={report.id}

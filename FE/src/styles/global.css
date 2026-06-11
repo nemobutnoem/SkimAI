@@ -2759,3 +2759,8 @@ code {
 @media (max-width: 900px) {
   .login-visual { display: none; }
 }
+
+/* Feedback Inbox */
+.feedback-inbox-row:hover {
+  background-color: var(--gray-50, #f8f9fa) !important;
+}

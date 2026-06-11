@@ -112,7 +112,7 @@ export function DashboardPage() {
       </div>
 
       <Card title="Báo cáo & Phân tích Chuyên sâu đã lưu" className="dashboard-section-card">
-        <div className="dashboard-recent-list">
+        <div className="dashboard-recent-list" style={{ maxHeight: '350px', overflowY: 'auto', paddingRight: '4px' }}>
           {reports.length ? (
             reports.map((item) => {
               const isDeepInsight = item.status === 'DEEP_INSIGHT';
