@@ -33,3 +33,10 @@ services:
         value: "5"
       - key: HOME_LIVE_TRENDS_REFRESH_MS
         value: "3600000"
+      - key: PAYOS_CLIENT_ID
+        sync: false
+      - key: PAYOS_API_KEY
+        sync: false
+      - key: PAYOS_CHECKSUM_KEY
+        sync: false
+
