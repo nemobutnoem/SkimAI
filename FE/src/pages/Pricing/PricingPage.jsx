@@ -83,10 +83,17 @@ export function PricingPage() {
         provider: 'BANK' // Directly use PayOS/VietQR
       })
       
+      if (result.status === 'success') {
+        setNotice({ tone: 'success', text: result.message || 'Kích hoạt gói thành công!' })
+        await loadPricing()
+        return
+      }
+
       if (result.checkoutUrl && result.checkoutUrl.startsWith('http') && !result.checkoutUrl.includes('img.vietqr.io')) {
         window.location.href = result.checkoutUrl
         return
       }
+
 
       setQrDetails({
         provider: 'BANK',

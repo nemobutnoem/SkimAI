@@ -750,6 +750,51 @@ public class FrontendService {
         String paymentProvider = request.provider() == null ? "STRIPE" : request.provider().trim().toUpperCase(Locale.ROOT);
         UserEntity user = preferredUser();
 
+        if ("FREE".equalsIgnoreCase(plan.getName())) {
+            LocalDateTime now = LocalDateTime.now();
+            List<UserSubscriptionEntity> activeSubscriptions = userSubscriptionRepository.findByUserAndStatus(user, "ACTIVE");
+            for (UserSubscriptionEntity active : activeSubscriptions) {
+                active.setStatus("ENDED");
+                active.setEndDate(now);
+            }
+            userSubscriptionRepository.saveAll(activeSubscriptions);
+
+            UserSubscriptionEntity freeSubscription = UserSubscriptionEntity.builder()
+                    .user(user)
+                    .plan(plan)
+                    .status("ACTIVE")
+                    .startDate(now)
+                    .endDate(now.plusYears(100))
+                    .build();
+            userSubscriptionRepository.save(freeSubscription);
+
+            PaymentTransactionEntity payment = PaymentTransactionEntity.builder()
+                    .user(user)
+                    .plan(plan)
+                    .billingCycle(cycle)
+                    .provider("NONE")
+                    .amount(java.math.BigDecimal.ZERO)
+                    .status("PAID")
+                    .completedAt(now)
+                    .build();
+            paymentTransactionRepository.save(payment);
+
+            return new FrontendDtos.PricingCheckoutResponse(
+                    "success",
+                    "Đã chuyển sang gói Miễn Phí thành công.",
+                    plan.getName().toLowerCase(Locale.ROOT),
+                    titleCase(plan.getName()),
+                    cycle,
+                    "inv_" + payment.getId().toString().substring(0, 8),
+                    "0 đ",
+                    now.plusYears(100).toString(),
+                    null,
+                    payment.getId().toString(),
+                    null, null, null, null, null
+            );
+        }
+
+
         if ("MOMO".equalsIgnoreCase(paymentProvider)) {
             PaymentTransactionEntity payment = PaymentTransactionEntity.builder()
                     .user(user)
