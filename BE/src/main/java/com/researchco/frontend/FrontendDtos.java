@@ -126,7 +126,8 @@ public class FrontendDtos {
             String title,
             String metric,
             String signal,
-            String url
+            String url,
+            String sentiment
     ) {
     }
 

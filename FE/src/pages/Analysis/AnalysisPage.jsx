@@ -42,13 +42,16 @@ function canonicalSource(value) {
   if (lower.includes('facebook')) return 'Facebook'
   if (lower.includes('tiktok')) return 'TikTok'
   if (lower.includes('news')) return 'Google News'
+  if (lower.includes('reddit')) return 'Reddit'
+  if (lower.includes('twitter') || lower.includes('x.com')) return 'Twitter/X'
+  if (lower.includes('github')) return 'GitHub'
   return normalizeSourceName(value)
 }
 
 function inferDirection(text = '', count = 0) {
   const lower = text.toLowerCase()
-  if (/(decrease|decline|drop|down|fall|giam|giảm|negative|weak)/.test(lower)) return 'giảm'
-  if (/(increase|growth|rise|up|spike|positive|strong|tang|tăng|\+)/.test(lower)) return 'tăng'
+  if (/(decrease|decline|drop|down|fall|giam|giảm|negative|weak|lùi|giảm sút|sa sút)/.test(lower)) return 'giảm'
+  if (/(increase|growth|rise|up|spike|positive|strong|tang|tăng|\+|phát triển|bùng nổ|hot|thu hút|quan tâm)/.test(lower)) return 'tăng'
   if (count >= 3) return 'ổn định'
   return 'chưa rõ'
 }
@@ -111,7 +114,16 @@ function buildSourceTrendRows(data, evidenceItems) {
       current.count += 1
       if (item?.title) current.titles.push(item.title)
       current.signalText = [current.signalText, item?.metric, item?.signal, item?.title].filter(Boolean).join(' ')
-      current.direction = inferDirection(current.signalText, current.count)
+      
+      let itemDirection = 'chưa rõ'
+      if (item?.sentiment === 'POSITIVE') itemDirection = 'tăng'
+      else if (item?.sentiment === 'NEGATIVE') itemDirection = 'giảm'
+      else if (item?.sentiment === 'NEUTRAL') itemDirection = 'ổn định'
+      else itemDirection = inferDirection(current.signalText, current.count)
+
+      if (current.direction === 'chưa rõ' || itemDirection !== 'chưa rõ') {
+        current.direction = itemDirection
+      }
       grouped.set(source, current)
     })
 
@@ -134,7 +146,7 @@ function buildSourceTrendRows(data, evidenceItems) {
     .map((row) => ({
       ...row,
       summary: row.count
-        ? `${row.count} tín hiệu được ghi nhận. ${row.titles[0] || 'Có bằng chứng nguồn nhưng chưa có tiêu đề nổi bật.'}`
+        ? `${row.count > 1 ? `Ghi nhận ${row.count} thảo luận. ` : ''}Nội dung nổi bật: ${row.titles[0] || 'Có bằng chứng nguồn nhưng chưa có tiêu đề nổi bật.'}`
         : noDataFor(`xu hướng từ ${row.source}`),
     }))
 }

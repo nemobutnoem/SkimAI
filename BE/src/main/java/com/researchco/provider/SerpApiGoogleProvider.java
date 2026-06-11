@@ -156,13 +156,21 @@ public class SerpApiGoogleProvider implements SearchProvider {
     }
 
     private String inferSourceName(String link, JsonNode result) {
-        String displayed = text(result, "displayed_link", "");
-        if (!displayed.isBlank()) {
-            return displayed;
+        if (link == null || link.isBlank()) {
+            return "Google Search";
         }
+        try {
+            java.net.URI uri = new java.net.URI(link);
+            String host = uri.getHost();
+            if (host != null) {
+                return host.startsWith("www.") ? host.substring(4) : host;
+            }
+        } catch (Exception ignored) {}
+
         String normalized = link.replaceFirst("^https?://", "");
         int slash = normalized.indexOf('/');
-        return slash > 0 ? normalized.substring(0, slash) : normalized;
+        String domain = slash > 0 ? normalized.substring(0, slash) : normalized;
+        return domain.startsWith("www.") ? domain.substring(4) : domain;
     }
 
     private String inferAuthorName(JsonNode result) {

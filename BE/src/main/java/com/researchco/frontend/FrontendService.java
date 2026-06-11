@@ -646,7 +646,8 @@ public class FrontendService {
                     "Không có nguồn cấp trực tiếp khả dụng",
                     "0 lượt xem",
                     "Hãy mở rộng nguồn tin hoặc thử từ khóa khác.",
-                    null
+                    null,
+                    "NEUTRAL"
             ));
         }
 
@@ -666,7 +667,8 @@ public class FrontendService {
                             firstMeaningfulText(item.title(), "Nguồn không có tiêu đề"),
                             String.format("Lượt xem %s | Lượt thích %s | Bình luận %s", formatCompact(views), formatCompact(likes), formatCompact(comments)),
                             cleanSnippet(item.snippet(), item.title()),
-                            extractEvidenceUrl(item)
+                            extractEvidenceUrl(item),
+                            item.sentimentLabel() != null ? item.sentimentLabel() : "NEUTRAL"
                     );
                 })
                 .toList();
