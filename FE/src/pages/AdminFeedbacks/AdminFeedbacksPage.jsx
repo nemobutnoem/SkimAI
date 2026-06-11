@@ -104,7 +104,6 @@ export function AdminFeedbacksPage() {
             </div>
           </Card>
         ) : (
-        ) : (
           <div style={{ 
             border: '1px solid var(--border-color)', 
             borderRadius: '12px', 
