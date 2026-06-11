@@ -1396,7 +1396,7 @@ public class FrontendService {
         List<FrontendDtos.KeywordMetric> relatedKeywords = candidateStats.entrySet().stream()
                 .filter(entry -> entry.getKey().length() >= 4)
                 .filter(entry -> !stopWords.contains(entry.getKey()))
-                .filter(entry -> !entry.getKey().equals(keywordLower))
+                .filter(entry -> !isPermutationOfSearchKeyword(entry.getKey(), keywordLower))
                 .filter(entry -> isTokenMetricMeaningful(entry.getValue()))
                 .sorted((a, b) -> Long.compare(scoreKeywordStats(b.getValue()), scoreKeywordStats(a.getValue())))
                 .limit(6)
@@ -2337,5 +2337,27 @@ public class FrontendService {
             sb.append(String.format("%02x", b));
         }
         return sb.toString();
+    }
+
+    private boolean isPermutationOfSearchKeyword(String phrase, String searchKeyword) {
+        if (phrase == null || searchKeyword == null) {
+            return false;
+        }
+        String p = phrase.trim().toLowerCase(Locale.ROOT);
+        String s = searchKeyword.trim().toLowerCase(Locale.ROOT);
+        if (p.equals(s)) {
+            return true;
+        }
+        Set<String> searchWords = Set.of(s.split("\\s+"));
+        String[] phraseWords = p.split("\\s+");
+        
+        boolean allWordsInSearch = true;
+        for (String word : phraseWords) {
+            if (!searchWords.contains(word)) {
+                allWordsInSearch = false;
+                break;
+            }
+        }
+        return allWordsInSearch;
     }
 }
