@@ -1,10 +1,15 @@
 import { useEffect, useState } from 'react'
-import { useSearchParams } from 'react-router-dom'
+import { useSearchParams, useNavigate } from 'react-router-dom'
 import { Button } from '../../components/Button'
 import { Card } from '../../components/Card'
 import { appApi } from '../../services/appApi'
+import { useAuth } from '../../hooks/useAuth'
+import { ROUTES } from '../../constants/routes'
 
 export function PricingPage() {
+  const navigate = useNavigate()
+  const { isAuthenticated } = useAuth()
+  
   const [cycle, setCycle] = useState('monthly')
   const [plans, setPlans] = useState([])
   const [submittingPlanId, setSubmittingPlanId] = useState(null)
@@ -60,6 +65,11 @@ export function PricingPage() {
   }, [searchParams, setSearchParams])
 
   const handleCheckout = async (plan) => {
+    if (!isAuthenticated) {
+      navigate(ROUTES.LOGIN, { state: { from: window.location.pathname } })
+      return
+    }
+
     if (plan.id === 'enterprise') {
       setShowEnterpriseForm(true)
       return

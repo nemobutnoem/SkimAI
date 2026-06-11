@@ -16,6 +16,8 @@ import { HomePage } from '../pages/Home/HomePage'
 import { LoginPage } from '../pages/Login/LoginPage'
 import { NotFoundPage } from '../pages/NotFound/NotFoundPage'
 import { PricingPage } from '../pages/Pricing/PricingPage'
+import { SupportPage } from '../pages/Support/SupportPage'
+import { AdminFeedbacksPage } from '../pages/AdminFeedbacks/AdminFeedbacksPage'
 import { PrivateRoute } from './PrivateRoute'
 import { useAuth } from '../hooks/useAuth'
 
@@ -33,6 +35,7 @@ export function AppRouter() {
       <Route element={<SharedLayout />}>
         <Route path={ROUTES.ANALYSIS} element={<AnalysisPage />} />
         <Route path={ROUTES.DEEP_INSIGHT} element={<DeepInsightPage />} />
+        <Route path={ROUTES.SUPPORT} element={<SupportPage />} />
       </Route>
 
       {/* Login (no layout) */}
@@ -53,6 +56,7 @@ export function AppRouter() {
           <Route path={ROUTES.ADMIN_REPORTS} element={<AdminReportsPage />} />
           <Route path={ROUTES.ADMIN_USERS} element={<AdminUsersPage />} />
           <Route path={ROUTES.ADMIN_REVENUE} element={<AdminRevenuePage />} />
+          <Route path={ROUTES.ADMIN_FEEDBACKS} element={<AdminFeedbacksPage />} />
           <Route path={ROUTES.ADMIN_SETTINGS} element={<AdminSettingsPage />} />
         </Route>
       </Route>

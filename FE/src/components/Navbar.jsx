@@ -9,6 +9,7 @@ const PUBLIC_LINKS = [
   { to: ROUTES.HOME, label: 'Tổng quan' },
   { to: ROUTES.ANALYSIS, label: 'Nghiên cứu thị trường' },
   { to: ROUTES.PRICING, label: 'Bảng giá' },
+  { to: ROUTES.SUPPORT, label: 'Hỗ trợ' },
 ]
 
 const USER_LINKS = [
@@ -17,6 +18,7 @@ const USER_LINKS = [
   { to: ROUTES.ANALYSIS, label: 'Nghiên cứu thị trường' },
   { to: ROUTES.DEEP_INSIGHT, label: 'Deep Insight' },
   { to: ROUTES.PRICING, label: 'Bảng giá' },
+  { to: ROUTES.SUPPORT, label: 'Hỗ trợ' },
   { to: ROUTES.ACCOUNT, label: 'Tài khoản' },
 ]
 
@@ -25,6 +27,7 @@ const ADMIN_LINKS = [
   { to: ROUTES.ADMIN_REPORTS, label: 'Báo cáo' },
   { to: ROUTES.ADMIN_USERS, label: 'Người dùng' },
   { to: ROUTES.ADMIN_REVENUE, label: 'Doanh thu' },
+  { to: ROUTES.ADMIN_FEEDBACKS, label: 'Phản hồi' },
   { to: ROUTES.ADMIN_SETTINGS, label: 'Cài đặt' },
 ]
 
@@ -150,7 +153,6 @@ export function Navbar() {
               ← Giao diện User
             </NavLink>
             <button className="icon-btn" title="Tìm kiếm">🔍</button>
-            <button className="icon-btn" title="Thông báo">🔔</button>
             <AvatarDropdown user={user} isAdmin={isAdmin} isOnAdminPage={isOnAdminPage} onLogout={handleLogout} />
           </div>
         </div>
@@ -197,7 +199,6 @@ export function Navbar() {
           </nav>
 
           <div className="app-header-right">
-            <button className="icon-btn" title="Thông báo">🔔</button>
             <AvatarDropdown user={user} isAdmin={isAdmin} isOnAdminPage={isOnAdminPage} onLogout={handleLogout} />
           </div>
         </div>

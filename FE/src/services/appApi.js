@@ -157,6 +157,9 @@ const realApi = {
   contactSales(payload) {
     return request('/pricing/contact-sales', { method: 'POST', body: payload })
   },
+  submitFeedback(payload) {
+    return request('/support/feedback', { method: 'POST', body: payload })
+  },
   confirmPricing(providerSessionId) {
     return request('/pricing/confirm', {
       method: 'POST',
@@ -208,6 +211,15 @@ const realApi = {
   },
   updateAdminSettings(payload) {
     return request('/admin/settings', { method: 'PUT', body: payload })
+  },
+  getAdminFeedbacks() {
+    return request('/admin/feedbacks')
+  },
+  updateFeedbackStatus(feedbackId, status) {
+    return request(`/admin/feedbacks/${feedbackId}/status`, {
+      method: 'PUT',
+      body: { status }
+    })
   },
   getAdminUsersMetrics() {
     return request('/admin/users/metrics')

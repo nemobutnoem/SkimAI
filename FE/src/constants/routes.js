@@ -6,9 +6,11 @@ export const ROUTES = {
   DEEP_INSIGHT: '/deep-insight',
   PRICING: '/pricing',
   ACCOUNT: '/account',
+  SUPPORT: '/support',
   ADMIN_DASHBOARD: '/admin/dashboard',
   ADMIN_REPORTS: '/admin/reports',
   ADMIN_USERS: '/admin/users',
   ADMIN_REVENUE: '/admin/revenue',
+  ADMIN_FEEDBACKS: '/admin/feedbacks',
   ADMIN_SETTINGS: '/admin/settings',
 }

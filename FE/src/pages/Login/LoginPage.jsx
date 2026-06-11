@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useLocation } from 'react-router-dom'
 import { ROUTES } from '../../constants/routes'
 import { useAuth } from '../../hooks/useAuth'
 
@@ -29,6 +29,7 @@ function loadGoogleIdentityScript() {
 
 export function LoginPage() {
   const navigate = useNavigate()
+  const location = useLocation()
   const { loginWithGoogle, isAuthenticated, user } = useAuth()
 
   const [error, setError] = useState('')
@@ -39,9 +40,12 @@ export function LoginPage() {
 
   useEffect(() => {
     if (isAuthenticated) {
-      navigate(user?.role === 'admin' ? ROUTES.ADMIN_DASHBOARD : ROUTES.DASHBOARD, { replace: true })
+      const target = user?.role === 'admin' 
+        ? ROUTES.ADMIN_DASHBOARD 
+        : (location.state?.from || ROUTES.DASHBOARD)
+      navigate(target, { replace: true })
     }
-  }, [isAuthenticated, user, navigate])
+  }, [isAuthenticated, user, navigate, location.state])
 
   useEffect(() => {
     const clientId = import.meta.env.VITE_GOOGLE_CLIENT_ID
@@ -71,11 +75,10 @@ export function LoginPage() {
             setIsSubmitting(true)
             try {
               const session = await loginWithGoogle({ credential: response?.credential })
-              if (session?.user?.role === 'admin') {
-                navigate(ROUTES.ADMIN_DASHBOARD)
-              } else {
-                navigate(ROUTES.DASHBOARD)
-              }
+              const target = session?.user?.role === 'admin' 
+                ? ROUTES.ADMIN_DASHBOARD 
+                : (location.state?.from || ROUTES.DASHBOARD)
+              navigate(target, { replace: true })
             } catch (err) {
               setError(err?.message ?? 'Đăng nhập Google thất bại')
             } finally {
