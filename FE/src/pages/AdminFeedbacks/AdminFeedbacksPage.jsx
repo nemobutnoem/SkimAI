@@ -9,6 +9,7 @@ export function AdminFeedbacksPage() {
   const [error, setError] = useState(null)
   const [statusFilter, setStatusFilter] = useState('ALL')
   const [expandedId, setExpandedId] = useState(null)
+  const [replyText, setReplyText] = useState({})
 
   const loadFeedbacks = async () => {
     setIsLoading(true)
@@ -254,12 +255,35 @@ export function AdminFeedbacksPage() {
                           </div>
                         </div>
 
+                        {/* Admin Reply Section */}
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                          <label style={{ fontSize: '13px', fontWeight: '600', color: 'var(--text-secondary)' }}>
+                            Phản hồi trực tiếp của Admin (Sẽ hiển thị trên lịch sử của User):
+                          </label>
+                          <textarea
+                            rows="3"
+                            value={replyText[f.id] !== undefined ? replyText[f.id] : (f.adminReply ?? '')}
+                            onChange={(e) => setReplyText(prev => ({ ...prev, [f.id]: e.target.value }))}
+                            placeholder="Nhập nội dung phản hồi tại đây để lưu lại và phản hồi cho người dùng..."
+                            style={{
+                              padding: '12px',
+                              borderRadius: '8px',
+                              border: '1px solid var(--border-color)',
+                              resize: 'vertical',
+                              fontSize: '13px',
+                              fontFamily: 'inherit',
+                              background: 'white'
+                            }}
+                          />
+                        </div>
+
                         {/* Actions block */}
                         <div style={{ 
                           display: 'flex', 
                           justifyContent: 'flex-end', 
                           gap: '12px',
-                          marginTop: '4px'
+                          marginTop: '4px',
+                          alignItems: 'center'
                         }}>
                           <Button
                             variant="secondary"
@@ -268,12 +292,28 @@ export function AdminFeedbacksPage() {
                           >
                             {f.status === 'PENDING' ? '✓ Đánh dấu đã giải quyết' : '⟲ Đánh dấu chưa xử lý'}
                           </Button>
+                          <Button
+                            variant="primary"
+                            onClick={async () => {
+                              const text = replyText[f.id] !== undefined ? replyText[f.id] : (f.adminReply ?? '')
+                              try {
+                                await appApi.updateFeedbackStatus(f.id, f.status, text)
+                                setFeedbacks(prev => prev.map(item => item.id === f.id ? { ...item, adminReply: text } : item))
+                                alert('Đã lưu phản hồi trực tiếp thành công!')
+                              } catch (err) {
+                                alert('Lỗi khi lưu phản hồi: ' + err.message)
+                              }
+                            }}
+                            style={{ fontSize: '13px', padding: '6px 14px' }}
+                          >
+                            💾 Lưu phản hồi
+                          </Button>
                           <a href={getMailtoLink(f)} style={{ textDecoration: 'none' }}>
                             <Button
-                              variant="primary"
+                              variant="secondary"
                               style={{ fontSize: '13px', padding: '6px 14px', display: 'flex', alignItems: 'center', gap: '6px' }}
                             >
-                              ✉️ Phản hồi qua Email
+                              ✉️ Gửi Email phản hồi
                             </Button>
                           </a>
                         </div>

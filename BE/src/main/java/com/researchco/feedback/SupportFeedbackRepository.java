@@ -9,4 +9,5 @@ import java.util.UUID;
 @Repository
 public interface SupportFeedbackRepository extends JpaRepository<SupportFeedbackEntity, UUID> {
     List<SupportFeedbackEntity> findAllByOrderByCreatedAtDesc();
+    List<SupportFeedbackEntity> findAllByUserIdOrderByCreatedAtDesc(UUID userId);
 }

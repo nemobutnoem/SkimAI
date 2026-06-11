@@ -47,6 +47,7 @@ public class SupportFeedbackController {
             String title,
             String content,
             String status,
+            String adminReply,
             java.time.LocalDateTime createdAt
     ) {
         public static FeedbackResponse fromEntity(SupportFeedbackEntity entity) {
@@ -59,6 +60,7 @@ public class SupportFeedbackController {
                     entity.getTitle(),
                     entity.getContent(),
                     entity.getStatus(),
+                    entity.getAdminReply(),
                     entity.getCreatedAt()
             );
         }
@@ -118,15 +120,31 @@ public class SupportFeedbackController {
     @PutMapping("/admin/feedbacks/{id}/status")
     public FeedbackResponse updateStatus(@PathVariable("id") UUID id, @RequestBody Map<String, String> body) {
         String nextStatus = body.get("status");
-        if (nextStatus == null || (!nextStatus.equalsIgnoreCase("PENDING") && !nextStatus.equalsIgnoreCase("RESOLVED"))) {
+        if (nextStatus != null && !nextStatus.equalsIgnoreCase("PENDING") && !nextStatus.equalsIgnoreCase("RESOLVED")) {
             throw new AppException(HttpStatus.BAD_REQUEST, "Invalid status");
         }
 
         SupportFeedbackEntity feedback = feedbackRepository.findById(id)
                 .orElseThrow(() -> new AppException(HttpStatus.NOT_FOUND, "Feedback not found"));
 
-        feedback.setStatus(nextStatus.toUpperCase());
+        if (nextStatus != null) {
+            feedback.setStatus(nextStatus.toUpperCase());
+        }
+        if (body.containsKey("adminReply")) {
+            feedback.setAdminReply(body.get("adminReply"));
+        }
         feedback = feedbackRepository.save(feedback);
         return FeedbackResponse.fromEntity(feedback);
+    }
+
+    @GetMapping("/support/feedbacks")
+    public List<FeedbackResponse> getMyFeedbacks() {
+        UUID currentUserId = SecurityUtils.currentUserId();
+        if (currentUserId == null) {
+            throw new AppException(HttpStatus.UNAUTHORIZED, "User must be authenticated");
+        }
+        return feedbackRepository.findAllByUserIdOrderByCreatedAtDesc(currentUserId).stream()
+                .map(FeedbackResponse::fromEntity)
+                .toList();
     }
 }

@@ -15,6 +15,27 @@ export function SupportPage() {
   })
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [message, setMessage] = useState(null) // { type: 'success' | 'error', text: '' }
+  const [myFeedbacks, setMyFeedbacks] = useState([])
+  const [loadingHistory, setLoadingHistory] = useState(false)
+
+  const loadHistory = async () => {
+    if (!isAuthenticated) return
+    setLoadingHistory(true)
+    try {
+      const data = await appApi.getMyFeedbacks()
+      setMyFeedbacks(data || [])
+    } catch (e) {
+      console.error('Không thể tải lịch sử hỗ trợ:', e)
+    } finally {
+      setLoadingHistory(false)
+    }
+  }
+
+  useEffect(() => {
+    if (isAuthenticated) {
+      loadHistory()
+    }
+  }, [isAuthenticated])
 
   useEffect(() => {
     if (isAuthenticated && user) {
@@ -48,6 +69,7 @@ export function SupportPage() {
         title: '',
         content: '',
       }))
+      loadHistory()
     } catch (error) {
       setMessage({
         type: 'error',
@@ -179,6 +201,83 @@ export function SupportPage() {
           </div>
         </form>
       </Card>
+
+      {isAuthenticated && (
+        <div style={{ marginTop: '40px' }}>
+          <h2 style={{ fontSize: '20px', fontWeight: '700', marginBottom: '16px' }}>Lịch sử yêu cầu hỗ trợ của bạn</h2>
+          {loadingHistory ? (
+            <div className="hint">Đang tải lịch sử...</div>
+          ) : myFeedbacks.length === 0 ? (
+            <Card>
+              <div style={{ textAlign: 'center', padding: '24px 0', color: 'var(--text-secondary)' }}>
+                Bạn chưa gửi yêu cầu hỗ trợ nào.
+              </div>
+            </Card>
+          ) : (
+            <div style={{ display: 'grid', gap: '16px', maxHeight: '500px', overflowY: 'auto', paddingRight: '4px' }}>
+              {myFeedbacks.map((item) => (
+                <Card key={item.id} style={{ borderLeft: item.status === 'PENDING' ? '4px solid var(--red)' : '4px solid var(--success)' }}>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '8px' }}>
+                      <div>
+                        <span className="badge" style={{ 
+                          marginRight: '8px',
+                          background: 'var(--gray-100)',
+                          color: 'var(--text-primary)',
+                          padding: '3px 8px',
+                          borderRadius: '4px',
+                          fontSize: '11px',
+                          fontWeight: '600'
+                        }}>
+                          {item.category === 'BUG' ? '🐞 Lỗi kỹ thuật' : item.category === 'FEATURE' ? '💡 Góp ý tính năng' : item.category === 'BILLING' ? '💳 Thanh toán' : '💬 Vấn đề khác'}
+                        </span>
+                        <strong style={{ fontSize: '15px' }}>{item.title}</strong>
+                      </div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <span className={`badge ${item.status === 'PENDING' ? 'badge-danger' : 'badge-success'}`} style={{
+                          padding: '3px 8px',
+                          borderRadius: '4px',
+                          fontSize: '11px',
+                          fontWeight: '600',
+                          backgroundColor: item.status === 'PENDING' ? 'rgba(255, 121, 121, 0.12)' : 'rgba(46, 204, 113, 0.12)',
+                          color: item.status === 'PENDING' ? '#d63031' : '#2ecc71'
+                        }}>
+                          {item.status === 'PENDING' ? 'Chưa xử lý' : 'Đã giải quyết'}
+                        </span>
+                        <span className="hint" style={{ fontSize: '11px' }}>
+                          {new Date(item.createdAt).toLocaleString('vi-VN')}
+                        </span>
+                      </div>
+                    </div>
+
+                    <div style={{ fontSize: '14px', whiteSpace: 'pre-wrap', color: 'var(--text-secondary)' }}>
+                      {item.content}
+                    </div>
+
+                    {item.adminReply && (
+                      <div style={{ 
+                        marginTop: '8px', 
+                        padding: '12px 16px', 
+                        background: 'var(--primary-bg)', 
+                        borderRadius: '8px',
+                        borderLeft: '3px solid var(--primary)',
+                        fontSize: '13px'
+                      }}>
+                        <strong style={{ color: 'var(--primary-dark)', display: 'block', marginBottom: '4px' }}>
+                          💬 Phản hồi từ Ban quản trị:
+                        </strong>
+                        <span style={{ color: 'var(--text-primary)', whiteSpace: 'pre-wrap' }}>
+                          {item.adminReply}
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                </Card>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
     </div>
   )
 }

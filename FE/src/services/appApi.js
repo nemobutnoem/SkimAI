@@ -215,11 +215,14 @@ const realApi = {
   getAdminFeedbacks() {
     return request('/admin/feedbacks')
   },
-  updateFeedbackStatus(feedbackId, status) {
+  updateFeedbackStatus(feedbackId, status, adminReply) {
     return request(`/admin/feedbacks/${feedbackId}/status`, {
       method: 'PUT',
-      body: { status }
+      body: { status, adminReply }
     })
+  },
+  getMyFeedbacks() {
+    return request('/support/feedbacks')
   },
   getAdminUsersMetrics() {
     return request('/admin/users/metrics')

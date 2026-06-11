@@ -54,4 +54,7 @@ public class SupportFeedbackEntity extends BaseEntity {
 
     @Column(nullable = false, length = 20)
     private String status; // PENDING, RESOLVED
+
+    @Column(name = "admin_reply", columnDefinition = "TEXT")
+    private String adminReply;
 }
