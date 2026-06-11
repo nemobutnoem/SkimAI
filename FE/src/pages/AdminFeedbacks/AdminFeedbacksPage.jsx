@@ -2,7 +2,6 @@ import { useState, useEffect } from 'react'
 import { appApi } from '../../services/appApi'
 import { Card } from '../../components/Card'
 import { Button } from '../../components/Button'
-import { AdminSectionNav } from '../../components/AdminSectionNav'
 
 export function AdminFeedbacksPage() {
   const [feedbacks, setFeedbacks] = useState([])
@@ -67,9 +66,7 @@ export function AdminFeedbacksPage() {
   })
 
   return (
-    <div className="admin-layout">
-      <AdminSectionNav />
-
+    <div className="stack page-wrap">
       <div className="admin-content-wrap">
         <div className="page-header" style={{ marginBottom: '24px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <div>

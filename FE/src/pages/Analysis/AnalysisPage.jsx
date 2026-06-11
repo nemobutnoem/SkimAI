@@ -300,14 +300,7 @@ export function AnalysisPage() {
   const [streamProgress, setStreamProgress] = useState(0)
   const [cacheInfo, setCacheInfo] = useState(null)
 
-  // Login popup states
-  const [showLoginModal, setShowLoginModal] = useState(false)
-  const [loginMode, setLoginMode] = useState('user') // 'user' | 'admin'
-  const [loginEmail, setLoginEmail] = useState('')
-  const [loginPassword, setLoginPassword] = useState('')
-  const [loginError, setLoginError] = useState('')
-  const [loginSubmitting, setLoginSubmitting] = useState(false)
-  const [triggerExportAfterLogin, setTriggerExportAfterLogin] = useState(false)
+
 
   const loadTraditional = async () => {
     setLoading(true)
@@ -448,70 +441,17 @@ export function AnalysisPage() {
   const researchGuard = data?.researchGuard ?? null
   const canRunDeepInsight = researchGuard ? Boolean(researchGuard.deepInsightEnabled) : true
 
-  // Google Sign-In inside Modal initialization
+  // Watch for post-login auto-export query param
   useEffect(() => {
-    if (!showLoginModal || loginMode !== 'user') return
-
-    const clientId = import.meta.env.VITE_GOOGLE_CLIENT_ID
-    if (!clientId) {
-      console.warn('VITE_GOOGLE_CLIENT_ID not found in .env')
-      return
+    if (isAuthenticated && !loading && overall.hasData && searchParams.get('export') === 'true') {
+      const params = new URLSearchParams(window.location.search)
+      params.delete('export')
+      navigate(`${ROUTES.ANALYSIS}?${params.toString()}`, { replace: true })
+      executeExport()
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isAuthenticated, loading, overall.hasData, searchParams])
 
-    let cancelled = false
-
-    const loadGoogle = async () => {
-      try {
-        await loadGoogleIdentityScript()
-        if (cancelled) return
-
-        const google = window.google
-        if (!google?.accounts?.id) return
-
-        google.accounts.id.initialize({
-          client_id: clientId,
-          callback: async (response) => {
-            setLoginError('')
-            setLoginSubmitting(true)
-            try {
-              await loginWithGoogle({ credential: response?.credential })
-              setShowLoginModal(false)
-              if (triggerExportAfterLogin) {
-                setTriggerExportAfterLogin(false)
-                executeExport()
-              }
-            } catch (err) {
-              setLoginError(err?.message ?? 'Đăng nhập Google thất bại')
-            } finally {
-              setLoginSubmitting(false)
-            }
-          },
-        })
-
-        // Wait a tiny bit for the element container to render in DOM
-        setTimeout(() => {
-          if (cancelled) return
-          const container = document.getElementById('googleSignInModalBtn')
-          if (container) {
-            container.innerHTML = ''
-            google.accounts.id.renderButton(container, {
-              theme: 'outline',
-              size: 'large',
-              width: '320',
-            })
-          }
-        }, 100)
-      } catch (err) {
-        console.error('Google ID script load error:', err)
-      }
-    }
-
-    loadGoogle()
-
-    return () => {
-      cancelled = true
-    }
-  }, [showLoginModal, loginMode])
 
   const executeExport = async () => {
     if (!keyword || !overall.hasData) {
@@ -567,52 +507,13 @@ ${evidenceItems.map(ev => `- [${ev.source}] ${ev.title}\n  Link: ${ev.url}`).joi
 
   const handleExport = () => {
     if (!isAuthenticated) {
-      setTriggerExportAfterLogin(true);
-      setShowLoginModal(true);
-      return;
+      const fromUrl = window.location.pathname + window.location.search + '&export=true'
+      navigate(ROUTES.LOGIN, { state: { from: fromUrl } })
+      return
     }
-    executeExport();
+    executeExport()
   }
 
-  const handleModalLogin = async (e) => {
-    e.preventDefault()
-    setLoginError('')
-    setLoginSubmitting(true)
-    try {
-      await login({ email: loginEmail, password: loginPassword })
-      setShowLoginModal(false)
-      if (triggerExportAfterLogin) {
-        setTriggerExportAfterLogin(false)
-        executeExport()
-      }
-    } catch (err) {
-      setLoginError(err?.message ?? 'Đăng nhập thất bại')
-    } finally {
-      setLoginSubmitting(false)
-    }
-  }
-
-  const handlePreset = async (role) => {
-    setLoginError('')
-    setLoginSubmitting(true)
-    const email = role === 'admin' ? 'admin@skimai.local' : 'demo@skimai.local'
-    const password = '123456'
-    setLoginEmail(email)
-    setLoginPassword(password)
-    
-    try {
-      await login({ email, password })
-      setShowLoginModal(false)
-      if (triggerExportAfterLogin) {
-        setTriggerExportAfterLogin(false)
-        executeExport()
-      }
-    } catch (err) {
-      setLoginError(err?.message ?? 'Đăng nhập thử nghiệm thất bại')
-    } finally {
-      setLoginSubmitting(false)
-    }
-  }
 
   if (!keyword) {
     return (
@@ -948,152 +849,6 @@ ${evidenceItems.map(ev => `- [${ev.source}] ${ev.title}\n  Link: ${ev.url}`).joi
         </div>
       </section>
 
-
-      {/* Login Modal Popup */}
-      {showLoginModal && (
-        <div className="upgrade-modal-overlay" style={{ backdropFilter: 'blur(6px)', zIndex: 9999 }} onClick={() => setShowLoginModal(false)}>
-          <div className="upgrade-modal" style={{ maxWidth: '440px', padding: '30px', position: 'relative', borderRadius: '16px' }} onClick={(e) => e.stopPropagation()}>
-            <button 
-              style={{
-                position: 'absolute',
-                top: '16px',
-                right: '16px',
-                background: 'none',
-                border: 'none',
-                fontSize: '24px',
-                cursor: 'pointer',
-                color: 'var(--text-secondary)',
-                lineHeight: 1
-              }}
-              onClick={() => setShowLoginModal(false)}
-            >
-              &times;
-            </button>
-            <div style={{ textAlign: 'center', marginBottom: '24px' }}>
-              <div style={{
-                display: 'inline-flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                width: '48px',
-                height: '48px',
-                background: 'var(--primary)',
-                color: 'white',
-                borderRadius: '12px',
-                fontWeight: 'bold',
-                fontSize: '18px',
-                marginBottom: '12px'
-              }}>AI</div>
-              <h3 style={{ margin: '0 0 8px', fontSize: '20px', fontWeight: 'bold' }}>Đăng nhập tài khoản</h3>
-              <p style={{ margin: 0, fontSize: '14px', color: 'var(--text-secondary)' }}>
-                Bạn cần đăng nhập để thực hiện tải báo cáo về thiết bị.
-              </p>
-            </div>
-            
-            <div className="login-mode-toggle" style={{ marginBottom: '20px' }}>
-              <button
-                type="button"
-                className={loginMode === 'user' ? 'active' : ''}
-                onClick={() => {
-                  setLoginMode('user')
-                  setLoginError('')
-                }}
-                style={{ flex: 1 }}
-              >
-                Người dùng
-              </button>
-              <button
-                type="button"
-                className={loginMode === 'admin' ? 'active' : ''}
-                onClick={() => {
-                  setLoginMode('admin')
-                  setLoginError('')
-                }}
-                style={{ flex: 1 }}
-              >
-                Quản trị viên
-              </button>
-            </div>
-
-            {loginMode === 'admin' && (
-              <form onSubmit={handleModalLogin} className="login-form">
-                <div className="login-field">
-                  <label>Email ID</label>
-                  <input
-                    value={loginEmail}
-                    onChange={(e) => setLoginEmail(e.target.value)}
-                    placeholder="admin@skimai.local"
-                    required
-                  />
-                </div>
-                <div className="login-field">
-                  <label>Mật khẩu</label>
-                  <input
-                    type="password"
-                    value={loginPassword}
-                    onChange={(e) => setLoginPassword(e.target.value)}
-                    placeholder="••••••••"
-                    required
-                  />
-                </div>
-                {loginError && <div className="login-error">{loginError}</div>}
-                <button type="submit" className="login-submit-btn" disabled={loginSubmitting} style={{ width: '100%' }}>
-                  {loginSubmitting ? 'Đang đăng nhập...' : 'Đăng nhập'}
-                </button>
-              </form>
-            )}
-
-            {loginMode === 'user' && (
-              <div className="login-google" style={{ width: '100%' }}>
-                <div id="googleSignInModalBtn" style={{ minHeight: '40px', display: 'flex', justifyContent: 'center', width: '100%' }} />
-                {loginError && <div className="login-error" style={{ width: '100%' }}>{loginError}</div>}
-                
-                <div style={{ margin: '15px 0 10px', display: 'flex', alignItems: 'center', width: '100%' }}>
-                  <div style={{ flex: 1, height: '1px', background: 'var(--border-color)' }} />
-                  <span style={{ margin: '0 10px', fontSize: '11px', color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>HOẶC ĐĂNG NHẬP NHANH</span>
-                  <div style={{ flex: 1, height: '1px', background: 'var(--border-color)' }} />
-                </div>
-
-                <form onSubmit={handleModalLogin} className="login-form" style={{ width: '100%' }}>
-                  <div className="login-field">
-                    <label>Email</label>
-                    <input
-                      value={loginEmail}
-                      onChange={(e) => setLoginEmail(e.target.value)}
-                      placeholder="demo@skimai.local"
-                      required
-                    />
-                  </div>
-                  <div className="login-field">
-                    <label>Mật khẩu</label>
-                    <input
-                      type="password"
-                      value={loginPassword}
-                      onChange={(e) => setLoginPassword(e.target.value)}
-                      placeholder="••••••••"
-                      required
-                    />
-                  </div>
-                  <button type="submit" className="login-submit-btn" disabled={loginSubmitting} style={{ width: '100%' }}>
-                    {loginSubmitting ? 'Đang đăng nhập...' : 'Đăng nhập tài khoản'}
-                  </button>
-                </form>
-              </div>
-            )}
-
-            <div className="login-presets" style={{ marginTop: '20px', paddingTop: '15px' }}>
-              <p style={{ margin: '0 0 8px', fontSize: '12px' }}>Đăng nhập thử nghiệm nhanh:</p>
-              <div className="login-preset-btns">
-                <button type="button" onClick={() => handlePreset('user')} style={{ flex: 1 }}>
-                  Người dùng thử
-                </button>
-                <button type="button" onClick={() => handlePreset('admin')} style={{ flex: 1 }}>
-                  Quản trị thử
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   )
 }
