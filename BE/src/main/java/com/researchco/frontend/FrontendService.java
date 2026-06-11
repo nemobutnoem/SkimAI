@@ -1257,7 +1257,7 @@ public class FrontendService {
                 keyword,
                 localeProfile.countryCode(),
                 localeProfile.languageCode(),
-                "7d"
+                "2y"
         );
         System.out.println("[DEBUG] Aggregated " + results.size() + " items for keyword=\"" + keyword + "\" with locale "
                 + localeProfile.countryCode() + "/" + localeProfile.languageCode());

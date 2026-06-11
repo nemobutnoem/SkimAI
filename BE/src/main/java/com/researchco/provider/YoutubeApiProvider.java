@@ -51,7 +51,7 @@ public class YoutubeApiProvider implements SearchProvider {
         }
 
         try {
-            JsonNode items = searchItems(keyword, countryCode, languageCode);
+            JsonNode items = searchItems(keyword, countryCode, languageCode, timeRange);
             if (items == null || !items.isArray()) {
                 return List.of();
             }
@@ -139,8 +139,8 @@ public class YoutubeApiProvider implements SearchProvider {
         }
     }
 
-    private JsonNode searchItems(String keyword, String countryCode, String languageCode) throws Exception {
-        URI uri = UriComponentsBuilder
+    private JsonNode searchItems(String keyword, String countryCode, String languageCode, String timeRange) throws Exception {
+        UriComponentsBuilder builder = UriComponentsBuilder
                 .fromUriString("https://www.googleapis.com/youtube/v3/search")
                 .queryParam("part", "snippet")
                 .queryParam("type", "video")
@@ -148,10 +148,14 @@ public class YoutubeApiProvider implements SearchProvider {
                 .queryParam("maxResults", maxResults)
                 .queryParam("regionCode", blankToNull(countryCode))
                 .queryParam("relevanceLanguage", blankToNull(languageCode))
-                .queryParam("key", apiKey)
-                .encode()
-                .build()
-                .toUri();
+                .queryParam("key", apiKey);
+
+        String publishedAfter = getPublishedAfterDate(timeRange);
+        if (publishedAfter != null) {
+            builder.queryParam("publishedAfter", publishedAfter);
+        }
+
+        URI uri = builder.encode().build().toUri();
 
         JsonNode root = getJson(uri);
         return root != null ? root.path("items") : null;
@@ -298,5 +302,29 @@ public class YoutubeApiProvider implements SearchProvider {
         } catch (Exception ignored) {
             return LocalDateTime.now();
         }
+    }
+
+    private String getPublishedAfterDate(String timeRange) {
+        LocalDateTime now = LocalDateTime.now();
+        LocalDateTime target = now.minusYears(2); // default to 2 years
+
+        if (timeRange != null && !timeRange.isBlank()) {
+            String clean = timeRange.trim().toLowerCase();
+            try {
+                if (clean.endsWith("d")) {
+                    int days = Integer.parseInt(clean.substring(0, clean.length() - 1));
+                    target = now.minusDays(days);
+                } else if (clean.endsWith("m")) {
+                    int months = Integer.parseInt(clean.substring(0, clean.length() - 1));
+                    target = now.minusMonths(months);
+                } else if (clean.endsWith("y")) {
+                    int years = Integer.parseInt(clean.substring(0, clean.length() - 1));
+                    target = now.minusYears(years);
+                }
+            } catch (NumberFormatException ignored) {
+            }
+        }
+
+        return target.toLocalDate().toString() + "T00:00:00Z";
     }
 }

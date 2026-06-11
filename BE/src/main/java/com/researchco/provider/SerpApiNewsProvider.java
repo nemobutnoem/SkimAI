@@ -47,7 +47,7 @@ public class SerpApiNewsProvider implements SearchProvider {
         }
 
         try {
-            URI uri = UriComponentsBuilder
+            UriComponentsBuilder builder = UriComponentsBuilder
                     .fromUriString("https://serpapi.com/search.json")
                     .queryParam("engine", "google")
                     .queryParam("tbm", "nws")
@@ -56,10 +56,14 @@ public class SerpApiNewsProvider implements SearchProvider {
                     .queryParam("gl", blankToNull(countryCode))
                     .queryParam("hl", blankToNull(languageCode))
                     .queryParam("num", maxResults)
-                    .queryParam("api_key", apiKey)
-                    .encode()
-                    .build()
-                    .toUri();
+                    .queryParam("api_key", apiKey);
+
+            String tbs = getTbsValue(timeRange);
+            if (tbs != null) {
+                builder.queryParam("tbs", tbs);
+            }
+
+            URI uri = builder.encode().build().toUri();
 
             JsonNode root = getJson(uri);
             if (root == null || !root.path("news_results").isArray()) {
@@ -166,5 +170,22 @@ public class SerpApiNewsProvider implements SearchProvider {
             }
         }
         return LocalDateTime.now();
+    }
+
+    private String getTbsValue(String timeRange) {
+        if (timeRange == null || timeRange.isBlank()) {
+            return "qdr:y2"; // default to 2 years
+        }
+        String clean = timeRange.trim().toLowerCase();
+        if (clean.endsWith("d")) {
+            return "qdr:d" + clean.substring(0, clean.length() - 1);
+        }
+        if (clean.endsWith("m")) {
+            return "qdr:m" + clean.substring(0, clean.length() - 1);
+        }
+        if (clean.endsWith("y")) {
+            return "qdr:y" + clean.substring(0, clean.length() - 1);
+        }
+        return "qdr:y2"; // default
     }
 }
