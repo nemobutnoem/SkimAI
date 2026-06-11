@@ -1772,6 +1772,9 @@ public class FrontendService {
         if (item == null) {
             return null;
         }
+        if (item.url() != null && !item.url().isBlank()) {
+            return item.url();
+        }
         if (item.rawPayload() instanceof Map<?, ?> payload) {
             String[] candidates = new String[]{"url", "link", "sourceUrl", "videoUrl", "newsUrl"};
             for (String key : candidates) {
