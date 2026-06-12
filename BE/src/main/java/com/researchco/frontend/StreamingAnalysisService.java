@@ -238,8 +238,8 @@ public class StreamingAnalysisService {
             return false;
         }
         LocalDateTime lastUpdated = snapshot.getUpdatedAt();
-        LocalDateTime oneDayAgo = LocalDateTime.now().minusDays(1);
-        return lastUpdated.isAfter(oneDayAgo);
+        LocalDateTime oneHourAgo = LocalDateTime.now().minusHours(1);
+        return lastUpdated.isAfter(oneHourAgo);
     }
 
     private String formatTimeAgo(LocalDateTime dateTime) {
