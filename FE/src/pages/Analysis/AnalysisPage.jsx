@@ -584,6 +584,74 @@ ${evidenceItems.map(ev => `- [${ev.source}] ${ev.title}\n  Link: ${ev.url}`).joi
 
   return (
     <div className="analysis-shell page-wrap">
+      <style>{`
+        .tooltip-container {
+          position: relative;
+          display: inline-flex;
+          align-items: center;
+          cursor: help;
+        }
+        .tooltip-icon {
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          width: 14px;
+          height: 14px;
+          border-radius: 50%;
+          background: #e5e7eb;
+          color: #4b5563;
+          font-size: 10px;
+          font-weight: bold;
+          font-style: normal;
+          transition: all 0.2s ease;
+          text-transform: none !important;
+          letter-spacing: normal !important;
+          margin-left: 4px;
+        }
+        .tooltip-container:hover .tooltip-icon {
+          background: #3b82f6;
+          color: #ffffff;
+        }
+        .tooltip-text {
+          visibility: hidden;
+          width: 240px;
+          background: rgba(15, 23, 42, 0.95);
+          color: #ffffff;
+          text-align: left;
+          border-radius: 6px;
+          padding: 8px 12px;
+          position: absolute;
+          z-index: 100;
+          bottom: 125%;
+          left: 50%;
+          transform: translateX(-50%);
+          opacity: 0;
+          transition: opacity 0.2s ease, transform 0.2s ease;
+          font-size: 12px;
+          line-height: 1.4;
+          font-weight: normal;
+          box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+          pointer-events: none;
+          white-space: normal;
+          text-transform: none !important;
+          letter-spacing: normal !important;
+        }
+        .tooltip-text::after {
+          content: "";
+          position: absolute;
+          top: 100%;
+          left: 50%;
+          margin-left: -5px;
+          border-width: 5px;
+          border-style: solid;
+          border-color: rgba(15, 23, 42, 0.95) transparent transparent transparent;
+        }
+        .tooltip-container:hover .tooltip-text {
+          visibility: visible;
+          opacity: 1;
+          transform: translateX(-50%) translateY(-2px);
+        }
+      `}</style>
       <section className="analysis-suite-hero card">
         <div>
           <p className="dashboard-kicker">Phân tích dữ liệu thị trường</p>
@@ -676,7 +744,15 @@ ${evidenceItems.map(ev => `- [${ev.source}] ${ev.title}\n  Link: ${ev.url}`).joi
 
       <div className="prompt-summary-grid">
         <section className="card prompt-summary-card">
-          <span>Trạng thái thị trường</span>
+          <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+            Trạng thái thị trường
+            <span className="tooltip-container">
+              <span className="tooltip-icon">?</span>
+              <span className="tooltip-text">
+                Được tính bằng cách so sánh tổng số nguồn tin có xu hướng Tăng và Giảm. Nếu số nguồn Tăng nhiều hơn Giảm, thị trường được coi là Tăng trưởng.
+              </span>
+            </span>
+          </span>
           <strong style={{
             textTransform: 'uppercase',
             color: overall.hasData 
@@ -687,7 +763,15 @@ ${evidenceItems.map(ev => `- [${ev.source}] ${ev.title}\n  Link: ${ev.url}`).joi
           </strong>
         </section>
         <section className="card prompt-summary-card">
-          <span>Mức quan tâm</span>
+          <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+            Mức quan tâm
+            <span className="tooltip-container">
+              <span className="tooltip-icon">?</span>
+              <span className="tooltip-text">
+                Dựa trên điểm số Market Score (0-100), tổng hợp từ lượt xem, bình luận, tỷ lệ tương tác và độ đa dạng nguồn tin của từ khóa liên quan.
+              </span>
+            </span>
+          </span>
           <strong style={{
             textTransform: 'uppercase',
             color: overall.hasData 
@@ -698,11 +782,27 @@ ${evidenceItems.map(ev => `- [${ev.source}] ${ev.title}\n  Link: ${ev.url}`).joi
           </strong>
         </section>
         <section className="card prompt-summary-card">
-          <span>Bằng chứng</span>
+          <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+            Bằng chứng
+            <span className="tooltip-container">
+              <span className="tooltip-icon">?</span>
+              <span className="tooltip-text">
+                Tỷ lệ bao phủ thông tin (Evidence Coverage) đo lường mức độ phong phú và đầy đủ của dữ liệu thu thập được từ các nguồn so với từ khóa tìm kiếm.
+              </span>
+            </span>
+          </span>
           <strong><AnimatedNumber value={Number(overall.coverage)} />%</strong>
         </section>
         <section className="card prompt-summary-card">
-          <span>Tương tác TB</span>
+          <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+            Tương tác TB
+            <span className="tooltip-container">
+              <span className="tooltip-icon">?</span>
+              <span className="tooltip-text">
+                Tỷ lệ tương tác trung bình (Likes + Comments / Views) của 6 cụm từ khóa liên quan nổi bật nhất thu thập được từ các bài đăng.
+              </span>
+            </span>
+          </span>
           <strong><AnimatedNumber value={overall.avgEngagement * 100} format={(v) => v.toFixed(2)} />%</strong>
         </section>
       </div>
