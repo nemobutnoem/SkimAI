@@ -38,7 +38,7 @@ export function DeepInsightPage() {
   const keyword = searchParams.get('keyword') || ''
   const urlSource = searchParams.get('source') || ''
   const [analysisContext, setAnalysisContext] = useState(null)
-  const [activeSource, setActiveSource] = useState(urlSource || 'Tổng hợp đa nguồn')
+  const [activeSource, setActiveSource] = useState(urlSource || 'Cross-source synthesis')
   const [historyReports, setHistoryReports] = useState([])
   const [data, setData] = useState(null)
   const [loading, setLoading] = useState(false)
@@ -48,7 +48,7 @@ export function DeepInsightPage() {
 
   const availableSources = analysisContext?.dataSources?.length
     ? analysisContext.dataSources
-    : ['Google Search', 'Google News', 'YouTube Signals', 'Tổng hợp đa nguồn']
+    : ['Google Search', 'Google News', 'YouTube Signals', 'Cross-source synthesis']
 
   useEffect(() => {
     if (urlSource && urlSource !== activeSource) {
@@ -70,11 +70,11 @@ export function DeepInsightPage() {
   }
 
   useEffect(() => {
-    if (activeSource === 'Tổng hợp đa nguồn') {
+    if (activeSource === 'Cross-source synthesis') {
       return
     }
     if (!availableSources.includes(activeSource)) {
-      setActiveSource(availableSources[0] ?? 'Tổng hợp đa nguồn')
+      setActiveSource(availableSources[0] ?? 'Cross-source synthesis')
     }
   }, [activeSource, availableSources])
 
@@ -515,7 +515,7 @@ ${strategicRecommendation.desc}
                 {historyReports
                   .filter(item => item.keyword !== keyword)
                   .map(item => {
-                    const source = item.title ? item.title.replace(" Deep Insight", "") : 'Tổng hợp đa nguồn';
+                    const source = item.title ? item.title.replace(" Deep Insight", "") : 'Cross-source synthesis';
                     return (
                       <Link
                         key={item.id}
@@ -541,7 +541,7 @@ ${strategicRecommendation.desc}
           <div className="dashboard-recent-list">
             {historyReports.length ? (
               historyReports.map((item) => {
-                const source = item.title ? item.title.replace(" Deep Insight", "") : 'Tổng hợp đa nguồn';
+                const source = item.title ? item.title.replace(" Deep Insight", "") : 'Cross-source synthesis';
                 return (
                   <Link
                     key={item.id}

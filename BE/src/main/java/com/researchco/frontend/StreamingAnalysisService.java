@@ -97,7 +97,7 @@ public class StreamingAnalysisService {
                 List<FrontendDtos.KeywordMetric> keywords = snapshotKeywordRepository
                         .findBySnapshotId(snapshot.getId()).stream()
                         .sorted(Comparator.comparing(SnapshotKeywordEntity::getMentionCount).reversed())
-                        .limit(4)
+                        .limit(6)
                         .map(sk -> {
                             int hash = Math.abs(sk.getKeyword().hashCode());
                             double engagement = sk.getAvgEngagement() != null ? sk.getAvgEngagement() : (0.05 + (hash % 100) / 1000.0);
