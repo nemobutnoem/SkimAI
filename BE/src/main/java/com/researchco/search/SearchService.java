@@ -202,6 +202,9 @@ public class SearchService {
     }
 
     private void validateSearchLimit(UserEntity user) {
+        if (user.getRole() != null && user.getRole().equalsIgnoreCase("ADMIN")) {
+            return;
+        }
         UserSubscriptionEntity subscription = userSubscriptionRepository.findFirstByUserAndStatusOrderByStartDateDesc(user, "ACTIVE")
                 .orElseThrow(() -> new AppException(HttpStatus.FORBIDDEN, "No active subscription"));
         PlanEntity plan = subscription.getPlan();

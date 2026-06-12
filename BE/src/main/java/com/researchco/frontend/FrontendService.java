@@ -186,9 +186,14 @@ public class FrontendService {
     public FrontendDtos.AccountOverviewResponse getAccountOverview() {
         UserEntity user = preferredUser();
         Optional<UserSubscriptionEntity> subscription = userSubscriptionRepository.findFirstByUserAndStatusOrderByStartDateDesc(user, "ACTIVE");
-        PlanEntity plan = subscription.map(UserSubscriptionEntity::getPlan).orElseGet(() ->
-                planRepository.findByName("FREE").orElse(null)
-        );
+        PlanEntity plan;
+        if (user.getRole() != null && user.getRole().equalsIgnoreCase("ADMIN")) {
+            plan = planRepository.findByName("ENTERPRISE").orElse(null);
+        } else {
+            plan = subscription.map(UserSubscriptionEntity::getPlan).orElseGet(() ->
+                    planRepository.findByName("FREE").orElse(null)
+            );
+        }
 
         long queryCount = searchQueryRepository.countByUser(user);
         long reportCount = reportRepository.countByUserId(user.getId());
@@ -202,13 +207,20 @@ public class FrontendService {
                 ))
                 .toList();
         UserSubscriptionEntity currentSubscription = subscription.orElse(null);
-        String renewsAt = currentSubscription != null && currentSubscription.getEndDate() != null
-                ? currentSubscription.getEndDate().toString()
-                : null;
-        String billingCycle = currentSubscription != null && currentSubscription.getEndDate() != null && currentSubscription.getStartDate() != null
-                && currentSubscription.getEndDate().isAfter(currentSubscription.getStartDate().plusMonths(11))
-                ? "yearly"
-                : "monthly";
+        String renewsAt;
+        String billingCycle;
+        if (user.getRole() != null && user.getRole().equalsIgnoreCase("ADMIN")) {
+            renewsAt = "Vô hạn";
+            billingCycle = "lifetime";
+        } else {
+            renewsAt = currentSubscription != null && currentSubscription.getEndDate() != null
+                    ? currentSubscription.getEndDate().toString()
+                    : null;
+            billingCycle = currentSubscription != null && currentSubscription.getEndDate() != null && currentSubscription.getStartDate() != null
+                    && currentSubscription.getEndDate().isAfter(currentSubscription.getStartDate().plusMonths(11))
+                    ? "yearly"
+                    : "monthly";
+        }
 
         int apiLimit = plan != null && plan.getSearchLimit() != null ? plan.getSearchLimit() : 10;
         int apiUsagePct = Math.min(100, (int) Math.round((double) queryCount * 100.0 / apiLimit));
@@ -220,7 +232,7 @@ public class FrontendService {
         }
 
         AiUsageEntity usage = aiUsageRecord(user);
-        int baseQuota = resolveDeepInsightQuota(currentSubscription);
+        int baseQuota = (user.getRole() != null && user.getRole().equalsIgnoreCase("ADMIN")) ? 9999 : resolveDeepInsightQuota(currentSubscription);
         int addonCredits = usage.getAddonCredits() == null ? 0 : usage.getAddonCredits();
         int usedCount = usage.getUsedCount() == null ? 0 : usage.getUsedCount();
         int maxQuota = baseQuota + Math.max(0, addonCredits);
@@ -230,8 +242,8 @@ public class FrontendService {
                 new FrontendDtos.Profile(user.getFullName(), user.getEmail(), "SkimAI Labs"),
                 new FrontendDtos.CurrentSubscription(
                         plan != null ? plan.getName().toLowerCase(Locale.ROOT) : "free",
-                        displayPlanName(plan != null ? plan.getName() : "FREE"),
-                        currentSubscription != null ? currentSubscription.getStatus() : "ACTIVE",
+                        (user.getRole() != null && user.getRole().equalsIgnoreCase("ADMIN")) ? "Enterprise (Admin)" : displayPlanName(plan != null ? plan.getName() : "FREE"),
+                        (user.getRole() != null && user.getRole().equalsIgnoreCase("ADMIN")) ? "ACTIVE" : (currentSubscription != null ? currentSubscription.getStatus() : "ACTIVE"),
                         billingCycle,
                         renewsAt
                 ),
@@ -753,11 +765,16 @@ public class FrontendService {
 
     public List<FrontendDtos.PricingPlan> getPricing() {
         UserEntity user = preferredUser();
-        String currentPlanId = userSubscriptionRepository.findFirstByUserAndStatusOrderByStartDateDesc(user, "ACTIVE")
-                .map(UserSubscriptionEntity::getPlan)
-                .map(PlanEntity::getName)
-                .map(name -> name.toLowerCase(Locale.ROOT))
-                .orElse("free");
+        String currentPlanId;
+        if (user.getRole() != null && user.getRole().equalsIgnoreCase("ADMIN")) {
+            currentPlanId = "enterprise";
+        } else {
+            currentPlanId = userSubscriptionRepository.findFirstByUserAndStatusOrderByStartDateDesc(user, "ACTIVE")
+                    .map(UserSubscriptionEntity::getPlan)
+                    .map(PlanEntity::getName)
+                    .map(name -> name.toLowerCase(Locale.ROOT))
+                    .orElse("free");
+        }
 
         return planRepository.findAll().stream()
                 .filter(plan -> List.of("FREE", "STARTER", "TEAM").contains(plan.getName().toUpperCase(Locale.ROOT)))
@@ -1904,6 +1921,9 @@ public class FrontendService {
     }
 
     private void enforceDeepInsightQuota(UserEntity user, UserSubscriptionEntity subscription) {
+        if (user.getRole() != null && user.getRole().equalsIgnoreCase("ADMIN")) {
+            return;
+        }
         String planName = resolvePlanName(subscription);
         int baseQuota = resolveDeepInsightQuota(subscription);
         AiUsageEntity usage = aiUsageRecord(user);
@@ -1930,6 +1950,9 @@ public class FrontendService {
     }
 
     private void consumeDeepInsightQuota(UserEntity user) {
+        if (user.getRole() != null && user.getRole().equalsIgnoreCase("ADMIN")) {
+            return;
+        }
         AiUsageEntity usage = aiUsageRecord(user);
         int usedCount = usage.getUsedCount() == null ? 0 : usage.getUsedCount();
         usage.setUsedCount(usedCount + 1);
