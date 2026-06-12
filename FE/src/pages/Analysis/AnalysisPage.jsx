@@ -75,7 +75,7 @@ function noDataFor(section) {
   return `${NO_DATA} ${section}`
 }
 
-function loadGoogleIdentityScript() {
+function _loadGoogleIdentityScript() {
   if (typeof window === 'undefined') return Promise.reject(new Error('Browser only'))
   if (window.google?.accounts?.id) return Promise.resolve()
 
@@ -164,19 +164,34 @@ function buildOverallRead(data, sourceRows, timelinePoints) {
 
   const firstTimeline = timelinePoints?.[0]?.value ?? null
   const lastTimeline = timelinePoints?.[timelinePoints.length - 1]?.value ?? null
+
+  const upCount = sourceRows.filter((row) => row.direction === 'tăng').length
+  const downCount = sourceRows.filter((row) => row.direction === 'giảm').length
+  const stableCount = sourceRows.filter((row) => row.direction === 'ổn định').length
+
   let marketState = 'ổn định'
+  let stateReason = ''
   if (firstTimeline != null && lastTimeline != null) {
-    if (lastTimeline > firstTimeline) marketState = 'tăng trưởng'
-    if (lastTimeline < firstTimeline) marketState = 'giảm sút'
-  } else {
-    const upCount = sourceRows.filter((row) => row.direction === 'tăng').length
-    const downCount = sourceRows.filter((row) => row.direction === 'giảm').length
-    if (upCount > downCount) {
+    if (lastTimeline > firstTimeline) {
       marketState = 'tăng trưởng'
-    } else if (downCount > upCount) {
+      stateReason = `Điểm cuối dòng thời gian (${lastTimeline}) cao hơn điểm đầu (${firstTimeline}).`
+    } else if (lastTimeline < firstTimeline) {
       marketState = 'giảm sút'
+      stateReason = `Điểm cuối dòng thời gian (${lastTimeline}) thấp hơn điểm đầu (${firstTimeline}).`
     } else {
       marketState = 'ổn định'
+      stateReason = `Dữ liệu dòng thời gian đi ngang.`
+    }
+  } else {
+    if (upCount > downCount) {
+      marketState = 'tăng trưởng'
+      stateReason = `Có nhiều kênh nguồn xu hướng tăng hơn giảm (${upCount} tăng, ${downCount} giảm).`
+    } else if (downCount > upCount) {
+      marketState = 'giảm sút'
+      stateReason = `Có nhiều kênh nguồn xu hướng giảm hơn tăng (${downCount} giảm, ${upCount} tăng).`
+    } else {
+      marketState = 'ổn định'
+      stateReason = `Các nguồn tăng và giảm cân bằng (${upCount} tăng, ${downCount} giảm, ${stableCount} ổn định).`
     }
   }
 
@@ -224,6 +239,11 @@ function buildOverallRead(data, sourceRows, timelinePoints) {
     evidenceReasons,
     missingData,
     coverage: evidenceCoverage,
+    upCount,
+    downCount,
+    stableCount,
+    stateReason,
+    totalKeywords: keywords.length,
   }
 }
 
@@ -305,7 +325,7 @@ function InsightSection({ title, badge, children }) {
 
 export function AnalysisPage() {
   const navigate = useNavigate()
-  const { isAuthenticated, login, loginWithGoogle } = useAuth()
+  const { isAuthenticated } = useAuth()
   const [searchParams] = useSearchParams()
   const keyword = searchParams.get('keyword')?.trim() || ''
   const [draftKeyword, setDraftKeyword] = useState('')
@@ -747,9 +767,12 @@ ${evidenceItems.map(ev => `- [${ev.source}] ${ev.title}\n  Link: ${ev.url}`).joi
           <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
             Trạng thái thị trường
             <span className="tooltip-container">
-              <span className="tooltip-icon">?</span>
+              <span className="tooltip-icon">!</span>
               <span className="tooltip-text">
-                Được tính bằng cách so sánh tổng số nguồn tin có xu hướng Tăng và Giảm. Nếu số nguồn Tăng nhiều hơn Giảm, thị trường được coi là Tăng trưởng.
+                {overall.hasData
+                  ? `Xu hướng các thảo luận: ${overall.upCount} nguồn tăng, ${overall.downCount} nguồn giảm, ${overall.stableCount} nguồn ổn định. ${overall.stateReason}`
+                  : "Được tính bằng cách so sánh tổng số nguồn tin có xu hướng Tăng và Giảm. Nếu số nguồn Tăng nhiều hơn Giảm, thị trường được coi là Tăng trưởng."
+                }
               </span>
             </span>
           </span>
@@ -766,9 +789,12 @@ ${evidenceItems.map(ev => `- [${ev.source}] ${ev.title}\n  Link: ${ev.url}`).joi
           <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
             Mức quan tâm
             <span className="tooltip-container">
-              <span className="tooltip-icon">?</span>
+              <span className="tooltip-icon">!</span>
               <span className="tooltip-text">
-                Dựa trên điểm số Market Score (0-100), tổng hợp từ lượt xem, bình luận, tỷ lệ tương tác và độ đa dạng nguồn tin của từ khóa liên quan.
+                {overall.hasData
+                  ? `Market Score đạt ${overall.marketScore}/100. Đánh giá từ ${formatNumber(overall.totalViews)} views, ${formatNumber(overall.totalComments)} bình luận, và ${overall.totalMentions} lượt nhắc từ khóa.`
+                  : "Dựa trên điểm số Market Score (0-100), tổng hợp từ lượt xem, bình luận, tỷ lệ tương tác và độ đa dạng nguồn tin của từ khóa liên quan."
+                }
               </span>
             </span>
           </span>
@@ -785,9 +811,12 @@ ${evidenceItems.map(ev => `- [${ev.source}] ${ev.title}\n  Link: ${ev.url}`).joi
           <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
             Bằng chứng
             <span className="tooltip-container">
-              <span className="tooltip-icon">?</span>
+              <span className="tooltip-icon">!</span>
               <span className="tooltip-text">
-                Tỷ lệ bao phủ thông tin (Evidence Coverage) đo lường mức độ phong phú và đầy đủ của dữ liệu thu thập được từ các nguồn so với từ khóa tìm kiếm.
+                {overall.hasData
+                  ? `Độ phủ dữ liệu đạt ${overall.coverage}%. Thu thập trực tiếp từ ${overall.sourceCount} kênh nguồn và ${overall.totalKeywords} cụm từ khóa.`
+                  : "Tỷ lệ bao phủ thông tin (Evidence Coverage) đo lường mức độ phong phú và đầy đủ của dữ liệu thu thập được từ các nguồn so với từ khóa tìm kiếm."
+                }
               </span>
             </span>
           </span>
@@ -797,9 +826,12 @@ ${evidenceItems.map(ev => `- [${ev.source}] ${ev.title}\n  Link: ${ev.url}`).joi
           <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
             Tương tác TB
             <span className="tooltip-container">
-              <span className="tooltip-icon">?</span>
+              <span className="tooltip-icon">!</span>
               <span className="tooltip-text">
-                Tỷ lệ tương tác trung bình (Likes + Comments / Views) của 6 cụm từ khóa liên quan nổi bật nhất thu thập được từ các bài đăng.
+                {overall.hasData
+                  ? `Tương tác bình quân đạt ${pct(overall.avgEngagement)}. Tính dựa trên các chỉ số tương tác (like, comment, share / views) từ ${overall.totalKeywords} cụm từ khóa.`
+                  : "Tỷ lệ tương tác trung bình (Likes + Comments / Views) của 6 cụm từ khóa liên quan nổi bật nhất thu thập được từ các bài đăng."
+                }
               </span>
             </span>
           </span>
