@@ -536,7 +536,17 @@ public class FrontendService {
         }
 
         // Re-calculate stats dynamically based on the selected source focus
-        List<FrontendDtos.StatItem> dynamicStats = calculateSourceStats(analysis.searchQueryId(), request.source());
+        UUID creatorQueryId = UUID.fromString(analysis.searchQueryId());
+        try {
+            AnalysisSnapshotEntity snap = analysisSnapshotRepository.findById(UUID.fromString(analysis.snapshotId())).orElse(null);
+            if (snap != null && snap.getSearchQuery() != null) {
+                creatorQueryId = snap.getSearchQuery().getId();
+            }
+        } catch (Exception e) {
+            // fallback
+        }
+
+        List<FrontendDtos.StatItem> dynamicStats = calculateSourceStats(creatorQueryId, request.source());
         String dynamicInsight = response.marketInsight();
         try {
             String viewsStr = dynamicStats.get(0).value();
@@ -573,8 +583,7 @@ public class FrontendService {
         );
     }
 
-    private List<FrontendDtos.StatItem> calculateSourceStats(String searchQueryId, String source) {
-        UUID queryId = UUID.fromString(searchQueryId);
+    private List<FrontendDtos.StatItem> calculateSourceStats(UUID queryId, String source) {
         List<SourceItemEntity> items = sourceItemRepository.findBySearchQueryId(queryId);
 
         List<SourceItemEntity> filtered;
@@ -589,12 +598,12 @@ public class FrontendService {
                                 ? item.getProvider().getProviderCode().toLowerCase(Locale.ROOT) : "";
                         String name = item.getSourceName() == null ? "" : item.getSourceName().toLowerCase(Locale.ROOT);
                         
-                        if (normSource.contains("google search") || normSource.contains("google")) {
-                            return platform.contains("google") || provider.contains("google") || name.contains("google") || provider.contains("google_search");
-                        } else if (normSource.contains("youtube")) {
+                        if (normSource.contains("youtube")) {
                             return platform.contains("youtube") || provider.contains("youtube") || name.contains("youtube");
                         } else if (normSource.contains("news")) {
                             return platform.contains("news") || provider.contains("news") || name.contains("news");
+                        } else if (normSource.contains("google")) {
+                            return platform.contains("google") || provider.contains("google") || name.contains("google") || provider.contains("google_search");
                         }
                         return false;
                     })
