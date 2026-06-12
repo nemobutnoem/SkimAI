@@ -336,7 +336,7 @@ export function AnalysisPage() {
   const [loading, setLoading] = useState(false)
   const [isExporting, setIsExporting] = useState(false)
   const [streamProgress, setStreamProgress] = useState(0)
-  const [cacheInfo, setCacheInfo] = useState(null)
+  const [_cacheInfo, setCacheInfo] = useState(null)
 
 
 
@@ -750,20 +750,7 @@ ${evidenceItems.map(ev => `- [${ev.source}] ${ev.title}\n  Link: ${ev.url}`).joi
         </div>
       )}
 
-      {cacheInfo && cacheInfo.cached && (
-        <div style={{
-          background: '#ecfdf5',
-          border: '1px solid #86efac',
-          borderLeft: '4px solid #22c55e',
-          padding: '12px 16px',
-          borderRadius: '4px',
-          marginBottom: '16px',
-          fontSize: '13px',
-          color: '#166534'
-        }}>
-          💾 <strong>Data từ cache:</strong> {cacheInfo.message} (Tiết kiệm token ✨)
-        </div>
-      )}
+
 
       <div className="prompt-summary-grid">
         <section className="card prompt-summary-card">
