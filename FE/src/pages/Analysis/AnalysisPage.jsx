@@ -438,11 +438,14 @@ export function AnalysisPage() {
               return
             }
 
-            // Fetch timeline data asynchronously since streaming doesn't provide it
-            appApi.getAnalysisTimeline(keyword)
-              .then(setTimelinePoints)
-              .catch(() => setTimelinePoints([]))
-              .finally(() => setTimeout(() => setLoading(false), 300))
+            // Fetch timeline and evidence data asynchronously since streaming doesn't provide them
+            Promise.all([
+              appApi.getAnalysisTimeline(keyword).catch(() => []),
+              appApi.getAnalysisEvidence(keyword).catch(() => [])
+            ]).then(([timeline, evidence]) => {
+              setTimelinePoints(timeline)
+              setEvidenceItems(evidence)
+            }).finally(() => setTimeout(() => setLoading(false), 300))
           }
         },
         (error) => {
