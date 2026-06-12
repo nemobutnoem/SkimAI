@@ -18,6 +18,8 @@ public interface AiProvider {
 
     String normalizeKeyword(String keyword);
 
+    String inferTimeRange(String keyword);
+
     record LiveTrendSignal(
             String market,
             String keyword,

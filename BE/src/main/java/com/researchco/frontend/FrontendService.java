@@ -1254,15 +1254,19 @@ public class FrontendService {
             System.out.println("[DEBUG] No active providers found!");
             return List.of();
         }
+        
+        String timeRange = aiProvider.inferTimeRange(keyword);
+        System.out.println("[DEBUG] AI inferred timeRange=\"" + timeRange + "\" for keyword=\"" + keyword + "\"");
+
         List<NormalizedSourceItem> results = providerOrchestrator.aggregate(
                 activeCodes,
                 keyword,
                 localeProfile.countryCode(),
                 localeProfile.languageCode(),
-                "2y"
+                timeRange
         );
         System.out.println("[DEBUG] Aggregated " + results.size() + " items for keyword=\"" + keyword + "\" with locale "
-                + localeProfile.countryCode() + "/" + localeProfile.languageCode());
+                + localeProfile.countryCode() + "/" + localeProfile.languageCode() + " and timeRange=" + timeRange);
         return results;
     }
 

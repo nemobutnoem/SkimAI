@@ -754,6 +754,135 @@ public class DefaultAiProvider implements AiProvider {
         }
     }
 
+    private String fallbackTimeRange(String keyword) {
+        if (keyword == null || keyword.isBlank()) {
+            return "2y";
+        }
+        String clean = keyword.trim().toLowerCase(Locale.ROOT);
+        
+        // Fast-moving industries: tech, fashion, electronics, trends, startups
+        if (clean.matches(".*(ai|artificial|intelligence|chatgpt|gpt|gemini|openai|gpu|nvidia|deepseek|claude|llm|software|app|technology|iphone|samsung|điện thoại|laptop|gaming|crypto|bitcoin|blockchain|thời trang|fashion|quần áo|xu hướng|trend|tiktok|facebook|social).*")) {
+            return "6m";
+        }
+        
+        // Heavy/slow-moving industries or B2B/finance/real estate: banking, invest, finance, real estate, b2b, manufacturing
+        if (clean.matches(".*(bất động sản|nhà đất|căn hộ|chung cư|tài chính|đầu tư|chứng khoán|cổ phiếu|b2b|ngân hàng|bank|credit|lãi suất|bảo hiểm|insurance|heavy|manufacturing|logistic|chuỗi cung ứng|economic|kinh tế|sản xuất).*")) {
+            return "5y";
+        }
+        
+        // Default to FMCG / retail (2 years)
+        return "2y";
+    }
+
+    @Override
+    public String inferTimeRange(String keyword) {
+        if (keyword == null || keyword.isBlank()) {
+            return "2y";
+        }
+        
+        String clean = keyword.trim().toLowerCase(Locale.ROOT);
+        
+        String activeProvider = systemSettingRepository.findById("ai_provider")
+                .map(SystemSettingEntity::getValue)
+                .map(String::toUpperCase)
+                .orElse("GEMINI");
+
+        String activeModel = systemSettingRepository.findById("ai_model")
+                .map(SystemSettingEntity::getValue)
+                .filter(v -> !v.isBlank())
+                .orElse(this.model);
+
+        String activeApiKey = systemSettingRepository.findById("ai_api_key")
+                .map(SystemSettingEntity::getValue)
+                .filter(v -> !v.isBlank())
+                .orElse(this.apiKey);
+
+        String activeEndpoint = systemSettingRepository.findById("ai_endpoint")
+                .map(SystemSettingEntity::getValue)
+                .filter(v -> !v.isBlank())
+                .orElse("");
+
+        if (activeApiKey.isBlank()) {
+            return fallbackTimeRange(clean);
+        }
+
+        String prompt = String.format(
+                """
+                You are a market research assistant. Your task is to analyze the given topic or keyword and determine which industry it belongs to, and then assign the most appropriate historical data collection timeframe based on the industry's volatility and lifecycle.
+                
+                Industry Rules:
+                1. Technology, electronics, fashion, trend-driven topics, or highly volatile subjects: Use "6m" (6 months) or "1y" (1 year) because product lifecycles are extremely short and trends change constantly.
+                2. FMCG (Fast Moving Consumer Goods), retail, food & beverage, general consumer products: Use "2y" (2 years) as it is ideal to evaluate shopping habits.
+                3. Finance, banking, investing, real estate, B2B, infrastructure, heavy industries: Use "5y" (5 years) or "3y" (3 years) to see economic cycles, trends, fluctuations, and economic rounds.
+                
+                Input Keyword: "%s"
+                
+                Respond ONLY with one of the following timeframe codes (no explanations, no punctuation):
+                - "6m" (for fast-moving tech/electronics/fashion)
+                - "1y" (for moderate tech/fashion/volatile subjects)
+                - "2y" (for FMCG/retail/general F&B)
+                - "3y" (for B2B/heavy industries)
+                - "5y" (for finance/banking/real estate)
+                
+                Timeframe Code:
+                """,
+                keyword
+        );
+
+        try {
+            String responseText = "";
+            if ("OPENAI".equalsIgnoreCase(activeProvider)) {
+                Map<String, Object> requestBody = Map.of(
+                        "model", activeModel,
+                        "messages", List.of(Map.of("role", "user", "content", prompt)),
+                        "temperature", 0.0
+                );
+
+                HttpHeaders headers = new HttpHeaders();
+                headers.setContentType(MediaType.APPLICATION_JSON);
+                headers.setBearerAuth(activeApiKey);
+                HttpEntity<Map<String, Object>> requestEntity = new HttpEntity<>(requestBody, headers);
+
+                String url = activeEndpoint.isBlank() ? "https://api.openai.com/v1/chat/completions" : activeEndpoint;
+                if (!activeEndpoint.isBlank() && !url.toLowerCase(Locale.ROOT).contains("/chat/completions")) {
+                    url = url.endsWith("/") ? url + "chat/completions" : url + "/chat/completions";
+                }
+                ResponseEntity<String> response = restTemplate.postForEntity(url, requestEntity, String.class);
+                JsonNode root = mapper.readTree(response.getBody());
+                responseText = root.path("choices").get(0).path("message").path("content").asText();
+            } else {
+                Map<String, Object> requestBody = Map.of(
+                        "contents", List.of(Map.of("parts", List.of(Map.of("text", prompt)))),
+                        "generationConfig", Map.of("temperature", 0.0));
+
+                HttpHeaders headers = new HttpHeaders();
+                headers.setContentType(MediaType.APPLICATION_JSON);
+                HttpEntity<Map<String, Object>> requestEntity = new HttpEntity<>(requestBody, headers);
+
+                String url;
+                if (activeEndpoint.isBlank()) {
+                    url = "https://generativelanguage.googleapis.com/v1beta/models/" + activeModel + ":generateContent?key=" + activeApiKey;
+                } else {
+                    url = activeEndpoint.endsWith("/") ? activeEndpoint + activeModel + ":generateContent?key=" + activeApiKey 
+                            : activeEndpoint + "/" + activeModel + ":generateContent?key=" + activeApiKey;
+                }
+
+                ResponseEntity<String> response = restTemplate.postForEntity(url, requestEntity, String.class);
+                JsonNode root = mapper.readTree(response.getBody());
+                responseText = root.path("candidates").get(0).path("content").path("parts").get(0).path("text").asText();
+            }
+
+            String result = responseText.trim().replaceAll("\"", "").toLowerCase(Locale.ROOT);
+            if (result.equals("6m") || result.equals("1y") || result.equals("2y") || result.equals("3y") || result.equals("5y")) {
+                return result;
+            }
+            return fallbackTimeRange(clean);
+        } catch (Exception e) {
+            System.err.println("[WARNING] Industry timeframe inference failed: " + e.getMessage());
+            return fallbackTimeRange(clean);
+        }
+    }
+
     private record DeepInsightBlueprint(
             String keyword,
             String source,
