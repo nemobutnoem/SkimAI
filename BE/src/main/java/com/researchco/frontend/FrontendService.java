@@ -515,26 +515,129 @@ public class FrontendService {
                 .filter(r -> r.getTitle() != null && r.getTitle().trim().equalsIgnoreCase(targetTitle))
                 .findFirst();
 
+        FrontendDtos.DeepInsightResponse response;
         if (cachedReport.isPresent()) {
-            return objectMapper.convertValue(cachedReport.get().getReportContent(), FrontendDtos.DeepInsightResponse.class);
+            response = objectMapper.convertValue(cachedReport.get().getReportContent(), FrontendDtos.DeepInsightResponse.class);
+        } else {
+            // 2. If not cached, enforce quota, call AI provider, and cache it
+            enforceDeepInsightQuota(user, subscription);
+            response = aiProvider.generateDeepInsight(analysis, request.source());
+
+            SearchQueryEntity queryEntity = searchQueryRepository.findById(UUID.fromString(analysis.searchQueryId())).orElse(null);
+            com.researchco.report.ReportEntity report = com.researchco.report.ReportEntity.builder()
+                    .user(user)
+                    .searchQuery(queryEntity)
+                    .title(targetTitle)
+                    .status("DEEP_INSIGHT")
+                    .reportContent(objectMapper.convertValue(response, Map.class))
+                    .build();
+            reportRepository.save(report);
+            consumeDeepInsightQuota(user);
         }
 
-        // 2. If not cached, enforce quota, call AI provider, and cache it
-        enforceDeepInsightQuota(user, subscription);
-        FrontendDtos.DeepInsightResponse response = aiProvider.generateDeepInsight(analysis, request.source());
+        // Re-calculate stats dynamically based on the selected source focus
+        List<FrontendDtos.StatItem> dynamicStats = calculateSourceStats(analysis.searchQueryId(), request.source());
+        String dynamicInsight = response.marketInsight();
+        try {
+            String viewsStr = dynamicStats.get(0).value();
+            long sourceMentions = Long.parseLong(dynamicStats.get(1).value());
+            String engStr = dynamicStats.get(2).value().replace("%", "");
+            double sourceEngagement = Double.parseDouble(engStr) / 100.0;
+            
+            dynamicInsight = String.format(
+                Locale.ROOT,
+                "Dựa trên các tín hiệu hiện tại từ %s, từ khóa \"%s\" ghi nhận %d lượt đề cập và khoảng %s lượt xem tổng hợp. Tương tác trung bình đạt %.2f%%, cho thấy %s.",
+                displaySourceName(request.source()),
+                analysis.keyword(),
+                sourceMentions,
+                viewsStr,
+                sourceEngagement * 100,
+                sourceEngagement >= 0.04 ? "sự quan tâm mạnh mẽ từ khách hàng mục tiêu với tỷ lệ tương tác cao" : "đây là một xu hướng mới nổi cần theo dõi thêm để đánh giá tiềm năng thực tế"
+            );
+        } catch (Exception e) {
+            // Fallback to original AI response text
+        }
 
-        SearchQueryEntity queryEntity = searchQueryRepository.findById(UUID.fromString(analysis.searchQueryId())).orElse(null);
-        com.researchco.report.ReportEntity report = com.researchco.report.ReportEntity.builder()
-                .user(user)
-                .searchQuery(queryEntity)
-                .title(targetTitle)
-                .status("DEEP_INSIGHT")
-                .reportContent(objectMapper.convertValue(response, Map.class))
-                .build();
-        reportRepository.save(report);
+        return new FrontendDtos.DeepInsightResponse(
+                response.keyword(),
+                response.source(),
+                dynamicInsight,
+                response.opportunities(),
+                response.recommendation(),
+                dynamicStats,
+                response.mediaSignals(),
+                response.trendPoints(),
+                response.sentiment(),
+                response.opportunityCards(),
+                response.strategicRecommendation()
+        );
+    }
 
-        consumeDeepInsightQuota(user);
-        return response;
+    private List<FrontendDtos.StatItem> calculateSourceStats(String searchQueryId, String source) {
+        UUID queryId = UUID.fromString(searchQueryId);
+        List<SourceItemEntity> items = sourceItemRepository.findBySearchQueryId(queryId);
+
+        List<SourceItemEntity> filtered;
+        if (source == null || source.isBlank() || source.equalsIgnoreCase("Cross-source synthesis") || source.equalsIgnoreCase("Tổng hợp đa nguồn")) {
+            filtered = items;
+        } else {
+            String normSource = source.trim().toLowerCase(Locale.ROOT);
+            filtered = items.stream()
+                    .filter(item -> {
+                        String platform = item.getPlatform() == null ? "" : item.getPlatform().toLowerCase(Locale.ROOT);
+                        String provider = item.getProvider() != null && item.getProvider().getProviderCode() != null 
+                                ? item.getProvider().getProviderCode().toLowerCase(Locale.ROOT) : "";
+                        String name = item.getSourceName() == null ? "" : item.getSourceName().toLowerCase(Locale.ROOT);
+                        
+                        if (normSource.contains("google search") || normSource.contains("google")) {
+                            return platform.contains("google") || provider.contains("google") || name.contains("google") || provider.contains("google_search");
+                        } else if (normSource.contains("youtube")) {
+                            return platform.contains("youtube") || provider.contains("youtube") || name.contains("youtube");
+                        } else if (normSource.contains("news")) {
+                            return platform.contains("news") || provider.contains("news") || name.contains("news");
+                        }
+                        return false;
+                    })
+                    .toList();
+        }
+
+        long totalViews = 0L;
+        long totalMentions = filtered.size();
+        long totalLikes = 0L;
+        long totalComments = 0L;
+        double totalEngagement = 0.0;
+        int countWithEngagement = 0;
+
+        for (SourceItemEntity item : filtered) {
+            if (item.getRawPayload() instanceof Map<?, ?> payload) {
+                totalViews += toLong(payload.get("viewCount"));
+                totalLikes += toLong(payload.get("likeCount"));
+                totalComments += toLong(payload.get("commentCount"));
+                double rate = toDouble(payload.get("engagementRate"));
+                if (rate > 0.0) {
+                    totalEngagement += rate;
+                    countWithEngagement++;
+                }
+            }
+        }
+
+        double avgEngagement = countWithEngagement == 0 ? 0.05 : totalEngagement / countWithEngagement;
+
+        return List.of(
+                new FrontendDtos.StatItem(formatCompact(totalViews), "Tổng lượt xem"),
+                new FrontendDtos.StatItem(String.valueOf(totalMentions), "Số lượt đề cập"),
+                new FrontendDtos.StatItem(String.format(Locale.ROOT, "%.2f%%", avgEngagement * 100), "Tương tác trung bình")
+        );
+    }
+
+    private String displaySourceName(String source) {
+        if (source == null || source.isBlank()) {
+            return "hệ thống";
+        }
+        if (source.equalsIgnoreCase("Cross-source synthesis") || source.equalsIgnoreCase("Tổng hợp đa nguồn")) {
+            return "các nguồn tổng hợp";
+        }
+        return source;
     }
 
     public FrontendDtos.ProjectWorkflowResponse getProjectWorkflow(String keyword) {
