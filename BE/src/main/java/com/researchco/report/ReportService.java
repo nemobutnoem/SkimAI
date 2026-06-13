@@ -12,10 +12,12 @@ import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.HashMap;
 
 @Service
 public class ReportService {
@@ -24,15 +26,37 @@ public class ReportService {
     private final SearchQueryRepository searchQueryRepository;
     private final AnalysisSnapshotRepository analysisSnapshotRepository;
     private final UserRepository userRepository;
+    private final ObjectMapper objectMapper;
 
     public ReportService(ReportRepository reportRepository,
                          SearchQueryRepository searchQueryRepository,
                          AnalysisSnapshotRepository analysisSnapshotRepository,
-                         UserRepository userRepository) {
+                         UserRepository userRepository,
+                         ObjectMapper objectMapper) {
         this.reportRepository = reportRepository;
         this.searchQueryRepository = searchQueryRepository;
         this.analysisSnapshotRepository = analysisSnapshotRepository;
         this.userRepository = userRepository;
+        this.objectMapper = objectMapper;
+    }
+
+    private String serialize(Object obj) {
+        try {
+            return objectMapper.writeValueAsString(obj);
+        } catch (Exception e) {
+            return "{}";
+        }
+    }
+
+    private Map<String, Object> deserialize(String json) {
+        if (json == null || json.isBlank()) {
+            return Map.of();
+        }
+        try {
+            return objectMapper.readValue(json, Map.class);
+        } catch (Exception e) {
+            return Map.of();
+        }
     }
 
     @Transactional
@@ -72,7 +96,7 @@ public class ReportService {
                 .searchQuery(query)
                 .snapshot(snapshot)
                 .title(request.title())
-                .reportContent(reportContent)
+                .reportContent(serialize(reportContent))
                 .status("DRAFT")
                 .build();
         reportRepository.save(report);
@@ -132,7 +156,7 @@ public class ReportService {
                 report.getTitle(),
                 report.getStatus(),
                 report.getSearchQuery() != null ? report.getSearchQuery().getKeyword() : "",
-                report.getReportContent(),
+                deserialize(report.getReportContent()),
                 report.getCreatedAt()
         );
     }

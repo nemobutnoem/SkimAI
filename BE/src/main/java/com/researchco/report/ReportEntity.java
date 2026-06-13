@@ -56,7 +56,7 @@ public class ReportEntity {
 
     @JdbcTypeCode(SqlTypes.JSON)
     @Column(name = "report_content")
-    private Map<String, Object> reportContent;
+    private String reportContent;
 
     @Column(length = 20)
     private String status;

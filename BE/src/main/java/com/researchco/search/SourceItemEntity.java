@@ -73,7 +73,7 @@ public class SourceItemEntity {
 
     @JdbcTypeCode(SqlTypes.JSON)
     @Column(name = "raw_payload")
-    private Object rawPayload;
+    private String rawPayload;
 
     @CreationTimestamp
     @Column(name = "created_at", updatable = false)
