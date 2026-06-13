@@ -597,30 +597,7 @@ ${strategicRecommendation.desc}
             )}
           </div>
 
-          {/* History panel at the bottom when keyword is active */}
-          {historyReports.filter(item => item.keyword !== keyword).length > 0 && (
-            <div className="di-section-card" style={{ marginTop: '40px', borderTop: '1px solid var(--gray-200)' }}>
-              <div className="di-section-title">⏱️ Xem lại các từ khóa khác đã phân tích</div>
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px', marginTop: '15px' }}>
-                {historyReports
-                  .filter(item => item.keyword !== keyword)
-                  .map(item => {
-                    const source = item.title ? item.title.replace(" Deep Insight", "") : 'Cross-source synthesis';
-                    return (
-                      <Link
-                        key={item.id}
-                        to={`${ROUTES.DEEP_INSIGHT}?keyword=${encodeURIComponent(item.keyword)}&source=${encodeURIComponent(source)}`}
-                        className="btn btn-secondary btn-sm"
-                        style={{ textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: '6px' }}
-                      >
-                        <span>{item.keyword}</span>
-                        <span style={{ fontSize: '10px', opacity: 0.7 }}>({source})</span>
-                      </Link>
-                    );
-                  })}
-              </div>
-            </div>
-          )}
+
         </>
       ) : (
         <div className="di-section-card" style={{ marginTop: '20px' }}>
