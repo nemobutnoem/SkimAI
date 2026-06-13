@@ -169,7 +169,30 @@ public class DefaultAiProvider implements AiProvider {
                     { "value": "Giá trị chỉ số chiến lược 1", "label": "Tên chỉ số chiến lược 1 (ví dụ: Quy mô tương tác)" },
                     { "value": "Giá trị chỉ số chiến lược 2", "label": "Tên chỉ số chiến lược 2 (ví dụ: Lượng thảo luận tích cực)" },
                     { "value": "Giá trị chỉ số chiến lược 3", "label": "Tên chỉ số chiến lược 3 (ví dụ: Chủ đề phụ tốt nhất)" }
-                  ]
+                  ],
+                  "competitors": [
+                    {
+                      "name": "Tên đối thủ/Kênh nổi bật từ dữ liệu nguồn",
+                      "channelUrl": "Đường dẫn URL của kênh/website (ví dụ: https://www.youtube.com/@techlead)",
+                      "strengthLevel": "Mạnh hoặc Trung bình hoặc Mới nổi",
+                      "followers": "Số followers/subs ước tính (ví dụ: 1.4M subs hoặc 45K followers)",
+                      "frequency": "Tần suất hoạt động (ví dụ: 2 video/tuần hoặc Hàng ngày)",
+                      "note": "AI nhận xét ngắn gọn về ngách nội dung hoặc thế mạnh của họ bằng tiếng Việt"
+                    }
+                  ],
+                  "targetPersona": {
+                    "description": "Đoạn mô tả ngắn gọn 2-3 câu bằng tiếng Việt về chân dung khách hàng quan tâm đến chủ đề này",
+                    "painPoints": [
+                      "Nỗi đau/Vấn đề lớn nhất 1",
+                      "Nỗi đau/Vấn đề lớn nhất 2",
+                      "Nỗi đau/Vấn đề lớn nhất 3"
+                    ],
+                    "searchIntents": [
+                      "Hành vi/Ý định tìm kiếm 1",
+                      "Hành vi/Ý định tìm kiếm 2",
+                      "Hành vi/Ý định tìm kiếm 3"
+                    ]
+                  }
                 }
                 """,
                 contextData.keyword(),
@@ -286,6 +309,31 @@ public class DefaultAiProvider implements AiProvider {
             )));
             List<FrontendDtos.StatItem> strategicStats = strategicStatsList.isEmpty() ? blueprint.strategicStats() : strategicStatsList;
 
+            final List<FrontendDtos.CompetitorMapItem> competitorsList = new ArrayList<>();
+            jsonResult.path("competitors").forEach(node -> competitorsList.add(new FrontendDtos.CompetitorMapItem(
+                    node.path("name").asText("Nguồn đối thủ"),
+                    node.path("channelUrl").asText(""),
+                    node.path("strengthLevel").asText("Trung bình"),
+                    node.path("followers").asText("—"),
+                    node.path("frequency").asText("—"),
+                    node.path("note").asText("—")
+            )));
+            List<FrontendDtos.CompetitorMapItem> competitors = competitorsList.isEmpty() ? blueprint.competitors() : competitorsList;
+
+            JsonNode personaNode = jsonResult.path("targetPersona");
+            String desc = personaNode.path("description").asText(blueprint.targetPersona().description());
+            final List<String> painPoints = new ArrayList<>();
+            personaNode.path("painPoints").forEach(node -> painPoints.add(node.asText()));
+            if (painPoints.isEmpty()) {
+                painPoints.addAll(blueprint.targetPersona().painPoints());
+            }
+            final List<String> searchIntents = new ArrayList<>();
+            personaNode.path("searchIntents").forEach(node -> searchIntents.add(node.asText()));
+            if (searchIntents.isEmpty()) {
+                searchIntents.addAll(blueprint.targetPersona().searchIntents());
+            }
+            FrontendDtos.TargetPersona targetPersona = new FrontendDtos.TargetPersona(desc, painPoints, searchIntents);
+
             return new FrontendDtos.DeepInsightResponse(
                     contextData.keyword(),
                     source,
@@ -301,7 +349,10 @@ public class DefaultAiProvider implements AiProvider {
                             "Hướng đi chiến lược từ AI",
                             jsonResult.path("recommendation").asText("No recommendation available."),
                             strategicStats
-                    ));
+                    ),
+                    competitors,
+                    targetPersona
+            );
 
         } catch (Exception e) {
             e.printStackTrace();
@@ -575,6 +626,47 @@ public class DefaultAiProvider implements AiProvider {
                 new FrontendDtos.StatItem(topKeywords.isBlank() ? keyword : topKeywords, "Chủ đề phụ tiềm năng")
         );
 
+        List<FrontendDtos.CompetitorMapItem> fallbackCompetitors = List.of(
+                new FrontendDtos.CompetitorMapItem(
+                        keyword + " Channel",
+                        "https://www.youtube.com",
+                        "Mạnh",
+                        "850K subs",
+                        "3 video/tuần",
+                        "Chuyên hướng dẫn và cung cấp các giải pháp tối ưu hóa thực tế cho " + keyword + "."
+                ),
+                new FrontendDtos.CompetitorMapItem(
+                        keyword + " Hub",
+                        "https://www.google.com",
+                        "Trung bình",
+                        "120K followers",
+                        "1 video/tuần",
+                        "Review so sánh hiệu năng và đánh giá ưu nhược điểm các dòng sản phẩm liên quan."
+                ),
+                new FrontendDtos.CompetitorMapItem(
+                        keyword + " Lab",
+                        "https://www.github.com",
+                        "Mới nổi",
+                        "35K followers",
+                        "Hàng tuần",
+                        "Chia sẻ kinh nghiệm lập trình, tích hợp hệ sinh thái và tự động hóa nâng cao."
+                )
+        );
+
+        FrontendDtos.TargetPersona fallbackPersona = new FrontendDtos.TargetPersona(
+                "Nhóm người dùng quan tâm đến \"" + keyword + "\", bao gồm các cá nhân đam mê công nghệ giải pháp, doanh nghiệp vừa và nhỏ (SMEs) và các kỹ sư tích hợp hệ thống đang tìm kiếm giải pháp tối ưu hóa hiệu năng và chi phí.",
+                List.of(
+                        "Thiếu tài liệu hướng dẫn tiếng Việt chi tiết và các tình huống ứng dụng thực tế.",
+                        "Khó khăn trong việc tích hợp và đồng bộ hóa với hệ thống thiết bị sẵn có.",
+                        "Độ trễ tín hiệu và độ ổn định của giải pháp chưa đạt kỳ vọng khi vận hành quy mô lớn."
+                ),
+                List.of(
+                        "Tìm kiếm các bài viết hướng dẫn từng bước (Step-by-step) và video lập trình DIY.",
+                        "So sánh chi phí, hiệu năng và độ tương thích giữa các thương hiệu cùng phân khúc.",
+                        "Tìm kiếm phản hồi thực tế từ cộng đồng người dùng trước khi quyết định đầu tư."
+                )
+        );
+
         return new DeepInsightBlueprint(
                 keyword,
                 source,
@@ -593,7 +685,9 @@ public class DefaultAiProvider implements AiProvider {
                                 : topics
                 ),
                 opportunityCards,
-                strategicStats
+                strategicStats,
+                fallbackCompetitors,
+                fallbackPersona
         );
     }
 
@@ -894,7 +988,9 @@ public class DefaultAiProvider implements AiProvider {
             List<FrontendDtos.TrendPoint> trendPoints,
             FrontendDtos.SentimentBlock sentiment,
             List<FrontendDtos.OpportunityCard> opportunityCards,
-            List<FrontendDtos.StatItem> strategicStats
+            List<FrontendDtos.StatItem> strategicStats,
+            List<FrontendDtos.CompetitorMapItem> competitors,
+            FrontendDtos.TargetPersona targetPersona
     ) {
         FrontendDtos.DeepInsightResponse toResponse() {
             return new FrontendDtos.DeepInsightResponse(
@@ -912,7 +1008,9 @@ public class DefaultAiProvider implements AiProvider {
                             "Market-backed direction",
                             recommendation,
                             strategicStats
-                    )
+                    ),
+                    competitors,
+                    targetPersona
             );
         }
     }

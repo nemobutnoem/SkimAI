@@ -174,6 +174,21 @@ public class FrontendDtos {
     public record StrategicRecommendation(String title, String desc, List<StatItem> stats) {
     }
 
+    public record CompetitorMapItem(
+            String name,
+            String channelUrl,
+            String strengthLevel,
+            String followers,
+            String frequency,
+            String note
+    ) {}
+
+    public record TargetPersona(
+            String description,
+            List<String> painPoints,
+            List<String> searchIntents
+    ) {}
+
     public record DeepInsightResponse(
             String keyword,
             String source,
@@ -185,7 +200,9 @@ public class FrontendDtos {
             List<TrendPoint> trendPoints,
             SentimentBlock sentiment,
             List<OpportunityCard> opportunityCards,
-            StrategicRecommendation strategicRecommendation
+            StrategicRecommendation strategicRecommendation,
+            List<CompetitorMapItem> competitors,
+            TargetPersona targetPersona
     ) {
     }
 

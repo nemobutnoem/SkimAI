@@ -60,6 +60,11 @@ export function DeepInsightPage() {
   const [showUpgradeModal, setShowUpgradeModal] = useState(false)
   const [upgradeMessage, setUpgradeMessage] = useState('')
   const [evidenceItems, setEvidenceItems] = useState([])
+  const [activeReportTab, setActiveReportTab] = useState('overview')
+
+  useEffect(() => {
+    setActiveReportTab('overview')
+  }, [keyword, activeSource])
 
   const availableSources = analysisContext?.dataSources?.length
     ? analysisContext.dataSources
@@ -248,6 +253,36 @@ export function DeepInsightPage() {
           return;
       }
 
+      // Target Persona section in markdown
+      let personaMd = '';
+      if (data?.targetPersona) {
+        const persona = data.targetPersona;
+        personaMd = `
+## 🎯 Chân Dung Khách Hàng (Target Persona)
+- **Mô tả chung:** ${persona.description || 'Chưa có thông tin mô tả.'}
+- **Vấn đề & Nỗi đau lớn nhất (Painpoints):**
+${(persona.painPoints || []).map(p => `  - ${p}`).join('\n')}
+- **Hành vi & Ý định tìm kiếm (Search Intent):**
+${(persona.searchIntents || []).map(s => `  - ${s}`).join('\n')}
+        `.trim();
+      }
+
+      // Competitor Map section in markdown
+      let competitorsMd = '';
+      if (data?.competitors && data.competitors.length > 0) {
+        competitorsMd = `
+## ⚔️ Bản Đồ Đối Thủ Cạnh Tranh (Competitor Map)
+${data.competitors.map((c, idx) => `
+### ${idx + 1}. ${c.name}
+- **Liên kết:** ${c.channelUrl || 'N/A'}
+- **Sức mạnh:** ${c.strengthLevel || 'N/A'}
+- **Theo dõi (Subs):** ${c.followers || 'N/A'}
+- **Tần suất hoạt động:** ${c.frequency || 'N/A'}
+- **AI Chiến lược:** ${c.note || 'N/A'}
+`.trim()).join('\n\n')}
+        `.trim();
+      }
+
       const mdContent = `
 # Báo Cáo Phân Tích Chuyên Sâu (AI Deep Insight): ${keyword}
 **Ngày tạo:** ${new Date().toLocaleDateString('vi-VN')}
@@ -265,6 +300,9 @@ ${opportunityCards.map(opp => `- **${opp.title}**: ${opp.desc}`).join('\n')}
 ## ✨ Strategic Recommendation (Khuyến nghị chiến lược)
 ### ${strategicRecommendation.title}
 ${strategicRecommendation.desc}
+
+${personaMd ? `\n${personaMd}` : ''}
+${competitorsMd ? `\n${competitorsMd}` : ''}
       `.trim();
 
       const blob = new Blob([mdContent], { type: 'text/markdown;charset=utf-8' });
@@ -339,226 +377,402 @@ ${strategicRecommendation.desc}
 
       {keyword ? (
         <>
-          {/* Market Insight */}
-          <div className="di-section-card">
-            <div className="di-section-title">📊 Nhận định thị trường</div>
-            <div className="di-key-finding">
-              <div className="di-kf-label">Phát hiện chính</div>
-              {loading && !data ? (
-                <div className="skeleton-pulse" style={{ height: '24px', width: '90%', margin: '8px 0', background: 'var(--gray-100)', borderRadius: '4px' }} />
-              ) : (
-                <p>{signalSummary ?? `Nhấp "Chạy phân tích" để tạo nhận định từ AI cho "${keyword}".`}</p>
-              )}
-            </div>
-            <div className="di-stat-grid">
-              {stats.map((s) => (
-                <div className="di-stat-box" key={s.label}>
-                  <div className="di-stat-num di-stat-num-text">
-                    {loading && !data ? (
-                      <div className="skeleton-pulse" style={{ height: '28px', width: '80px', margin: '0 auto', background: 'var(--gray-200)', borderRadius: '4px' }} />
-                    ) : (
-                      s.value
-                    )}
-                  </div>
-                  <div className="di-stat-desc">{s.label}</div>
-                </div>
-              ))}
-            </div>
+          {/* Sub-tab navigation bar */}
+          <div className="di-report-tabs">
+            <button
+              className={`di-report-tab-btn${activeReportTab === 'overview' ? ' active' : ''}`}
+              onClick={() => setActiveReportTab('overview')}
+            >
+              📊 Báo cáo tổng quan
+            </button>
+            <button
+              className={`di-report-tab-btn${activeReportTab === 'persona' ? ' active' : ''}`}
+              onClick={() => setActiveReportTab('persona')}
+            >
+              🎯 Chân dung khách hàng
+            </button>
+            <button
+              className={`di-report-tab-btn${activeReportTab === 'competitor' ? ' active' : ''}`}
+              onClick={() => setActiveReportTab('competitor')}
+            >
+              ⚔️ Bản đồ đối thủ
+            </button>
+          </div>
 
-            {/* Evidence items list section */}
-            {filteredEvidence.length > 0 && (
-              <div className="di-evidence-container" style={{ marginTop: '24px', paddingTop: '20px', borderTop: '1px solid var(--gray-200)' }}>
-                <div style={{ fontSize: '14px', fontWeight: '600', marginBottom: '12px', color: 'var(--gray-700)', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                  <span>🔗 Bằng chứng nguồn gốc ({activeSource})</span>
+          {activeReportTab === 'overview' && (
+            <>
+              {/* Market Insight */}
+              <div className="di-section-card">
+                <div className="di-section-title">📊 Nhận định thị trường</div>
+                <div className="di-key-finding">
+                  <div className="di-kf-label">Phát hiện chính</div>
+                  {loading && !data ? (
+                    <div className="skeleton-pulse" style={{ height: '24px', width: '90%', margin: '8px 0', background: 'var(--gray-100)', borderRadius: '4px' }} />
+                  ) : (
+                    <p>{signalSummary ?? `Nhấp "Chạy phân tích" để tạo nhận định từ AI cho "${keyword}".`}</p>
+                  )}
                 </div>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                  {filteredEvidence.map((item, idx) => (
-                    <div key={idx} style={{ padding: '12px', background: '#f8fafc', borderRadius: '8px', border: '1px solid #e2e8f0', display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '12px' }}>
-                        {item.url ? (
-                          <a href={item.url} target="_blank" rel="noreferrer noopener" style={{ fontWeight: '600', color: 'var(--primary)', textDecoration: 'none', fontSize: '13px', lineHeight: '1.4' }} className="evidence-title-link">
-                            {item.title}
-                          </a>
+                <div className="di-stat-grid">
+                  {stats.map((s) => (
+                    <div className="di-stat-box" key={s.label}>
+                      <div className="di-stat-num di-stat-num-text">
+                        {loading && !data ? (
+                          <div className="skeleton-pulse" style={{ height: '28px', width: '80px', margin: '0 auto', background: 'var(--gray-200)', borderRadius: '4px' }} />
                         ) : (
-                          <span style={{ fontWeight: '600', color: 'var(--gray-800)', fontSize: '13px', lineHeight: '1.4' }}>
-                            {item.title}
-                          </span>
+                          s.value
                         )}
-                        <span style={{ fontSize: '10px', background: '#e0f2fe', color: '#0369a1', padding: '2px 8px', borderRadius: '12px', whiteSpace: 'nowrap', fontWeight: '500' }}>
-                          {canonicalSource(item.source)}
+                      </div>
+                      <div className="di-stat-desc">{s.label}</div>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Evidence items list section */}
+                {filteredEvidence.length > 0 && (
+                  <div className="di-evidence-container" style={{ marginTop: '24px', paddingTop: '20px', borderTop: '1px solid var(--gray-200)' }}>
+                    <div style={{ fontSize: '14px', fontWeight: '600', marginBottom: '12px', color: 'var(--gray-700)', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                      <span>🔗 Bằng chứng nguồn gốc ({activeSource})</span>
+                    </div>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                      {filteredEvidence.map((item, idx) => (
+                        <div key={idx} style={{ padding: '12px', background: '#f8fafc', borderRadius: '8px', border: '1px solid #e2e8f0', display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '12px' }}>
+                            {item.url ? (
+                              <a href={item.url} target="_blank" rel="noreferrer noopener" style={{ fontWeight: '600', color: 'var(--primary)', textDecoration: 'none', fontSize: '13px', lineHeight: '1.4' }} className="evidence-title-link">
+                                {item.title}
+                              </a>
+                            ) : (
+                              <span style={{ fontWeight: '600', color: 'var(--gray-800)', fontSize: '13px', lineHeight: '1.4' }}>
+                                {item.title}
+                              </span>
+                            )}
+                            <span style={{ fontSize: '10px', background: '#e0f2fe', color: '#0369a1', padding: '2px 8px', borderRadius: '12px', whiteSpace: 'nowrap', fontWeight: '500' }}>
+                              {canonicalSource(item.source)}
+                            </span>
+                          </div>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '8px', fontSize: '11px', color: '#64748b' }}>
+                            <span>{item.metric}</span>
+                            {item.sentimentLabel && (
+                              <span style={{ 
+                                color: item.sentimentLabel === 'POSITIVE' ? 'var(--green)' : item.sentimentLabel === 'NEGATIVE' ? 'var(--red)' : '#f59e0b',
+                                fontWeight: '600'
+                              }}>
+                                {item.sentimentLabel === 'POSITIVE' ? 'Tích cực' : item.sentimentLabel === 'NEGATIVE' ? 'Tiêu cực' : 'Trung lập'}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Search Trend Analysis */}
+              <div className="di-section-card">
+                <div className="di-section-title">📈 Phân tích xu hướng tìm kiếm</div>
+                <div className="di-trend-status">{trendMessage}</div>
+                <div className="di-trend-table">
+                  <div className="di-trend-table-head">
+                    <span className="di-tth di-tth-rank">#</span>
+                    <span className="di-tth di-tth-name">Từ khóa</span>
+                    <span className="di-tth di-tth-note">Số liệu</span>
+                    <span className="di-tth di-tth-bar">Động lượng xu hướng</span>
+                  </div>
+                  {loading && !data ? (
+                    [1, 2, 3].map((idx) => (
+                      <div className="di-trend-table-row" key={idx}>
+                        <span className="di-trend-rank">{idx}</span>
+                        <span className="di-trend-kw"><div className="skeleton-pulse" style={{ height: '16px', width: '120px', background: 'var(--gray-100)', borderRadius: '4px' }} /></span>
+                        <span className="di-trend-note"><div className="skeleton-pulse" style={{ height: '14px', width: '160px', background: 'var(--gray-100)', borderRadius: '4px' }} /></span>
+                        <span className="di-trend-bar-cell">
+                          <div className="di-trend-bar-track">
+                            <div className="skeleton-pulse" style={{ height: '100%', width: '60%', background: 'var(--gray-200)', borderRadius: '2px' }} />
+                          </div>
                         </span>
                       </div>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '8px', fontSize: '11px', color: '#64748b' }}>
-                        <span>{item.metric}</span>
-                        {item.sentimentLabel && (
-                          <span style={{ 
-                            color: item.sentimentLabel === 'POSITIVE' ? 'var(--green)' : item.sentimentLabel === 'NEGATIVE' ? 'var(--red)' : '#f59e0b',
-                            fontWeight: '600'
-                          }}>
-                            {item.sentimentLabel === 'POSITIVE' ? 'Tích cực' : item.sentimentLabel === 'NEGATIVE' ? 'Tiêu cực' : 'Trung lập'}
-                          </span>
-                        )}
+                    ))
+                  ) : (
+                    trendPoints.map((point, idx) => (
+                      <div className="di-trend-table-row" key={point.label}>
+                        <span className="di-trend-rank">{idx + 1}</span>
+                        <span className="di-trend-kw">{point.label}</span>
+                        <span className="di-trend-note">{point.note}</span>
+                        <span className="di-trend-bar-cell">
+                          <div className="di-trend-bar-track">
+                            <div className="di-trend-bar-fill" style={{ width: `${point.value}%` }} />
+                          </div>
+                          <span className="di-trend-pct">{point.value}%</span>
+                        </span>
                       </div>
-                    </div>
-                  ))}
+                    ))
+                  )}
                 </div>
               </div>
-            )}
-          </div>
 
-          {/* Search Trend Analysis */}
-          <div className="di-section-card">
-            <div className="di-section-title">📈 Phân tích xu hướng tìm kiếm</div>
-            <div className="di-trend-status">{trendMessage}</div>
-            <div className="di-trend-table">
-              <div className="di-trend-table-head">
-                <span className="di-tth di-tth-rank">#</span>
-                <span className="di-tth di-tth-name">Từ khóa</span>
-                <span className="di-tth di-tth-note">Số liệu</span>
-                <span className="di-tth di-tth-bar">Động lượng xu hướng</span>
+              {/* Media & Industry Signals */}
+              <div className="di-section-card">
+                <div className="di-section-title">📡 Tín hiệu truyền thông & ngành</div>
+                <div className="di-signal-grid">
+                  {loading && !data ? (
+                    [1, 2, 3].map((idx) => (
+                      <div className="di-signal-card" key={idx}>
+                        <div className="di-signal-icon skeleton-pulse" style={{ width: '40px', height: '40px', background: 'var(--gray-200)', borderRadius: '50%' }} />
+                        <div style={{ flex: 1 }}>
+                          <div className="skeleton-pulse" style={{ height: '18px', width: '140px', marginBottom: '8px', background: 'var(--gray-200)', borderRadius: '4px' }} />
+                          <div className="skeleton-pulse" style={{ height: '14px', width: '100%', marginBottom: '4px', background: 'var(--gray-100)', borderRadius: '4px' }} />
+                          <div className="skeleton-pulse" style={{ height: '14px', width: '80%', background: 'var(--gray-100)', borderRadius: '4px' }} />
+                        </div>
+                      </div>
+                    ))
+                  ) : (
+                    mediaSignals.map((sig, idx) => (
+                      <div className="di-signal-card" key={sig.title}>
+                        <div className="di-signal-icon">{SIGNAL_ICONS[idx % SIGNAL_ICONS.length]}</div>
+                        <div>
+                          <h5>{sig.title}</h5>
+                          <p>{sig.desc}</p>
+                        </div>
+                      </div>
+                    ))
+                  )}
+                </div>
               </div>
-              {loading && !data ? (
-                [1, 2, 3].map((idx) => (
-                  <div className="di-trend-table-row" key={idx}>
-                    <span className="di-trend-rank">{idx}</span>
-                    <span className="di-trend-kw"><div className="skeleton-pulse" style={{ height: '16px', width: '120px', background: 'var(--gray-100)', borderRadius: '4px' }} /></span>
-                    <span className="di-trend-note"><div className="skeleton-pulse" style={{ height: '14px', width: '160px', background: 'var(--gray-100)', borderRadius: '4px' }} /></span>
-                    <span className="di-trend-bar-cell">
-                      <div className="di-trend-bar-track">
-                        <div className="skeleton-pulse" style={{ height: '100%', width: '60%', background: 'var(--gray-200)', borderRadius: '2px' }} />
-                      </div>
-                    </span>
-                  </div>
-                ))
-              ) : (
-                trendPoints.map((point, idx) => (
-                  <div className="di-trend-table-row" key={point.label}>
-                    <span className="di-trend-rank">{idx + 1}</span>
-                    <span className="di-trend-kw">{point.label}</span>
-                    <span className="di-trend-note">{point.note}</span>
-                    <span className="di-trend-bar-cell">
-                      <div className="di-trend-bar-track">
-                        <div className="di-trend-bar-fill" style={{ width: `${point.value}%` }} />
-                      </div>
-                      <span className="di-trend-pct">{point.value}%</span>
-                    </span>
-                  </div>
-                ))
-              )}
-            </div>
-          </div>
 
-          {/* Media & Industry Signals */}
-          <div className="di-section-card">
-            <div className="di-section-title">📡 Tín hiệu truyền thông & ngành</div>
-            <div className="di-signal-grid">
+              {/* Estimated Audience Sentiment */}
+              <div className="di-section-card">
+                <div className="di-section-title">💬 Chủ đề thảo luận chính</div>
+                <div className="hint" style={{ marginBottom: '15px' }}>Được ước tính từ lượt tương tác và sự trùng lặp từ khóa của các thảo luận.</div>
+                <div className="di-topics-list" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '12px' }}>
+                  {loading && !data ? (
+                    [1, 2, 3, 4].map((idx) => (
+                      <div className="di-discussion-topic" key={idx} style={{ border: '1px solid var(--gray-200)', background: '#f8fafc', padding: '12px 16px' }}>
+                        <span className="di-topic-name"><div className="skeleton-pulse" style={{ height: '14px', width: '100px', background: 'var(--gray-100)', borderRadius: '4px' }} /></span>
+                        <span className="di-topic-change"><div className="skeleton-pulse" style={{ height: '14px', width: '50px', background: 'var(--gray-200)', borderRadius: '4px' }} /></span>
+                      </div>
+                    ))
+                  ) : (
+                    discussionTopics.map((t) => (
+                      <div className="di-discussion-topic" key={t.name} style={{ border: '1px solid var(--gray-200)', background: '#f8fafc', padding: '12px 16px' }}>
+                        <span className="di-topic-name" style={{ fontWeight: '500' }}>{t.name}</span>
+                        <span className="di-topic-change">{t.change}</span>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </div>
+
+              {/* Market Opportunities */}
+              <div className="di-section-card">
+                <div className="di-section-title">🎯 Cơ hội thị trường</div>
+                <div className="di-opportunity-grid">
+                  {loading && !data ? (
+                    [1, 2, 3].map((idx) => (
+                      <div className="di-opportunity-card di-opp-blue" style={{ opacity: 0.7 }} key={idx}>
+                        <div className="di-opp-icon skeleton-pulse" style={{ width: '32px', height: '32px', borderRadius: '50%', background: 'var(--gray-200)' }} />
+                        <div className="skeleton-pulse" style={{ height: '18px', width: '140px', margin: '12px 0 8px', background: 'var(--gray-200)', borderRadius: '4px' }} />
+                        <div className="skeleton-pulse" style={{ height: '14px', width: '100%', marginBottom: '4px', background: 'var(--gray-100)', borderRadius: '4px' }} />
+                        <div className="skeleton-pulse" style={{ height: '14px', width: '80%', background: 'var(--gray-100)', borderRadius: '4px' }} />
+                      </div>
+                    ))
+                  ) : (
+                    opportunityCards.map((opp, idx) => (
+                      <div className={`di-opportunity-card di-opp-${opp.theme}`} key={opp.title}>
+                        <div className="di-opp-icon">{OPP_ICONS[idx % OPP_ICONS.length]}</div>
+                        <h5>{opp.title}</h5>
+                        <p>{opp.desc}</p>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </div>
+
+              {/* Strategic Recommendation */}
+              <div className="di-strategic-card">
+                <h4>✨ Khuyến nghị chiến lược</h4>
+                {loading && !data ? (
+                  <>
+                    <div className="skeleton-pulse" style={{ height: '22px', width: '200px', margin: '8px 0 12px', background: 'rgba(255,255,255,0.2)', borderRadius: '4px' }} />
+                    <div className="skeleton-pulse" style={{ height: '16px', width: '90%', marginBottom: '6px', background: 'rgba(255,255,255,0.1)', borderRadius: '4px' }} />
+                    <div className="skeleton-pulse" style={{ height: '16px', width: '70%', marginBottom: '20px', background: 'rgba(255,255,255,0.1)', borderRadius: '4px' }} />
+                    <div className="di-strategic-stats">
+                      {[1, 2, 3].map((idx) => (
+                        <div key={idx}>
+                          <div className="skeleton-pulse" style={{ height: '24px', width: '80px', margin: '0 auto 8px', background: 'rgba(255,255,255,0.2)', borderRadius: '4px' }} />
+                          <div className="skeleton-pulse" style={{ height: '14px', width: '60px', margin: '0 auto', background: 'rgba(255,255,255,0.1)', borderRadius: '4px' }} />
+                        </div>
+                      ))}
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <h5>{strategicRecommendation.title}</h5>
+                    <p>{strategicRecommendation.desc ?? recommendationSummary ?? `Mô hình AI sẽ tự động phân tích và tạo khuyến nghị chiến lược cho "${keyword}" sau khi bạn nhấn Chạy phân tích.`}</p>
+                    <div className="di-strategic-stats">
+                      {strategicRecommendation.stats.map((s) => (
+                        <div key={s.label}>
+                          <div className={`di-s-value${s.highlight ? ' green' : ''}`}>{s.value}</div>
+                          <div className="di-s-label">{s.label}</div>
+                        </div>
+                      ))}
+                    </div>
+                  </>
+                )}
+              </div>
+            </>
+          )}
+
+          {activeReportTab === 'persona' && (
+            <div className="di-persona-container">
               {loading && !data ? (
-                [1, 2, 3].map((idx) => (
-                  <div className="di-signal-card" key={idx}>
-                    <div className="di-signal-icon skeleton-pulse" style={{ width: '40px', height: '40px', background: 'var(--gray-200)', borderRadius: '50%' }} />
-                    <div style={{ flex: 1 }}>
-                      <div className="skeleton-pulse" style={{ height: '18px', width: '140px', marginBottom: '8px', background: 'var(--gray-200)', borderRadius: '4px' }} />
-                      <div className="skeleton-pulse" style={{ height: '14px', width: '100%', marginBottom: '4px', background: 'var(--gray-100)', borderRadius: '4px' }} />
-                      <div className="skeleton-pulse" style={{ height: '14px', width: '80%', background: 'var(--gray-100)', borderRadius: '4px' }} />
+                <>
+                  <div className="di-persona-desc-card">
+                    <h4>🎯 Phác họa chân dung đối tượng mục tiêu</h4>
+                    <div className="skeleton-pulse" style={{ height: '16px', width: '90%', margin: '8px 0', background: 'var(--gray-200)', borderRadius: '4px' }} />
+                    <div className="skeleton-pulse" style={{ height: '16px', width: '70%', background: 'var(--gray-200)', borderRadius: '4px' }} />
+                  </div>
+                  <div className="di-persona-column-card">
+                    <h4>💔 Vấn đề & Nỗi đau lớn nhất (Painpoints)</h4>
+                    <div className="skeleton-pulse" style={{ height: '14px', width: '85%', margin: '6px 0', background: 'var(--gray-100)', borderRadius: '4px' }} />
+                    <div className="skeleton-pulse" style={{ height: '14px', width: '60%', margin: '6px 0', background: 'var(--gray-100)', borderRadius: '4px' }} />
+                  </div>
+                  <div className="di-persona-column-card">
+                    <h4>🔍 Hành vi & Ý định tìm kiếm (Search Intent)</h4>
+                    <div className="skeleton-pulse" style={{ height: '14px', width: '80%', margin: '6px 0', background: 'var(--gray-100)', borderRadius: '4px' }} />
+                    <div className="skeleton-pulse" style={{ height: '14px', width: '65%', margin: '6px 0', background: 'var(--gray-100)', borderRadius: '4px' }} />
+                  </div>
+                </>
+              ) : (
+                <>
+                  <div className="di-persona-desc-card">
+                    <h4>🎯 Phác họa chân dung đối tượng mục tiêu</h4>
+                    <p>{data?.targetPersona?.description || `Mô hình AI đang tìm kiếm chân dung đối tượng mục tiêu phù hợp cho từ khóa "${keyword}".`}</p>
+                  </div>
+                  <div className="di-persona-column-card">
+                    <h4 style={{ color: 'var(--red)' }}>💔 Vấn đề & Nỗi đau lớn nhất (Painpoints)</h4>
+                    <div className="di-persona-list">
+                      {data?.targetPersona?.painPoints?.length ? (
+                        data.targetPersona.painPoints.map((item, idx) => (
+                          <div key={idx} className="di-persona-item">
+                            <span className="di-persona-item-icon">❌</span>
+                            <span>{item}</span>
+                          </div>
+                        ))
+                      ) : (
+                        <p className="hint">Chưa có thông tin nỗi đau được ghi nhận từ dữ liệu hiện tại.</p>
+                      )}
                     </div>
                   </div>
-                ))
-              ) : (
-                mediaSignals.map((sig, idx) => (
-                  <div className="di-signal-card" key={sig.title}>
-                    <div className="di-signal-icon">{SIGNAL_ICONS[idx % SIGNAL_ICONS.length]}</div>
-                    <div>
-                      <h5>{sig.title}</h5>
-                      <p>{sig.desc}</p>
+                  <div className="di-persona-column-card">
+                    <h4 style={{ color: 'var(--green)' }}>🔍 Hành vi & Ý định tìm kiếm (Search Intent)</h4>
+                    <div className="di-persona-list">
+                      {data?.targetPersona?.searchIntents?.length ? (
+                        data.targetPersona.searchIntents.map((item, idx) => (
+                          <div key={idx} className="di-persona-item">
+                            <span className="di-persona-item-icon">💡</span>
+                            <span>{item}</span>
+                          </div>
+                        ))
+                      ) : (
+                        <p className="hint">Chưa có dữ liệu ý định tìm kiếm cụ thể.</p>
+                      )}
                     </div>
                   </div>
-                ))
+                </>
               )}
             </div>
-          </div>
+          )}
 
-          {/* Estimated Audience Sentiment */}
-          <div className="di-section-card">
-            <div className="di-section-title">💬 Chủ đề thảo luận chính</div>
-            <div className="hint" style={{ marginBottom: '15px' }}>Được ước tính từ lượt tương tác và sự trùng lặp từ khóa của các thảo luận.</div>
-            <div className="di-topics-list" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '12px' }}>
+          {activeReportTab === 'competitor' && (
+            <div className="di-section-card">
+              <div className="di-section-title">⚔️ Bản đồ đối thủ cạnh tranh</div>
+              <p className="hint" style={{ marginBottom: '20px' }}>
+                Tổng hợp 5-10 bằng chứng đầu vào nổi bật được AI phân loại theo nguồn kênh thương hiệu và đánh giá hiệu suất của họ.
+              </p>
+              
               {loading && !data ? (
-                [1, 2, 3, 4].map((idx) => (
-                  <div className="di-discussion-topic" key={idx} style={{ border: '1px solid var(--gray-200)', background: '#f8fafc', padding: '12px 16px' }}>
-                    <span className="di-topic-name"><div className="skeleton-pulse" style={{ height: '14px', width: '100px', background: 'var(--gray-100)', borderRadius: '4px' }} /></span>
-                    <span className="di-topic-change"><div className="skeleton-pulse" style={{ height: '14px', width: '50px', background: 'var(--gray-200)', borderRadius: '4px' }} /></span>
-                  </div>
-                ))
-              ) : (
-                discussionTopics.map((t) => (
-                  <div className="di-discussion-topic" key={t.name} style={{ border: '1px solid var(--gray-200)', background: '#f8fafc', padding: '12px 16px' }}>
-                    <span className="di-topic-name" style={{ fontWeight: '500' }}>{t.name}</span>
-                    <span className="di-topic-change">{t.change}</span>
-                  </div>
-                ))
-              )}
-            </div>
-          </div>
-
-          {/* Market Opportunities */}
-          <div className="di-section-card">
-            <div className="di-section-title">🎯 Cơ hội thị trường</div>
-            <div className="di-opportunity-grid">
-              {loading && !data ? (
-                [1, 2, 3].map((idx) => (
-                  <div className="di-opportunity-card di-opp-blue" style={{ opacity: 0.7 }} key={idx}>
-                    <div className="di-opp-icon skeleton-pulse" style={{ width: '32px', height: '32px', borderRadius: '50%', background: 'var(--gray-200)' }} />
-                    <div className="skeleton-pulse" style={{ height: '18px', width: '140px', margin: '12px 0 8px', background: 'var(--gray-200)', borderRadius: '4px' }} />
-                    <div className="skeleton-pulse" style={{ height: '14px', width: '100%', marginBottom: '4px', background: 'var(--gray-100)', borderRadius: '4px' }} />
-                    <div className="skeleton-pulse" style={{ height: '14px', width: '80%', background: 'var(--gray-100)', borderRadius: '4px' }} />
-                  </div>
-                ))
-              ) : (
-                opportunityCards.map((opp, idx) => (
-                  <div className={`di-opportunity-card di-opp-${opp.theme}`} key={opp.title}>
-                    <div className="di-opp-icon">{OPP_ICONS[idx % OPP_ICONS.length]}</div>
-                    <h5>{opp.title}</h5>
-                    <p>{opp.desc}</p>
-                  </div>
-                ))
-              )}
-            </div>
-          </div>
-
-          {/* Strategic Recommendation */}
-          <div className="di-strategic-card">
-            <h4>✨ Khuyến nghị chiến lược</h4>
-            {loading && !data ? (
-              <>
-                <div className="skeleton-pulse" style={{ height: '22px', width: '200px', margin: '8px 0 12px', background: 'rgba(255,255,255,0.2)', borderRadius: '4px' }} />
-                <div className="skeleton-pulse" style={{ height: '16px', width: '90%', marginBottom: '6px', background: 'rgba(255,255,255,0.1)', borderRadius: '4px' }} />
-                <div className="skeleton-pulse" style={{ height: '16px', width: '70%', marginBottom: '20px', background: 'rgba(255,255,255,0.1)', borderRadius: '4px' }} />
-                <div className="di-strategic-stats">
-                  {[1, 2, 3].map((idx) => (
-                    <div key={idx}>
-                      <div className="skeleton-pulse" style={{ height: '24px', width: '80px', margin: '0 auto 8px', background: 'rgba(255,255,255,0.2)', borderRadius: '4px' }} />
-                      <div className="skeleton-pulse" style={{ height: '14px', width: '60px', margin: '0 auto', background: 'rgba(255,255,255,0.1)', borderRadius: '4px' }} />
+                <div className="di-competitor-grid">
+                  {[1, 2, 3, 4].map((idx) => (
+                    <div className="di-competitor-card" key={idx} style={{ opacity: 0.7 }}>
+                      <div className="di-competitor-header">
+                        <div className="skeleton-pulse" style={{ height: '18px', width: '120px', background: 'var(--gray-200)', borderRadius: '4px' }} />
+                        <div className="skeleton-pulse" style={{ height: '20px', width: '60px', background: 'var(--gray-100)', borderRadius: '10px' }} />
+                      </div>
+                      <div className="di-competitor-metrics">
+                        <div className="skeleton-pulse" style={{ height: '24px', width: '100%', background: 'var(--gray-100)', borderRadius: '4px' }} />
+                        <div className="skeleton-pulse" style={{ height: '24px', width: '100%', background: 'var(--gray-100)', borderRadius: '4px' }} />
+                      </div>
+                      <div className="skeleton-pulse" style={{ height: '14px', width: '90%', background: 'var(--gray-100)', borderRadius: '4px' }} />
                     </div>
                   ))}
                 </div>
-              </>
-            ) : (
-              <>
-                <h5>{strategicRecommendation.title}</h5>
-                <p>{strategicRecommendation.desc ?? recommendationSummary ?? `Mô hình AI sẽ tự động phân tích và tạo khuyến nghị chiến lược cho "${keyword}" sau khi bạn nhấn Chạy phân tích.`}</p>
-                <div className="di-strategic-stats">
-                  {strategicRecommendation.stats.map((s) => (
-                    <div key={s.label}>
-                      <div className={`di-s-value${s.highlight ? ' green' : ''}`}>{s.value}</div>
-                      <div className="di-s-label">{s.label}</div>
+              ) : (
+                <div className="di-competitor-grid">
+                  {data?.competitors?.length ? (
+                    data.competitors.map((comp, idx) => {
+                      let strengthLabel = 'Mới nổi';
+                      let strengthClass = 'strength-emerging';
+                      const level = (comp.strengthLevel || '').toLowerCase();
+                      if (level.includes('mạnh') || level.includes('high') || level.includes('strong')) {
+                        strengthLabel = 'Mạnh';
+                        strengthClass = 'strength-high';
+                      } else if (level.includes('trung bình') || level.includes('medium') || level.includes('average')) {
+                        strengthLabel = 'Trung bình';
+                        strengthClass = 'strength-medium';
+                      }
+
+                      return (
+                        <div className="di-competitor-card" key={idx}>
+                          <div className="di-competitor-header">
+                            {comp.channelUrl ? (
+                              <a
+                                href={comp.channelUrl}
+                                target="_blank"
+                                rel="noreferrer noopener"
+                                className="di-competitor-name"
+                              >
+                                {comp.name} 🔗
+                              </a>
+                            ) : (
+                              <span className="di-competitor-name">{comp.name}</span>
+                            )}
+                            <span className={`di-competitor-strength-badge ${strengthClass}`}>
+                              {strengthLabel}
+                            </span>
+                          </div>
+
+                          <div className="di-competitor-metrics">
+                            <div className="di-competitor-metric-box">
+                              <span className="di-competitor-metric-label">Theo dõi (Subs)</span>
+                              <span className="di-competitor-metric-value">{comp.followers || '—'}</span>
+                            </div>
+                            <div className="di-competitor-metric-box">
+                              <span className="di-competitor-metric-label">Tần suất đăng</span>
+                              <span className="di-competitor-metric-value">{comp.frequency || '—'}</span>
+                            </div>
+                          </div>
+
+                          {comp.note && (
+                            <div className="di-competitor-note">
+                              <strong>AI Chiến lược:</strong> {comp.note}
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })
+                  ) : (
+                    <div className="dashboard-empty-state" style={{ padding: '40px 0', gridColumn: '1 / -1' }}>
+                      <div style={{ fontSize: '40px', marginBottom: '16px' }}>⚔️</div>
+                      <h3>Chưa tìm thấy thông tin đối thủ</h3>
+                      <p className="hint" style={{ maxWidth: '400px', margin: '8px auto' }}>
+                        Dữ liệu bằng chứng cào được không chứa đủ thông tin để định danh đối thủ cạnh tranh cụ thể cho từ khóa này.
+                      </p>
                     </div>
-                  ))}
+                  )}
                 </div>
-              </>
-            )}
-          </div>
-
-
+              )}
+            </div>
+          )}
         </>
       ) : (
         <div className="di-section-card" style={{ marginTop: '20px' }}>

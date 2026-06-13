@@ -544,6 +544,12 @@ public class FrontendService {
                                     new FrontendDtos.StatItem("70+", "Điểm mục tiêu"),
                                     new FrontendDtos.StatItem("Bị khóa", "Trạng thái phân tích sâu")
                             )
+                    ),
+                    List.of(),
+                    new FrontendDtos.TargetPersona(
+                            "Chất lượng tín hiệu từ khóa quá thấp để xây dựng chân dung đối tượng chính xác.",
+                            List.of("Thiếu dữ liệu về hành vi người dùng"),
+                            List.of("Cần tinh chỉnh ý định tìm kiếm thương mại")
                     )
             );
         }
@@ -651,7 +657,9 @@ public class FrontendService {
                 dynamicTrendPoints.isEmpty() ? response.trendPoints() : dynamicTrendPoints,
                 response.sentiment(),
                 response.opportunityCards(),
-                response.strategicRecommendation()
+                response.strategicRecommendation(),
+                response.competitors(),
+                response.targetPersona()
         );
     }
 
