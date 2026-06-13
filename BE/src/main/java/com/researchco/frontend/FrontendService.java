@@ -3031,7 +3031,7 @@ public class FrontendService {
             if (url == null || url.isBlank()) {
                 url = platform.contains("youtube") ? "https://www.youtube.com" : "https://www.google.com";
             } else {
-                if (!url.toLowerCase().contains("youtube.com") && !url.toLowerCase().contains("youtu.be")) {
+                if (isMockUrl(url)) {
                     try {
                         java.net.URI uri = new java.net.URI(url);
                         String scheme = uri.getScheme();
@@ -3093,6 +3093,17 @@ public class FrontendService {
         }
 
         return competitors;
+    }
+
+    private boolean isMockUrl(String url) {
+        if (url == null) return false;
+        String lower = url.toLowerCase();
+        return lower.contains("/article/") && 
+               (lower.contains("wikipedia.org") || 
+                lower.contains("forbes.com") || 
+                lower.contains("mckinsey.com") || 
+                lower.contains("wired.com") || 
+                lower.contains("techcrunch.com"));
     }
 
 }
