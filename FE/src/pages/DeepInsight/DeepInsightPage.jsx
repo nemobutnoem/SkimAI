@@ -216,11 +216,7 @@ export function DeepInsightPage() {
   const trendPoints = data?.trendPoints ?? [
     { label: keyword, value: 52, note: 'Tín hiệu xu hướng cơ sở' },
   ]
-  const sentimentBars = data?.sentiment?.bars ?? [
-    { label: 'Tích cực', pct: data ? 70 : 0, color: 'var(--green)', cls: 'text-green' },
-    { label: 'Trung lập', pct: data ? 20 : 0, color: 'var(--gray-500)', cls: '' },
-    { label: 'Tiêu cực', pct: data ? 10 : 0, color: 'var(--red)', cls: 'text-red' },
-  ]
+  // sentimentBars removed as requested by the user
   const discussionTopics = data?.sentiment?.topics ?? [
     { name: keyword, change: data ? 'đang hoạt động' : 'đang chờ' },
     { name: activeSource, change: 'đã chọn' },
@@ -260,12 +256,7 @@ export function DeepInsightPage() {
 ## 📊 Market Insight (Nhận định thị trường)
 - **Tóm tắt phát hiện:** ${signalSummary}
 
-## 💬 Sentiment & Topics (Cảm nhận khán giả & Chủ đề thảo luận)
-- **Tích cực (Positive):** ${sentimentBars[0]?.pct}%
-- **Trung lập (Neutral):** ${sentimentBars[1]?.pct}%
-- **Tiêu cực (Negative):** ${sentimentBars[2]?.pct}%
-
-### Chủ đề thảo luận chính:
+## 💬 Chủ đề thảo luận chính
 ${discussionTopics.map(t => `- **${t.name}**: ${t.change}`).join('\n')}
 
 ## 🎯 Opportunities (Cơ hội thị trường đề xuất)
@@ -488,53 +479,24 @@ ${strategicRecommendation.desc}
 
           {/* Estimated Audience Sentiment */}
           <div className="di-section-card">
-            <div className="di-section-title">💬 Đánh giá cảm nhận khán giả</div>
-            <div className="di-sentiment-two-col">
-              <div className="di-sentiment-bars">
-                {loading && !data ? (
-                  [1, 2, 3].map((idx) => (
-                    <div className="di-sentiment-bar-row" key={idx}>
-                      <span className="di-sentiment-bar-label"><div className="skeleton-pulse" style={{ height: '14px', width: '50px', background: 'var(--gray-200)', borderRadius: '4px' }} /></span>
-                      <div className="di-sentiment-bar-track">
-                        <div className="skeleton-pulse" style={{ height: '100%', width: '40%', background: 'var(--gray-100)', borderRadius: '2px' }} />
-                      </div>
-                      <span className="di-sentiment-bar-value"><div className="skeleton-pulse" style={{ height: '14px', width: '30px', background: 'var(--gray-200)', borderRadius: '4px' }} /></span>
-                    </div>
-                  ))
-                ) : (
-                  sentimentBars.map((bar) => (
-                    <div className="di-sentiment-bar-row" key={bar.label}>
-                      <span className={`di-sentiment-bar-label ${bar.cls || ''}`}>{bar.label}</span>
-                      <div className="di-sentiment-bar-track">
-                        <div className="di-sentiment-bar-fill" style={{ width: `${bar.pct}%`, background: bar.color }} />
-                      </div>
-                      <span className="di-sentiment-bar-value">{bar.pct}%</span>
-                    </div>
-                  ))
-                )}
-              </div>
-
-              <div>
-                <h5 className="di-topics-title">Chủ đề thảo luận chính</h5>
-                <div className="hint" style={{ marginBottom: 10 }}>Được ước tính từ lượt tương tác và sự trùng lặp từ khóa.</div>
-                <div className="di-topics-list">
-                  {loading && !data ? (
-                    [1, 2, 3].map((idx) => (
-                      <div className="di-discussion-topic" key={idx}>
-                        <span className="di-topic-name"><div className="skeleton-pulse" style={{ height: '14px', width: '100px', background: 'var(--gray-100)', borderRadius: '4px' }} /></span>
-                        <span className="di-topic-change"><div className="skeleton-pulse" style={{ height: '14px', width: '50px', background: 'var(--gray-200)', borderRadius: '4px' }} /></span>
-                      </div>
-                    ))
-                  ) : (
-                    discussionTopics.map((t) => (
-                      <div className="di-discussion-topic" key={t.name}>
-                        <span className="di-topic-name">{t.name}</span>
-                        <span className="di-topic-change">{t.change}</span>
-                      </div>
-                    ))
-                  )}
-                </div>
-              </div>
+            <div className="di-section-title">💬 Chủ đề thảo luận chính</div>
+            <div className="hint" style={{ marginBottom: '15px' }}>Được ước tính từ lượt tương tác và sự trùng lặp từ khóa của các thảo luận.</div>
+            <div className="di-topics-list" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '12px' }}>
+              {loading && !data ? (
+                [1, 2, 3, 4].map((idx) => (
+                  <div className="di-discussion-topic" key={idx} style={{ border: '1px solid var(--gray-200)', background: '#f8fafc', padding: '12px 16px' }}>
+                    <span className="di-topic-name"><div className="skeleton-pulse" style={{ height: '14px', width: '100px', background: 'var(--gray-100)', borderRadius: '4px' }} /></span>
+                    <span className="di-topic-change"><div className="skeleton-pulse" style={{ height: '14px', width: '50px', background: 'var(--gray-200)', borderRadius: '4px' }} /></span>
+                  </div>
+                ))
+              ) : (
+                discussionTopics.map((t) => (
+                  <div className="di-discussion-topic" key={t.name} style={{ border: '1px solid var(--gray-200)', background: '#f8fafc', padding: '12px 16px' }}>
+                    <span className="di-topic-name" style={{ fontWeight: '500' }}>{t.name}</span>
+                    <span className="di-topic-change">{t.change}</span>
+                  </div>
+                ))
+              )}
             </div>
           </div>
 
