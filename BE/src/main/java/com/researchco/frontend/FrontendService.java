@@ -3030,6 +3030,19 @@ public class FrontendService {
             String url = firstItem.getUrl();
             if (url == null || url.isBlank()) {
                 url = platform.contains("youtube") ? "https://www.youtube.com" : "https://www.google.com";
+            } else {
+                if (!url.toLowerCase().contains("youtube.com") && !url.toLowerCase().contains("youtu.be")) {
+                    try {
+                        java.net.URI uri = new java.net.URI(url);
+                        String scheme = uri.getScheme();
+                        String host = uri.getHost();
+                        if (host != null) {
+                            url = (scheme != null ? scheme : "https") + "://" + host;
+                        }
+                    } catch (Exception e) {
+                        // ignore and use original url
+                    }
+                }
             }
 
             String note = String.format(
