@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import { Button } from '../../components/Button'
 import { ROUTES } from '../../constants/routes'
@@ -30,6 +30,20 @@ function hasAiError(data) {
   return Boolean(data?.marketInsight?.toLowerCase().startsWith('unable to generate ai insight'))
 }
 
+function canonicalSource(value) {
+  const lower = (value || '').toLowerCase()
+  if (lower.includes('youtube')) return 'YouTube'
+  if (lower.includes('trend')) return 'Google Trends'
+  if (lower.includes('google')) return 'Google Search'
+  if (lower.includes('facebook')) return 'Facebook'
+  if (lower.includes('tiktok')) return 'TikTok'
+  if (lower.includes('news')) return 'Google News'
+  if (lower.includes('reddit')) return 'Reddit'
+  if (lower.includes('twitter') || lower.includes('x.com')) return 'Twitter/X'
+  if (lower.includes('github')) return 'GitHub'
+  return value
+}
+
 const OPP_ICONS = ['🚀', '💡', '📊', '🎯']
 const SIGNAL_ICONS = ['📡', '💬', '⚔️']
 
@@ -45,10 +59,46 @@ export function DeepInsightPage() {
   const [isExporting, setIsExporting] = useState(false)
   const [showUpgradeModal, setShowUpgradeModal] = useState(false)
   const [upgradeMessage, setUpgradeMessage] = useState('')
+  const [evidenceItems, setEvidenceItems] = useState([])
 
   const availableSources = analysisContext?.dataSources?.length
     ? analysisContext.dataSources
     : ['Google Search', 'Google News', 'YouTube Signals', 'Cross-source synthesis']
+
+  useEffect(() => {
+    if (!keyword) {
+      setEvidenceItems([])
+      return
+    }
+    appApi.getAnalysisEvidence(keyword)
+      .then(setEvidenceItems)
+      .catch((err) => {
+        console.error("Failed to fetch evidence items:", err)
+        setEvidenceItems([])
+      })
+  }, [keyword])
+
+  const filteredEvidence = useMemo(() => {
+    if (!evidenceItems?.length) return []
+    const normSource = activeSource.toLowerCase()
+    if (normSource.includes('cross-source') || normSource.includes('tổng hợp')) {
+      return evidenceItems
+    }
+    return evidenceItems.filter(item => {
+      const src = (item.source || '').toLowerCase()
+      const title = (item.title || '').toLowerCase()
+      if (normSource.includes('youtube')) {
+        return src.includes('youtube') || title.includes('youtube')
+      }
+      if (normSource.includes('news')) {
+        return src.includes('news') || title.includes('news')
+      }
+      if (normSource.includes('google')) {
+        return src.includes('google') || src.includes('search') || src.includes('trends')
+      }
+      return false
+    })
+  }, [evidenceItems, activeSource])
 
   useEffect(() => {
     if (urlSource && urlSource !== activeSource) {
@@ -324,6 +374,46 @@ ${strategicRecommendation.desc}
                 </div>
               ))}
             </div>
+
+            {/* Evidence items list section */}
+            {filteredEvidence.length > 0 && (
+              <div className="di-evidence-container" style={{ marginTop: '24px', paddingTop: '20px', borderTop: '1px solid var(--gray-200)' }}>
+                <div style={{ fontSize: '14px', fontWeight: '600', marginBottom: '12px', color: 'var(--gray-700)', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <span>🔗 Bằng chứng nguồn gốc ({activeSource})</span>
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                  {filteredEvidence.map((item, idx) => (
+                    <div key={idx} style={{ padding: '12px', background: '#f8fafc', borderRadius: '8px', border: '1px solid #e2e8f0', display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '12px' }}>
+                        {item.url ? (
+                          <a href={item.url} target="_blank" rel="noreferrer noopener" style={{ fontWeight: '600', color: 'var(--primary)', textDecoration: 'none', fontSize: '13px', lineHeight: '1.4' }} className="evidence-title-link">
+                            {item.title}
+                          </a>
+                        ) : (
+                          <span style={{ fontWeight: '600', color: 'var(--gray-800)', fontSize: '13px', lineHeight: '1.4' }}>
+                            {item.title}
+                          </span>
+                        )}
+                        <span style={{ fontSize: '10px', background: '#e0f2fe', color: '#0369a1', padding: '2px 8px', borderRadius: '12px', whiteSpace: 'nowrap', fontWeight: '500' }}>
+                          {canonicalSource(item.source)}
+                        </span>
+                      </div>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '8px', fontSize: '11px', color: '#64748b' }}>
+                        <span>{item.metric}</span>
+                        {item.sentimentLabel && (
+                          <span style={{ 
+                            color: item.sentimentLabel === 'POSITIVE' ? 'var(--green)' : item.sentimentLabel === 'NEGATIVE' ? 'var(--red)' : '#f59e0b',
+                            fontWeight: '600'
+                          }}>
+                            {item.sentimentLabel === 'POSITIVE' ? 'Tích cực' : item.sentimentLabel === 'NEGATIVE' ? 'Tiêu cực' : 'Trung lập'}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Search Trend Analysis */}
