@@ -3045,11 +3045,7 @@ public class FrontendService {
                 }
             }
 
-            String note = String.format(
-                    "Đăng tải %d nội dung liên quan đến \"%s\". Tập trung chia sẻ các góc nhìn thực tế và trải nghiệm thực tế.",
-                    mentions,
-                    keyword
-            );
+            String note = generateStrategicNote(sourceName, platform, keyword);
 
             competitors.add(new FrontendDtos.CompetitorMapItem(
                     sourceName,
@@ -3104,6 +3100,45 @@ public class FrontendService {
                 lower.contains("mckinsey.com") || 
                 lower.contains("wired.com") || 
                 lower.contains("techcrunch.com"));
+    }
+
+    private String generateStrategicNote(String sourceName, String platform, String keyword) {
+        String name = sourceName != null ? sourceName.toLowerCase() : "";
+        String plat = platform != null ? platform.toLowerCase() : "";
+        
+        if (name.contains("wikipedia")) {
+            return "Cung cấp các khái niệm nền tảng, định nghĩa kỹ thuật cốt lõi và lịch sử phát triển của \"" + keyword + "\".";
+        }
+        if (name.contains("forbes")) {
+            return "Phân tích tác động kinh tế, xu hướng đầu tư tài chính và các mô hình kinh doanh tiềm năng xoay quanh \"" + keyword + "\".";
+        }
+        if (name.contains("mckinsey")) {
+            return "Báo cáo phân tích chiến lược doanh nghiệp toàn cầu và định hình thị trường dài hạn cho lĩnh vực \"" + keyword + "\".";
+        }
+        if (name.contains("wired")) {
+            return "Góc nhìn công nghệ tương lai, xu hướng phát triển hệ sinh thái và ảnh hưởng xã hội của \"" + keyword + "\".";
+        }
+        if (name.contains("techcrunch")) {
+            return "Cập nhật các hoạt động gọi vốn của startup, công nghệ đột phá và cơ hội đầu tư mới nhất trong mảng \"" + keyword + "\".";
+        }
+        if (name.contains("bloomberg")) {
+            return "Phân tích số liệu thị trường tài chính, dòng vốn doanh nghiệp và tác động vĩ mô của \"" + keyword + "\".";
+        }
+        if (name.contains("reuters")) {
+            return "Cung cấp tin tức chính thống cập nhật liên tục về các chính sách điều hành và sự kiện lớn liên quan đến \"" + keyword + "\".";
+        }
+        if (name.contains("nytimes") || name.contains("york times")) {
+            return "Bình luận chuyên sâu từ chuyên gia về xu hướng tiêu dùng và ảnh hưởng của \"" + keyword + "\" đối với đời sống con người.";
+        }
+        if (name.contains("nature")) {
+            return "Nghiên cứu khoa học học thuật, công nghệ nền tảng và các đột phá phát minh mang tính học thuật về \"" + keyword + "\".";
+        }
+        
+        if (plat.contains("youtube")) {
+            return "Review trải nghiệm thực tế, so sánh tính năng trực quan và hướng dẫn người dùng thiết lập hệ thống \"" + keyword + "\" DIY.";
+        }
+        
+        return "Chia sẻ bài viết phân tích, đánh giá chuyên sâu và cập nhật tin tức thị trường mới nhất về \"" + keyword + "\".";
     }
 
 }
