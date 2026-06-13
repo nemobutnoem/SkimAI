@@ -85,16 +85,15 @@ export function DeepInsightPage() {
       return evidenceItems
     }
     return evidenceItems.filter(item => {
-      const src = (item.source || '').toLowerCase()
-      const title = (item.title || '').toLowerCase()
+      const platform = (item.platform || '').toLowerCase()
       if (normSource.includes('youtube')) {
-        return src.includes('youtube') || title.includes('youtube')
+        return platform.includes('youtube')
       }
       if (normSource.includes('news')) {
-        return src.includes('news') || title.includes('news')
+        return platform.includes('news')
       }
       if (normSource.includes('google')) {
-        return src.includes('google') || src.includes('search') || src.includes('trends')
+        return platform.includes('google')
       }
       return false
     })

@@ -1093,7 +1093,8 @@ public class FrontendService {
                     "0 lượt xem",
                     "Hãy mở rộng nguồn tin hoặc thử từ khóa khác.",
                     null,
-                    "NEUTRAL"
+                    "NEUTRAL",
+                    "ALL"
             ));
         }
 
@@ -1114,7 +1115,8 @@ public class FrontendService {
                             String.format("Lượt xem %s | Lượt thích %s | Bình luận %s", formatCompact(views), formatCompact(likes), formatCompact(comments)),
                             cleanSnippet(item.snippet(), item.title()),
                             extractEvidenceUrl(item),
-                            item.sentimentLabel() != null ? item.sentimentLabel() : "NEUTRAL"
+                            item.sentimentLabel() != null ? item.sentimentLabel() : "NEUTRAL",
+                            item.platform() != null ? item.platform() : ""
                     );
                 })
                 .toList();
