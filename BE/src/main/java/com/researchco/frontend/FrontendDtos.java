@@ -219,7 +219,7 @@ public class FrontendDtos {
 
     public record ExpertQuestionRequest(
             @NotBlank @Size(max = 255) String topic,
-            @NotBlank String expertId,
+            @NotBlank @Size(max = 36) String expertId,
             @NotBlank @Size(max = 2000) String question
     ) {
     }

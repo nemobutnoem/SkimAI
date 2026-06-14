@@ -200,7 +200,7 @@ public class FrontendService {
         }
 
         long queryCount = searchQueryRepository.countByUser(user);
-        long reportCount = reportRepository.countByUserId(user.getId());
+        long reportCount = reportRepository.countByUserIdAndStatusIgnoreCase(user.getId(), "EXPORTED");
         List<FrontendDtos.InvoiceItem> invoices = paymentTransactionRepository.findByUserOrderByCreatedAtDesc(user).stream()
                 .limit(3)
                 .map(tx -> new FrontendDtos.InvoiceItem(
@@ -1576,6 +1576,7 @@ public class FrontendService {
         );
     }
 
+    @Transactional
     public FrontendDtos.SalesContactResponse contactSales(FrontendDtos.SalesContactRequest request) {
         if (request.contactName() == null || request.contactName().isBlank()
                 || request.workEmail() == null || request.workEmail().isBlank()
@@ -2742,6 +2743,22 @@ public class FrontendService {
         try {
             UserEntity user = preferredUser();
 
+            // Enforce export limit per plan
+            if (user.getRole() == null || !user.getRole().equalsIgnoreCase("ADMIN")) {
+                UserSubscriptionEntity exportSub = userSubscriptionRepository
+                        .findFirstByUserAndStatusOrderByStartDateDesc(user, "ACTIVE").orElse(null);
+                PlanEntity exportPlan = exportSub != null ? exportSub.getPlan()
+                        : planRepository.findByName("FREE").orElse(null);
+                if (exportPlan != null && exportPlan.getExportLimit() != null && exportPlan.getExportLimit() > 0) {
+                    long exported = reportRepository.countByUserIdAndStatusIgnoreCase(user.getId(), "EXPORTED");
+                    if (exported >= exportPlan.getExportLimit()) {
+                        throw new AppException(HttpStatus.FORBIDDEN,
+                                "Bạn đã đạt giới hạn " + exportPlan.getExportLimit()
+                                        + " lượt xuất báo cáo của gói " + exportPlan.getName() + ".");
+                    }
+                }
+            }
+
             String normalizedKeyword = keyword == null ? "" : keyword.trim();
             SearchQueryEntity query = searchQueryRepository
                     .findTopByUserAndKeywordIgnoreCaseOrderByCreatedAtDesc(user, normalizedKeyword)
@@ -2761,12 +2778,7 @@ public class FrontendService {
             
             String shortKeyword = keyword != null && keyword.length() > 50 ? keyword.substring(0, 50) : keyword;
             
-            String reportContentJson = null;
-            try {
-                reportContentJson = objectMapper.writeValueAsString(response);
-            } catch (Exception e) {
-                // ignore
-            }
+            String reportContentJson = objectMapper.writeValueAsString(response);
 
             ReportEntity report = ReportEntity.builder()
                     .user(user)

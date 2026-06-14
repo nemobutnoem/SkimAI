@@ -12,6 +12,8 @@ import java.util.UUID;
 public interface ReportRepository extends JpaRepository<ReportEntity, UUID> {
     long countByUserId(UUID userId);
 
+    long countByUserIdAndStatusIgnoreCase(UUID userId, String status);
+
     List<ReportEntity> findByUserIdOrderByCreatedAtDesc(UUID userId);
 
     List<ReportEntity> findByUserIdAndStatusIgnoreCaseOrderByCreatedAtDesc(UUID userId, String status);

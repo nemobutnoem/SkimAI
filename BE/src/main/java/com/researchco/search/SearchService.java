@@ -1,5 +1,7 @@
 package com.researchco.search;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import com.researchco.common.AppException;
 import com.researchco.plan.PlanEntity;
 import com.researchco.provider.NormalizedSourceItem;
@@ -27,12 +29,15 @@ import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.time.LocalDateTime;
 import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
 @Service
 public class SearchService {
+
+    private static final Logger log = LoggerFactory.getLogger(SearchService.class);
 
     private final UserRepository userRepository;
     private final SearchQueryRepository searchQueryRepository;
@@ -86,6 +91,8 @@ public class SearchService {
         Set<String> activeCodes = activeProviders.stream().map(SearchProviderEntity::getProviderCode).collect(Collectors.toSet());
         Map<String, SearchProviderEntity> providerMap = activeProviders.stream()
                 .collect(Collectors.toMap(SearchProviderEntity::getProviderCode, p -> p));
+
+        log.info("[SEARCH] Active providers for keyword='{}': {}", request.keyword(), activeCodes);
 
         List<NormalizedSourceItem> items = providerOrchestrator.aggregate(
                 activeCodes,
@@ -210,7 +217,10 @@ public class SearchService {
         PlanEntity plan = subscription.getPlan();
         Integer limit = plan.getSearchLimit();
         if (limit != null && limit > 0) {
-            long used = searchQueryRepository.countByUser(user);
+            LocalDateTime since = subscription.getStartDate() != null
+                    ? subscription.getStartDate()
+                    : LocalDateTime.now().withDayOfMonth(1).withHour(0).withMinute(0).withSecond(0);
+            long used = searchQueryRepository.countByUserAndCreatedAtAfter(user, since);
             if (used >= limit) {
                 throw new AppException(HttpStatus.FORBIDDEN, "Search limit reached for plan " + plan.getName());
             }
