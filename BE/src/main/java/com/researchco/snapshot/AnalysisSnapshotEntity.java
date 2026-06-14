@@ -39,20 +39,24 @@ public class AnalysisSnapshotEntity {
     @JoinColumn(name = "search_query_id", nullable = false, unique = true)
     private SearchQueryEntity searchQuery;
 
-    @Column(name = "summary_text")
+    @Column(name = "summary_text", columnDefinition = "TEXT")
     private String summaryText;
 
-    @Column(name = "total_sources")
-    private Integer totalSources;
+    @Builder.Default
+    @Column(name = "total_sources", nullable = false, columnDefinition = "integer default 0")
+    private Integer totalSources = 0;
 
-    @Column(name = "positive_count")
-    private Integer positiveCount;
+    @Builder.Default
+    @Column(name = "positive_count", nullable = false, columnDefinition = "integer default 0")
+    private Integer positiveCount = 0;
 
-    @Column(name = "neutral_count")
-    private Integer neutralCount;
+    @Builder.Default
+    @Column(name = "neutral_count", nullable = false, columnDefinition = "integer default 0")
+    private Integer neutralCount = 0;
 
-    @Column(name = "negative_count")
-    private Integer negativeCount;
+    @Builder.Default
+    @Column(name = "negative_count", nullable = false, columnDefinition = "integer default 0")
+    private Integer negativeCount = 0;
 
     @CreationTimestamp
     @Column(name = "created_at", updatable = false)

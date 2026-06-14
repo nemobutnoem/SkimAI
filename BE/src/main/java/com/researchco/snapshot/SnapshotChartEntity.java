@@ -37,7 +37,7 @@ public class SnapshotChartEntity {
     @JoinColumn(name = "snapshot_id", nullable = false)
     private AnalysisSnapshotEntity snapshot;
 
-    @Column(name = "chart_type")
+    @Column(name = "chart_type", nullable = false, length = 50)
     private String chartType;
 
     @JdbcTypeCode(SqlTypes.JSON)

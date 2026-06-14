@@ -1,5 +1,7 @@
 package com.researchco.config;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.boot.ApplicationRunner;
 import org.springframework.stereotype.Component;
 
@@ -9,12 +11,10 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.Optional;
 
-/**
- * Auto-loads GOOGLE_CLIENT_ID from FE/.env during startup
- * Teammates can just run: mvn spring-boot:run
- */
 @Component
 public class EnvironmentLoader implements ApplicationRunner {
+
+    private static final Logger log = LoggerFactory.getLogger(EnvironmentLoader.class);
 
     @Override
     public void run(org.springframework.boot.ApplicationArguments args) throws Exception {
@@ -36,11 +36,11 @@ public class EnvironmentLoader implements ApplicationRunner {
                 if (googleClientId.isPresent()) {
                     String clientId = googleClientId.get();
                     System.setProperty("app.auth.google.client-id", clientId);
-                    System.out.println("[ENV] ✓ GOOGLE_CLIENT_ID loaded from FE/.env");
+                    log.info("GOOGLE_CLIENT_ID loaded from FE/.env");
                 }
             }
         } catch (IOException e) {
-            System.out.println("[ENV] ⚠ Could not load GOOGLE_CLIENT_ID from FE/.env: " + e.getMessage());
+            log.warn("Could not load GOOGLE_CLIENT_ID from FE/.env: {}", e.getMessage());
         }
     }
 }

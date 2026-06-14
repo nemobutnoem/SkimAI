@@ -35,17 +35,20 @@ public class SnapshotKeywordEntity {
     @JoinColumn(name = "snapshot_id", nullable = false)
     private AnalysisSnapshotEntity snapshot;
 
-    @Column(nullable = false)
+    @Column(nullable = false, length = 255)
     private String keyword;
 
-    @Column(name = "mention_count", nullable = false)
-    private Integer mentionCount;
+    @Builder.Default
+    @Column(name = "mention_count", nullable = false, columnDefinition = "integer default 0")
+    private Integer mentionCount = 0;
 
-    @Column(name = "total_views")
-    private Long totalViews;
+    @Builder.Default
+    @Column(name = "total_views", columnDefinition = "bigint default 0")
+    private Long totalViews = 0L;
 
-    @Column(name = "total_comments")
-    private Long totalComments;
+    @Builder.Default
+    @Column(name = "total_comments", columnDefinition = "bigint default 0")
+    private Long totalComments = 0L;
 
     @Column(name = "avg_engagement")
     private Double avgEngagement;

@@ -42,12 +42,12 @@ public class UserSubscriptionEntity {
     @JoinColumn(name = "plan_id", nullable = false)
     private PlanEntity plan;
 
-    @Column(name = "start_date")
+    @Column(name = "start_date", nullable = false)
     private LocalDateTime startDate;
 
     @Column(name = "end_date")
     private LocalDateTime endDate;
 
-    @Column(length = 20)
+    @Column(nullable = false, length = 20)
     private String status;
 }

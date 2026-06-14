@@ -37,10 +37,10 @@ public class ReportExportEntity {
     @JoinColumn(name = "report_id", nullable = false)
     private ReportEntity report;
 
-    @Column(name = "export_type")
+    @Column(name = "export_type", length = 50)
     private String exportType;
 
-    @Column(name = "file_url")
+    @Column(name = "file_url", length = 2000)
     private String fileUrl;
 
     @CreationTimestamp

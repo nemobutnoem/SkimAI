@@ -164,6 +164,7 @@ public class AuthService {
                 );
         }
 
+    @Transactional(readOnly = true)
     public AuthDtos.AuthResponse login(AuthDtos.LoginRequest request) {
         String normalizedEmail = request.email().toLowerCase();
         authenticationManager.authenticate(

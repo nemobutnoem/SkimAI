@@ -1,5 +1,8 @@
 package com.researchco.frontend;
 
+import jakarta.validation.Valid;
+import jakarta.validation.constraints.Size;
+import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
@@ -12,6 +15,7 @@ import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 import java.util.List;
 import java.util.Map;
 
+@Validated
 @RestController
 @RequestMapping("/api")
 public class FrontendController {
@@ -46,19 +50,19 @@ public class FrontendController {
     }
 
     @GetMapping("/analysis")
-    public FrontendDtos.AnalysisResponse getAnalysis(@RequestParam(name = "keyword", defaultValue = "") String keyword) {
+    public FrontendDtos.AnalysisResponse getAnalysis(@RequestParam(name = "keyword", defaultValue = "") @Size(max = 255) String keyword) {
         synchronized (getLock(keyword)) {
             return frontendService.getAnalysis(keyword);
         }
     }
 
     @PostMapping("/reports/export")
-    public Map<String, Object> exportReport(@RequestParam(name = "keyword", defaultValue = "") String keyword) {
+    public Map<String, Object> exportReport(@RequestParam(name = "keyword", defaultValue = "") @Size(max = 255) String keyword) {
         return frontendService.exportReport(keyword);
     }
 
     @GetMapping("/analysis/stream")
-    public SseEmitter getAnalysisStream(@RequestParam(name = "keyword", defaultValue = "") String keyword) {
+    public SseEmitter getAnalysisStream(@RequestParam(name = "keyword", defaultValue = "") @Size(max = 255) String keyword) {
         SseEmitter emitter = new SseEmitter(300000L); // 5 min timeout
         new Thread(() -> {
             synchronized (getLock(keyword)) {
@@ -69,47 +73,47 @@ public class FrontendController {
     }
 
     @GetMapping("/analysis/project")
-    public FrontendDtos.ProjectWorkflowResponse getProjectWorkflow(@RequestParam(name = "keyword", defaultValue = "") String keyword) {
+    public FrontendDtos.ProjectWorkflowResponse getProjectWorkflow(@RequestParam(name = "keyword", defaultValue = "") @Size(max = 255) String keyword) {
         synchronized (getLock(keyword)) {
             return frontendService.getProjectWorkflow(keyword);
         }
     }
 
     @GetMapping("/analysis/alerts")
-    public List<FrontendDtos.AlertItem> getAnalysisAlerts(@RequestParam(name = "keyword", defaultValue = "") String keyword) {
+    public List<FrontendDtos.AlertItem> getAnalysisAlerts(@RequestParam(name = "keyword", defaultValue = "") @Size(max = 255) String keyword) {
         synchronized (getLock(keyword)) {
             return frontendService.getAnalysisAlerts(keyword);
         }
     }
 
     @GetMapping("/analysis/competitor")
-    public List<FrontendDtos.CompetitorSignal> getCompetitorSignals(@RequestParam(name = "keyword", defaultValue = "") String keyword) {
+    public List<FrontendDtos.CompetitorSignal> getCompetitorSignals(@RequestParam(name = "keyword", defaultValue = "") @Size(max = 255) String keyword) {
         synchronized (getLock(keyword)) {
             return frontendService.getCompetitorSignals(keyword);
         }
     }
 
     @GetMapping("/analysis/evidence")
-    public List<FrontendDtos.EvidenceItem> getAnalysisEvidence(@RequestParam(name = "keyword", defaultValue = "") String keyword) {
+    public List<FrontendDtos.EvidenceItem> getAnalysisEvidence(@RequestParam(name = "keyword", defaultValue = "") @Size(max = 255) String keyword) {
         return frontendService.getAnalysisEvidence(keyword);
     }
 
     @GetMapping("/analysis/compare")
-    public List<FrontendDtos.CompareItem> getAnalysisCompare(@RequestParam(name = "keyword", defaultValue = "") String keyword) {
+    public List<FrontendDtos.CompareItem> getAnalysisCompare(@RequestParam(name = "keyword", defaultValue = "") @Size(max = 255) String keyword) {
         synchronized (getLock(keyword)) {
             return frontendService.getAnalysisCompare(keyword);
         }
     }
 
     @GetMapping("/analysis/timeline")
-    public List<FrontendDtos.TimeSeriesPoint> getAnalysisTimeline(@RequestParam(name = "keyword", defaultValue = "") String keyword) {
+    public List<FrontendDtos.TimeSeriesPoint> getAnalysisTimeline(@RequestParam(name = "keyword", defaultValue = "") @Size(max = 255) String keyword) {
         synchronized (getLock(keyword)) {
             return frontendService.getAnalysisTimeline(keyword);
         }
     }
 
     @PostMapping("/deep-insight")
-    public FrontendDtos.DeepInsightResponse getDeepInsight(@RequestBody FrontendDtos.DeepInsightRequest request) {
+    public FrontendDtos.DeepInsightResponse getDeepInsight(@RequestBody @Valid FrontendDtos.DeepInsightRequest request) {
         synchronized (getLock(request.keyword())) {
             return frontendService.getDeepInsight(request);
         }
@@ -121,7 +125,7 @@ public class FrontendController {
     }
 
     @PostMapping("/experts/questions")
-    public FrontendDtos.ExpertQuestionResponse submitExpertQuestion(@RequestBody FrontendDtos.ExpertQuestionRequest request) {
+    public FrontendDtos.ExpertQuestionResponse submitExpertQuestion(@RequestBody @Valid FrontendDtos.ExpertQuestionRequest request) {
         return frontendService.submitExpertQuestion(request);
     }
 
@@ -131,17 +135,17 @@ public class FrontendController {
     }
 
     @PostMapping("/pricing/checkout")
-    public FrontendDtos.PricingCheckoutResponse checkout(@RequestBody FrontendDtos.PricingCheckoutRequest request) {
+    public FrontendDtos.PricingCheckoutResponse checkout(@RequestBody @Valid FrontendDtos.PricingCheckoutRequest request) {
         return frontendService.checkout(request);
     }
 
     @PostMapping("/pricing/contact-sales")
-    public FrontendDtos.SalesContactResponse contactSales(@RequestBody FrontendDtos.SalesContactRequest request) {
+    public FrontendDtos.SalesContactResponse contactSales(@RequestBody @Valid FrontendDtos.SalesContactRequest request) {
         return frontendService.contactSales(request);
     }
 
     @PostMapping("/pricing/confirm")
-    public FrontendDtos.PricingCheckoutResponse confirmCheckout(@RequestBody FrontendDtos.PricingCheckoutConfirmRequest request) {
+    public FrontendDtos.PricingCheckoutResponse confirmCheckout(@RequestBody @Valid FrontendDtos.PricingCheckoutConfirmRequest request) {
         return frontendService.confirmCheckout(request);
     }
 

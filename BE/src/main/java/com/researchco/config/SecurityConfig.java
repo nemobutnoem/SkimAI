@@ -44,16 +44,10 @@ public class SecurityConfig {
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/api/auth/**").permitAll()
                         .requestMatchers("/api/home/**").permitAll()
-                        .requestMatchers(
-                                "/api/analysis",
-                                "/api/analysis/**",
-                                "/api/deep-insight",
-                                "/api/experts/**",
-                                "/api/pricing",
-                                "/api/pricing/**",
-                                "/api/payment/payos-webhook",
-                                "/api/support/feedback"
-                        ).permitAll()
+                        .requestMatchers("/api/pricing").permitAll()
+                        .requestMatchers("/api/experts").permitAll()
+                        .requestMatchers("/api/payment/payos-webhook").permitAll()
+                        .requestMatchers("/api/support/feedback").permitAll()
                         .requestMatchers("/api/admin/**").hasRole("ADMIN")
                         .anyRequest().authenticated()
                 )

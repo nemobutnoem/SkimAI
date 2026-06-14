@@ -38,7 +38,7 @@ public class UserEntity extends BaseEntity {
     @Column(name = "password_hash", nullable = false)
     private String passwordHash;
 
-    @Column(name = "avatar_url")
+    @Column(name = "avatar_url", length = 2000)
     private String avatarUrl;
 
     @Column(nullable = false, length = 20)

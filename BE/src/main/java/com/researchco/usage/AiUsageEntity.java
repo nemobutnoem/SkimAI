@@ -42,10 +42,12 @@ public class AiUsageEntity {
     @Column(name = "period_key", nullable = false, length = 20)
     private String periodKey;
 
-    @Column(name = "used_count", nullable = false)
-    private Integer usedCount;
+    @Builder.Default
+    @Column(name = "used_count", nullable = false, columnDefinition = "integer default 0")
+    private Integer usedCount = 0;
 
-    @Column(name = "addon_credits", nullable = false)
-    private Integer addonCredits;
+    @Builder.Default
+    @Column(name = "addon_credits", nullable = false, columnDefinition = "integer default 0")
+    private Integer addonCredits = 0;
 }
 

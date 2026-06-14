@@ -50,19 +50,19 @@ public class SourceItemEntity {
     @Column(name = "content_type", length = 50)
     private String contentType;
 
-    @Column
+    @Column(columnDefinition = "TEXT")
     private String title;
 
-    @Column
+    @Column(columnDefinition = "TEXT")
     private String snippet;
 
-    @Column
+    @Column(columnDefinition = "TEXT")
     private String url;
 
-    @Column(name = "source_name")
+    @Column(name = "source_name", length = 255)
     private String sourceName;
 
-    @Column(name = "author_name")
+    @Column(name = "author_name", length = 255)
     private String authorName;
 
     @Column(name = "published_at")

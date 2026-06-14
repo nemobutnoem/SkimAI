@@ -1,15 +1,15 @@
 package com.researchco.report;
 
 import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Size;
 
 import java.time.LocalDateTime;
 
 public class ReportDtos {
 
     public record CreateReportRequest(
-            @NotNull String searchQueryId,
-            @NotBlank String title
+            @NotBlank String searchQueryId,
+            @NotBlank @Size(max = 500) String title
     ) {
     }
 

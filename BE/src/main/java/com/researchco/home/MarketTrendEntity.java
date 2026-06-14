@@ -37,16 +37,16 @@ public class MarketTrendEntity {
     @Column(length = 120)
     private String market;
 
-    @Column(name = "trend_score", nullable = false)
+    @Column(name = "trend_score", nullable = false, columnDefinition = "bigint default 0")
     private long trendScore;
 
-    @Column(name = "previous_score")
+    @Column(name = "previous_score", columnDefinition = "bigint default 0")
     private long previousScore;
 
-    @Column(name = "change_pct")
+    @Column(name = "change_pct", columnDefinition = "integer default 0")
     private int changePct;
 
-    @Column(name = "source_count")
+    @Column(name = "source_count", columnDefinition = "integer default 0")
     private int sourceCount;
 
     @Column(length = 20)

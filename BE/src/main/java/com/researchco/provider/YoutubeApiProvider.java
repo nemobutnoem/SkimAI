@@ -2,6 +2,8 @@ package com.researchco.provider;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 import org.springframework.web.util.UriComponentsBuilder;
@@ -24,6 +26,8 @@ import java.util.stream.Collectors;
 
 @Component
 public class YoutubeApiProvider implements SearchProvider {
+
+    private static final Logger log = LoggerFactory.getLogger(YoutubeApiProvider.class);
 
     private final ObjectMapper objectMapper;
     private final HttpClient httpClient;
@@ -133,7 +137,7 @@ public class YoutubeApiProvider implements SearchProvider {
             }
             return results;
         } catch (Exception e) {
-            System.err.println("[YOUTUBE_API] Search failed for keyword=\"" + keyword + "\": " + e.getMessage());
+            log.warn("[YOUTUBE_API] Search failed for keyword=\"{}\": {}", keyword, e.getMessage());
             return generateFallbackResults(keyword);
         }
     }
@@ -325,8 +329,7 @@ public class YoutubeApiProvider implements SearchProvider {
         HttpRequest request = HttpRequest.newBuilder(uri).GET().build();
         HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
         if (response.statusCode() < 200 || response.statusCode() >= 300) {
-            System.err.println("[YOUTUBE_API] HTTP " + response.statusCode() + " for: " + uri.toString().replaceAll("key=[^&]+", "key=***"));
-            System.err.println("[YOUTUBE_API] Response body: " + response.body());
+            log.warn("[YOUTUBE_API] HTTP {} for: {}. Body: {}", response.statusCode(), uri.toString().replaceAll("key=[^&]+", "key=***"), response.body());
             return null;
         }
         return objectMapper.readTree(response.body());

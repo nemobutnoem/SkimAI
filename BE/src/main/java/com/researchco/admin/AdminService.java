@@ -9,6 +9,7 @@ import com.researchco.common.AppException;
 import com.researchco.subscription.UserSubscriptionEntity;
 import com.researchco.search.SearchQueryRepository;
 import com.researchco.subscription.UserSubscriptionRepository;
+import com.researchco.user.UserEntity;
 import com.researchco.user.UserRepository;
 import com.researchco.plan.PlanEntity;
 import com.researchco.plan.PlanRepository;
@@ -114,14 +115,8 @@ public class AdminService {
         LocalDateTime prevStart = prevMonth.atDay(1).atStartOfDay();
         LocalDateTime prevEnd = prevMonth.plusMonths(1).atDay(1).atStartOfDay();
 
-        long usersCurrent = userRepository.findAll().stream()
-                .filter(u -> !"ADMIN".equalsIgnoreCase(u.getRole()))
-                .filter(u -> u.getCreatedAt() != null && u.getCreatedAt().isAfter(currentStart) && u.getCreatedAt().isBefore(currentEnd))
-                .count();
-        long usersPrev = userRepository.findAll().stream()
-                .filter(u -> !"ADMIN".equalsIgnoreCase(u.getRole()))
-                .filter(u -> u.getCreatedAt() != null && u.getCreatedAt().isAfter(prevStart) && u.getCreatedAt().isBefore(prevEnd))
-                .count();
+        long usersCurrent = userRepository.countNonAdminByCreatedAtBetween(currentStart, currentEnd);
+        long usersPrev = userRepository.countNonAdminByCreatedAtBetween(prevStart, prevEnd);
 
         long searchesCurrent = searchQueryRepository.countByCreatedAtBetween(currentStart, currentEnd);
         long searchesPrev = searchQueryRepository.countByCreatedAtBetween(prevStart, prevEnd);
@@ -129,9 +124,7 @@ public class AdminService {
         long reportsCurrent = reportRepository.countByCreatedAtBetween(currentStart, currentEnd);
         long reportsPrev = reportRepository.countByCreatedAtBetween(prevStart, prevEnd);
 
-        List<UserSubscriptionEntity> allSubscriptions = userSubscriptionRepository.findAll().stream()
-                .filter(sub -> sub.getUser() != null && !"ADMIN".equalsIgnoreCase(sub.getUser().getRole()))
-                .toList();
+        List<UserSubscriptionEntity> allSubscriptions = userSubscriptionRepository.findAllNonAdmin();
 
         long subscriptionsCurrent = allSubscriptions.stream()
                 .filter(sub -> sub.getStartDate() != null && sub.getStartDate().isAfter(currentStart) && sub.getStartDate().isBefore(currentEnd))
@@ -190,15 +183,10 @@ public class AdminService {
 
     public List<AdminDtos.AdminReportItem> reports(String status) {
         String normalized = status == null ? "all" : status.toLowerCase(Locale.ROOT);
-        List<AdminDtos.AdminReportItem> items = reportRepository.findAll().stream()
-                .sorted(Comparator.comparing(com.researchco.report.ReportEntity::getCreatedAt, Comparator.nullsLast(Comparator.naturalOrder())).reversed())
-                .map(this::toAdminReportItem)
-                .toList();
-
-        if ("all".equals(normalized)) {
-            return items;
-        }
-        return items.stream().filter(item -> item.status().equalsIgnoreCase(normalized)).toList();
+        List<com.researchco.report.ReportEntity> reports = "all".equals(normalized)
+                ? reportRepository.findAllByOrderByCreatedAtDesc()
+                : reportRepository.findByStatusIgnoreCaseOrderByCreatedAtDesc(normalized);
+        return reports.stream().map(this::toAdminReportItem).toList();
     }
 
     @Transactional
@@ -216,18 +204,24 @@ public class AdminService {
         String statusFilter = status == null ? "all" : status.toLowerCase(Locale.ROOT);
                 LocalDateTime since = LocalDateTime.now().minusDays(30);
 
-        return userRepository.findAll().stream()
-                .filter(user -> !"ADMIN".equalsIgnoreCase(user.getRole()))
-                .map(user -> {
-                    UserSubscriptionEntity subscription = userSubscriptionRepository.findFirstByUserAndStatusOrderByStartDateDesc(user, "ACTIVE").orElse(null);
-                                        String planName = subscription != null && subscription.getPlan() != null
-                                                        ? subscription.getPlan().getName()
-                                                        : "FREE";
-                                        String resolvedType = titleCase(planName);
+        List<UserEntity> allUsers = userRepository.findAllNonAdmin();
+        Map<UUID, UserSubscriptionEntity> activeSubByUser = userSubscriptionRepository.findAllActiveNonAdmin()
+                .stream()
+                .collect(Collectors.toMap(
+                        s -> s.getUser().getId(),
+                        s -> s,
+                        (a, b) -> a
+                ));
 
-                                        long monthCount = searchQueryRepository.countByUserAndCreatedAtAfter(user, since);
-                                        Integer limit = subscription != null && subscription.getPlan() != null ? subscription.getPlan().getSearchLimit() : null;
-                                        String usage = formatUsagePct(monthCount, limit);
+        List<AdminDtos.AdminUserItem> mapped = allUsers.stream()
+                .map(user -> {
+                    UserSubscriptionEntity subscription = activeSubByUser.get(user.getId());
+                    String planName = subscription != null && subscription.getPlan() != null
+                            ? subscription.getPlan().getName() : "FREE";
+                    String resolvedType = titleCase(planName);
+                    long monthCount = searchQueryRepository.countByUserAndCreatedAtAfter(user, since);
+                    Integer searchLimit = subscription != null && subscription.getPlan() != null ? subscription.getPlan().getSearchLimit() : null;
+                    String usage = formatUsagePct(monthCount, searchLimit);
                     return new AdminDtos.AdminUserItem(
                             user.getId().toString(),
                             user.getFullName(),
@@ -238,9 +232,12 @@ public class AdminService {
                             usage
                     );
                 })
-                .filter(user -> query.isBlank() || user.name().toLowerCase(Locale.ROOT).contains(query) || user.email().toLowerCase(Locale.ROOT).contains(query))
-                                .filter(user -> matchesPlanTypeFilter(user.type(), planType))
-                .filter(user -> "all".equals(statusFilter) || user.status().equalsIgnoreCase(statusFilter))
+                .toList();
+
+        return mapped.stream()
+                .filter(u -> query.isBlank() || u.name().toLowerCase(Locale.ROOT).contains(query) || u.email().toLowerCase(Locale.ROOT).contains(query))
+                .filter(u -> matchesPlanTypeFilter(u.type(), planType))
+                .filter(u -> "all".equals(statusFilter) || u.status().equalsIgnoreCase(statusFilter))
                 .toList();
     }
 
@@ -473,16 +470,11 @@ public class AdminService {
         }
 
         private long countNonAdminUsersBetween(LocalDateTime start, LocalDateTime end) {
-                return userRepository.findAll().stream()
-                        .filter(u -> !"ADMIN".equalsIgnoreCase(u.getRole()))
-                        .filter(u -> u.getCreatedAt() != null && u.getCreatedAt().isAfter(start) && u.getCreatedAt().isBefore(end))
-                        .count();
+                return userRepository.countNonAdminByCreatedAtBetween(start, end);
         }
 
         private long countAllNonAdminUsers() {
-                return userRepository.findAll().stream()
-                        .filter(u -> !"ADMIN".equalsIgnoreCase(u.getRole()))
-                        .count();
+                return userRepository.countNonAdmin();
         }
 
         private interface CountProvider {

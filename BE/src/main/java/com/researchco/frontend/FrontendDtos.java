@@ -1,5 +1,10 @@
 package com.researchco.frontend;
 
+import jakarta.validation.constraints.Email;
+import jakarta.validation.constraints.Min;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Size;
+
 import java.util.List;
 import java.util.Map;
 
@@ -147,7 +152,10 @@ public class FrontendDtos {
     ) {
     }
 
-    public record DeepInsightRequest(String keyword, String source) {
+    public record DeepInsightRequest(
+            @NotBlank @Size(max = 255) String keyword,
+            @Size(max = 100) String source
+    ) {
     }
 
     public record StatItem(String value, String label) {
@@ -209,7 +217,11 @@ public class FrontendDtos {
     public record ExpertItem(String id, String name, String domain, double rating, int price) {
     }
 
-    public record ExpertQuestionRequest(String topic, String expertId, String question) {
+    public record ExpertQuestionRequest(
+            @NotBlank @Size(max = 255) String topic,
+            @NotBlank String expertId,
+            @NotBlank @Size(max = 2000) String question
+    ) {
     }
 
     public record ExpertQuestionResponse(String id, String status, int etaHours, String createdAt) {
@@ -227,9 +239,9 @@ public class FrontendDtos {
     }
 
     public record PricingCheckoutRequest(
-            String planId,
-            String billingCycle,
-            String provider
+            @NotBlank String planId,
+            @NotBlank @Size(max = 20) String billingCycle,
+            @NotBlank @Size(max = 30) String provider
     ) {
     }
 
@@ -253,13 +265,13 @@ public class FrontendDtos {
     }
 
     public record SalesContactRequest(
-            String planId,
-            String billingCycle,
-            String contactName,
-            String workEmail,
-            String companyName,
-            Integer teamSize,
-            String note
+            @NotBlank String planId,
+            @NotBlank @Size(max = 20) String billingCycle,
+            @NotBlank @Size(min = 1, max = 120) String contactName,
+            @NotBlank @Email @Size(max = 160) String workEmail,
+            @NotBlank @Size(min = 1, max = 160) String companyName,
+            @Min(1) Integer teamSize,
+            @Size(max = 2000) String note
     ) {
     }
 
@@ -272,6 +284,6 @@ public class FrontendDtos {
     ) {
     }
 
-    public record PricingCheckoutConfirmRequest(String providerSessionId) {
+    public record PricingCheckoutConfirmRequest(@NotBlank String providerSessionId) {
     }
 }

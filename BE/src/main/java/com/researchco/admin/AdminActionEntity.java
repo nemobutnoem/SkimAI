@@ -38,7 +38,7 @@ public class AdminActionEntity {
     @JoinColumn(name = "admin_user_id", nullable = false)
     private UserEntity adminUser;
 
-    @Column(name = "action_type")
+    @Column(name = "action_type", length = 50)
     private String actionType;
 
     @Column(name = "target_id")

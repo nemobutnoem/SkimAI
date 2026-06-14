@@ -51,14 +51,14 @@ public class ReportEntity {
     @JoinColumn(name = "snapshot_id", nullable = true)
     private AnalysisSnapshotEntity snapshot;
 
-    @Column
+    @Column(nullable = false, length = 500)
     private String title;
 
     @JdbcTypeCode(SqlTypes.JSON)
-    @Column(name = "report_content")
+    @Column(name = "report_content", columnDefinition = "TEXT")
     private String reportContent;
 
-    @Column(length = 20)
+    @Column(nullable = false, length = 20)
     private String status;
 
     @CreationTimestamp

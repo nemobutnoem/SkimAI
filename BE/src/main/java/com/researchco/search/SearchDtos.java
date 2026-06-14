@@ -1,6 +1,7 @@
 package com.researchco.search;
 
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Size;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -8,10 +9,10 @@ import java.util.List;
 public class SearchDtos {
 
     public record SearchRequest(
-            @NotBlank String keyword,
-            String countryCode,
-            String languageCode,
-            String timeRange
+            @NotBlank @Size(max = 255) String keyword,
+            @Size(max = 10) String countryCode,
+            @Size(max = 10) String languageCode,
+            @Size(max = 20) String timeRange
     ) {
     }
 

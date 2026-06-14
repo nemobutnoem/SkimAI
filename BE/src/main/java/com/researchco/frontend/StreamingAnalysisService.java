@@ -11,6 +11,8 @@ import com.researchco.search.SourceItemRepository;
 import com.researchco.provider.ProviderOrchestrator;
 import com.researchco.provider.NormalizedSourceItem;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 import org.springframework.transaction.annotation.Transactional;
@@ -21,12 +23,13 @@ import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
-import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
 
 @Service
 public class StreamingAnalysisService {
+
+    private static final Logger log = LoggerFactory.getLogger(StreamingAnalysisService.class);
 
     private final SearchQueryRepository searchQueryRepository;
     private final AnalysisSnapshotRepository analysisSnapshotRepository;
@@ -216,14 +219,11 @@ public class StreamingAnalysisService {
     }
 
     private Optional<SearchQueryEntity> findQueryByKeyword(String keyword) {
-        String normalized = keyword == null ? "" : keyword.trim().toLowerCase(Locale.ROOT);
-        return searchQueryRepository.findAll().stream()
-                .filter(item -> item.getKeyword() != null && item.getKeyword().trim().toLowerCase(Locale.ROOT).equals(normalized))
-                .filter(item -> analysisSnapshotRepository.findBySearchQueryId(item.getId()).isPresent())
-                .findFirst()
-                .or(() -> searchQueryRepository.findAll().stream()
-                        .filter(item -> item.getKeyword() != null && item.getKeyword().trim().toLowerCase(Locale.ROOT).equals(normalized))
-                        .findFirst());
+        if (keyword == null || keyword.isBlank()) return Optional.empty();
+        Optional<SearchQueryEntity> withSnapshot = searchQueryRepository
+                .findByKeywordWithAnySnapshot(keyword.trim()).stream().findFirst();
+        if (withSnapshot.isPresent()) return withSnapshot;
+        return searchQueryRepository.findFirstByKeywordIgnoreCaseOrderByCreatedAtDesc(keyword.trim());
     }
 
     private SearchQueryEntity fallbackQuery(String keyword) {

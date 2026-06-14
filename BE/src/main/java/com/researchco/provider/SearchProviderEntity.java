@@ -31,9 +31,10 @@ public class SearchProviderEntity {
     @Column(name = "provider_code", nullable = false, unique = true, length = 50)
     private String providerCode;
 
-    @Column(name = "provider_name")
+    @Column(name = "provider_name", length = 100)
     private String providerName;
 
-    @Column(name = "is_active")
-    private Boolean isActive;
+    @Builder.Default
+    @Column(name = "is_active", nullable = false, columnDefinition = "boolean default true")
+    private Boolean isActive = true;
 }

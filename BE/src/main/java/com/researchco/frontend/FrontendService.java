@@ -30,6 +30,8 @@ import com.researchco.user.UserEntity;
 import com.researchco.user.UserRepository;
 import com.researchco.provider.ai.AiProvider;
 import com.researchco.security.SecurityUtils;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.beans.factory.annotation.Value;
@@ -65,6 +67,8 @@ import java.util.stream.Collectors;
 @Service
 @Transactional(readOnly = true)
 public class FrontendService {
+
+    private static final Logger log = LoggerFactory.getLogger(FrontendService.class);
 
     private final SearchQueryRepository searchQueryRepository;
     private final AnalysisSnapshotRepository analysisSnapshotRepository;
@@ -274,14 +278,10 @@ public class FrontendService {
         SearchQueryEntity trackedQuery = recordSearchActivity(normalizedKeyword, localeProfile);
         
         // 1. TÌM SNAPSHOT FRESH TỪ BẤT KỲ USER NÀO (SHARE ACROSS USERS ĐỂ TIẾT KIỆM TOKEN)
-        Optional<SearchQueryEntity> freshGlobalQueryOpt = searchQueryRepository.findAll().stream()
-                .filter(item -> item.getKeyword() != null && item.getKeyword().trim().equalsIgnoreCase(normalizedKeyword.trim()))
-                .filter(item -> {
-                    AnalysisSnapshotEntity s = analysisSnapshotRepository.findBySearchQueryId(item.getId()).orElse(null);
-                    return s != null && isSnapshotFresh(s);
-                })
-                .findFirst();
-                
+        LocalDateTime oneHourAgo = LocalDateTime.now().minusHours(1);
+        Optional<SearchQueryEntity> freshGlobalQueryOpt = searchQueryRepository
+                .findByKeywordWithFreshSnapshot(normalizedKeyword, oneHourAgo).stream().findFirst();
+
         if (freshGlobalQueryOpt.isPresent()) {
             AnalysisSnapshotEntity sharedSnapshot = analysisSnapshotRepository.findBySearchQueryId(freshGlobalQueryOpt.get().getId()).orElse(null);
             if (sharedSnapshot != null) {
@@ -304,10 +304,8 @@ public class FrontendService {
             return buildAnalysisFromSnapshot(query, snapshot);
         }
 
-        Optional<SearchQueryEntity> staleGlobalQueryOpt = searchQueryRepository.findAll().stream()
-                .filter(item -> item.getKeyword() != null && item.getKeyword().trim().equalsIgnoreCase(normalizedKeyword.trim()))
-                .filter(item -> analysisSnapshotRepository.findBySearchQueryId(item.getId()).isPresent())
-                .findFirst();
+        Optional<SearchQueryEntity> staleGlobalQueryOpt = searchQueryRepository
+                .findByKeywordWithAnySnapshot(normalizedKeyword).stream().findFirst();
         
         if (staleGlobalQueryOpt.isPresent()) {
             AnalysisSnapshotEntity fallbackSnapshot = analysisSnapshotRepository.findBySearchQueryId(staleGlobalQueryOpt.get().getId()).orElse(null);
@@ -472,8 +470,7 @@ public class FrontendService {
             sourceItemRepository.saveAll(sourceEntities);
 
         } catch (Exception e) {
-            System.err.println("[ERROR] Failed to save analysis snapshot: " + e.getMessage());
-            e.printStackTrace();
+            log.error("Failed to save analysis snapshot", e);
         }
     }
 
@@ -556,12 +553,8 @@ public class FrontendService {
 
         // 1. Check if cached report exists in reports table for this user, keyword and source
         String targetTitle = request.source().trim() + " Deep Insight";
-        Optional<com.researchco.report.ReportEntity> cachedReport = reportRepository.findAll().stream()
-                .filter(r -> r.getUser().getId().equals(user.getId()))
-                .filter(r -> "DEEP_INSIGHT".equals(r.getStatus()))
-                .filter(r -> r.getSearchQuery() != null && r.getSearchQuery().getKeyword().trim().equalsIgnoreCase(request.keyword().trim()))
-                .filter(r -> r.getTitle() != null && r.getTitle().trim().equalsIgnoreCase(targetTitle))
-                .findFirst();
+        Optional<com.researchco.report.ReportEntity> cachedReport = reportRepository
+                .findFirstCachedDeepInsight(user.getId(), "DEEP_INSIGHT", request.keyword(), targetTitle);
 
         FrontendDtos.DeepInsightResponse response;
         if (cachedReport.isPresent()) {
@@ -1285,16 +1278,23 @@ public class FrontendService {
     }
 
     public List<FrontendDtos.PricingPlan> getPricing() {
-        UserEntity user = preferredUser();
-        String currentPlanId;
-        if (user.getRole() != null && user.getRole().equalsIgnoreCase("ADMIN")) {
-            currentPlanId = "enterprise";
+        UUID currentUserId = SecurityUtils.currentUserId();
+        final String currentPlanId;
+        if (currentUserId != null) {
+            UserEntity user = userRepository.findById(currentUserId).orElse(null);
+            if (user != null && user.getRole() != null && user.getRole().equalsIgnoreCase("ADMIN")) {
+                currentPlanId = "enterprise";
+            } else if (user != null) {
+                currentPlanId = userSubscriptionRepository.findFirstByUserAndStatusOrderByStartDateDesc(user, "ACTIVE")
+                        .map(UserSubscriptionEntity::getPlan)
+                        .map(PlanEntity::getName)
+                        .map(name -> name.toLowerCase(Locale.ROOT))
+                        .orElse("free");
+            } else {
+                currentPlanId = "none";
+            }
         } else {
-            currentPlanId = userSubscriptionRepository.findFirstByUserAndStatusOrderByStartDateDesc(user, "ACTIVE")
-                    .map(UserSubscriptionEntity::getPlan)
-                    .map(PlanEntity::getName)
-                    .map(name -> name.toLowerCase(Locale.ROOT))
-                    .orElse("free");
+            currentPlanId = "none";
         }
 
         return planRepository.findAll().stream()
@@ -1493,7 +1493,7 @@ public class FrontendService {
                         }
                     }
                 } catch (Exception e) {
-                    e.printStackTrace();
+                    log.warn("PayOS checkout link creation failed, falling back to mock QR: {}", e.getMessage());
                     // If PayOS fails, fallback to offline mock QR code
                 }
             }
@@ -1607,10 +1607,8 @@ public class FrontendService {
 
     @Transactional
     public FrontendDtos.PricingCheckoutResponse confirmCheckout(FrontendDtos.PricingCheckoutConfirmRequest request) {
-        if (request.providerSessionId() == null || request.providerSessionId().isBlank()) {
-            throw new AppException(HttpStatus.BAD_REQUEST, "Missing provider session id");
-        }
-        PaymentTransactionEntity payment = paymentTransactionRepository.findByProviderSessionId(request.providerSessionId())
+        PaymentTransactionEntity payment = paymentTransactionRepository
+                .findByProviderSessionIdForUpdate(request.providerSessionId())
                 .orElseThrow(() -> new AppException(HttpStatus.NOT_FOUND, "Payment session not found"));
 
         if (!"STRIPE".equalsIgnoreCase(payment.getProvider())) {
@@ -1626,36 +1624,11 @@ public class FrontendService {
                             .header("x-api-key", payosApiKey)
                             .GET()
                             .build();
-
                     HttpResponse<String> response = httpClient.send(requestPayOs, HttpResponse.BodyHandlers.ofString());
                     if (response.statusCode() < 300) {
                         JsonNode root = objectMapper.readTree(response.body());
                         String payosStatus = root.path("data").path("status").asText();
-                        if ("PAID".equalsIgnoreCase(payosStatus)) {
-                            if (!"PAID".equalsIgnoreCase(payment.getStatus())) {
-                                LocalDateTime now = LocalDateTime.now();
-                                List<UserSubscriptionEntity> activeSubscriptions = userSubscriptionRepository.findByUserAndStatus(payment.getUser(), "ACTIVE");
-                                for (UserSubscriptionEntity active : activeSubscriptions) {
-                                    active.setStatus("ENDED");
-                                    active.setEndDate(now);
-                                }
-                                userSubscriptionRepository.saveAll(activeSubscriptions);
-
-                                LocalDateTime renewsAt = "yearly".equals(payment.getBillingCycle()) ? now.plusYears(1) : now.plusMonths(1);
-                                UserSubscriptionEntity nextSubscription = UserSubscriptionEntity.builder()
-                                        .user(payment.getUser())
-                                        .plan(payment.getPlan())
-                                        .status("ACTIVE")
-                                        .startDate(now)
-                                        .endDate(renewsAt)
-                                        .build();
-                                userSubscriptionRepository.save(nextSubscription);
-
-                                payment.setStatus("PAID");
-                                payment.setCompletedAt(now);
-                                paymentTransactionRepository.save(payment);
-                            }
-                        } else {
+                        if (!"PAID".equalsIgnoreCase(payosStatus)) {
                             payment.setStatus("PENDING");
                             paymentTransactionRepository.save(payment);
                             return new FrontendDtos.PricingCheckoutResponse(
@@ -1666,57 +1639,26 @@ public class FrontendService {
                                     payment.getBillingCycle(),
                                     "inv_" + payment.getId().toString().substring(0, 8),
                                     "$" + priceLabel(payment.getAmount()),
-                                    null,
-                                    payment.getCheckoutUrl(),
-                                    payment.getProviderSessionId(),
+                                    null, payment.getCheckoutUrl(), payment.getProviderSessionId(),
                                     null, null, null, null, null
                             );
                         }
                     }
                 } catch (Exception e) {
-                    e.printStackTrace();
-                }
-            } else {
-                if (!"PAID".equalsIgnoreCase(payment.getStatus())) {
-                    LocalDateTime now = LocalDateTime.now();
-                    List<UserSubscriptionEntity> activeSubscriptions = userSubscriptionRepository.findByUserAndStatus(payment.getUser(), "ACTIVE");
-                    for (UserSubscriptionEntity active : activeSubscriptions) {
-                        active.setStatus("ENDED");
-                        active.setEndDate(now);
-                    }
-                    userSubscriptionRepository.saveAll(activeSubscriptions);
-
-                    LocalDateTime renewsAt = "yearly".equals(payment.getBillingCycle()) ? now.plusYears(1) : now.plusMonths(1);
-                    UserSubscriptionEntity nextSubscription = UserSubscriptionEntity.builder()
-                            .user(payment.getUser())
-                            .plan(payment.getPlan())
-                            .status("ACTIVE")
-                            .startDate(now)
-                            .endDate(renewsAt)
-                            .build();
-                    userSubscriptionRepository.save(nextSubscription);
-
-                    payment.setStatus("PAID");
-                    payment.setCompletedAt(now);
-                    paymentTransactionRepository.save(payment);
+                    log.error("Failed to verify PayOS payment status for session={}", payment.getProviderSessionId(), e);
                 }
             }
 
+            activateSubscription(payment);
             LocalDateTime renewsAt = "yearly".equals(payment.getBillingCycle())
                     ? payment.getCompletedAt().plusYears(1)
                     : payment.getCompletedAt().plusMonths(1);
             return new FrontendDtos.PricingCheckoutResponse(
-                    "success",
-                    titleCase(payment.getPlan().getName()) + " plan activated successfully.",
-                    payment.getPlan().getName().toLowerCase(Locale.ROOT),
-                    titleCase(payment.getPlan().getName()),
-                    payment.getBillingCycle(),
-                    "inv_" + payment.getId().toString().substring(0, 8),
-                    "$" + priceLabel(payment.getAmount()),
-                    renewsAt.toString(),
-                    null,
-                    payment.getProviderSessionId(),
-                    null, null, null, null, null
+                    "success", titleCase(payment.getPlan().getName()) + " plan activated successfully.",
+                    payment.getPlan().getName().toLowerCase(Locale.ROOT), titleCase(payment.getPlan().getName()),
+                    payment.getBillingCycle(), "inv_" + payment.getId().toString().substring(0, 8),
+                    "$" + priceLabel(payment.getAmount()), renewsAt.toString(),
+                    null, payment.getProviderSessionId(), null, null, null, null, null
             );
         }
 
@@ -1725,60 +1667,47 @@ public class FrontendService {
             payment.setStatus("CANCELLED".equalsIgnoreCase(payment.getStatus()) ? payment.getStatus() : "PENDING");
             paymentTransactionRepository.save(payment);
             return new FrontendDtos.PricingCheckoutResponse(
-                    "pending_payment",
-                    "Payment has not been completed yet.",
-                    payment.getPlan().getName().toLowerCase(Locale.ROOT),
-                    titleCase(payment.getPlan().getName()),
-                    payment.getBillingCycle(),
-                "inv_" + payment.getId().toString().substring(0, 8),
-                "$" + priceLabel(payment.getAmount()),
-                null,
-                null,
-                payment.getProviderSessionId(),
-                null, null, null, null, null
+                    "pending_payment", "Payment has not been completed yet.",
+                    payment.getPlan().getName().toLowerCase(Locale.ROOT), titleCase(payment.getPlan().getName()),
+                    payment.getBillingCycle(), "inv_" + payment.getId().toString().substring(0, 8),
+                    "$" + priceLabel(payment.getAmount()), null, null, payment.getProviderSessionId(),
+                    null, null, null, null, null
             );
         }
 
-        if (!"PAID".equalsIgnoreCase(payment.getStatus())) {
-            LocalDateTime now = LocalDateTime.now();
-            List<UserSubscriptionEntity> activeSubscriptions = userSubscriptionRepository.findByUserAndStatus(payment.getUser(), "ACTIVE");
-            for (UserSubscriptionEntity active : activeSubscriptions) {
-                active.setStatus("ENDED");
-                active.setEndDate(now);
-            }
-            userSubscriptionRepository.saveAll(activeSubscriptions);
-
-            LocalDateTime renewsAt = "yearly".equals(payment.getBillingCycle()) ? now.plusYears(1) : now.plusMonths(1);
-            UserSubscriptionEntity nextSubscription = UserSubscriptionEntity.builder()
-                    .user(payment.getUser())
-                    .plan(payment.getPlan())
-                    .status("ACTIVE")
-                    .startDate(now)
-                    .endDate(renewsAt)
-                    .build();
-            userSubscriptionRepository.save(nextSubscription);
-
-            payment.setStatus("PAID");
-            payment.setCompletedAt(now);
-            paymentTransactionRepository.save(payment);
-        }
-
+        activateSubscription(payment);
         LocalDateTime renewsAt = "yearly".equals(payment.getBillingCycle())
                 ? payment.getCompletedAt().plusYears(1)
                 : payment.getCompletedAt().plusMonths(1);
         return new FrontendDtos.PricingCheckoutResponse(
-                "success",
-                titleCase(payment.getPlan().getName()) + " plan activated successfully.",
-                payment.getPlan().getName().toLowerCase(Locale.ROOT),
-                titleCase(payment.getPlan().getName()),
-                payment.getBillingCycle(),
-                "inv_" + payment.getId().toString().substring(0, 8),
-                "$" + priceLabel(payment.getAmount()),
-                renewsAt.toString(),
-                null,
-                payment.getProviderSessionId(),
-                null, null, null, null, null
+                "success", titleCase(payment.getPlan().getName()) + " plan activated successfully.",
+                payment.getPlan().getName().toLowerCase(Locale.ROOT), titleCase(payment.getPlan().getName()),
+                payment.getBillingCycle(), "inv_" + payment.getId().toString().substring(0, 8),
+                "$" + priceLabel(payment.getAmount()), renewsAt.toString(),
+                null, payment.getProviderSessionId(), null, null, null, null, null
         );
+    }
+
+    private void activateSubscription(PaymentTransactionEntity payment) {
+        if ("PAID".equalsIgnoreCase(payment.getStatus())) return;
+        LocalDateTime now = LocalDateTime.now();
+        List<UserSubscriptionEntity> activeSubscriptions = userSubscriptionRepository.findByUserAndStatus(payment.getUser(), "ACTIVE");
+        for (UserSubscriptionEntity active : activeSubscriptions) {
+            active.setStatus("ENDED");
+            active.setEndDate(now);
+        }
+        userSubscriptionRepository.saveAll(activeSubscriptions);
+        LocalDateTime renewsAt = "yearly".equals(payment.getBillingCycle()) ? now.plusYears(1) : now.plusMonths(1);
+        userSubscriptionRepository.save(UserSubscriptionEntity.builder()
+                .user(payment.getUser())
+                .plan(payment.getPlan())
+                .status("ACTIVE")
+                .startDate(now)
+                .endDate(renewsAt)
+                .build());
+        payment.setStatus("PAID");
+        payment.setCompletedAt(now);
+        paymentTransactionRepository.save(payment);
     }
 
     private List<NormalizedSourceItem> fetchLiveSources(String keyword) {
@@ -1787,14 +1716,14 @@ public class FrontendService {
         Set<String> activeCodes = activeProviders.stream()
                 .map(SearchProviderEntity::getProviderCode)
                 .collect(Collectors.toSet());
-        System.out.println("[DEBUG] Active providers: " + activeCodes + " for keyword=\"" + keyword + "\"");
+        log.debug("Active providers: {} for keyword=\"{}\"", activeCodes, keyword);
         if (activeCodes.isEmpty()) {
-            System.out.println("[DEBUG] No active providers found!");
+            log.warn("No active providers found for keyword=\"{}\"", keyword);
             return List.of();
         }
-        
+
         String timeRange = aiProvider.inferTimeRange(keyword);
-        System.out.println("[DEBUG] AI inferred timeRange=\"" + timeRange + "\" for keyword=\"" + keyword + "\"");
+        log.debug("AI inferred timeRange=\"{}\" for keyword=\"{}\"", timeRange, keyword);
 
         List<NormalizedSourceItem> results = providerOrchestrator.aggregate(
                 activeCodes,
@@ -1803,8 +1732,8 @@ public class FrontendService {
                 localeProfile.languageCode(),
                 timeRange
         );
-        System.out.println("[DEBUG] Aggregated " + results.size() + " items for keyword=\"" + keyword + "\" with locale "
-                + localeProfile.countryCode() + "/" + localeProfile.languageCode() + " and timeRange=" + timeRange);
+        log.debug("Aggregated {} items for keyword=\"{}\" locale={}/{} timeRange={}", results.size(), keyword,
+                localeProfile.countryCode(), localeProfile.languageCode(), timeRange);
         return results;
     }
 
@@ -2421,24 +2350,12 @@ public class FrontendService {
     }
 
     private UserEntity preferredUser() {
-        java.util.UUID currentUserId = SecurityUtils.currentUserId();
-        if (currentUserId != null) {
-            Optional<UserEntity> currentUser = userRepository.findById(currentUserId);
-            if (currentUser.isPresent()) {
-                return currentUser.get();
-            }
+        UUID currentUserId = SecurityUtils.currentUserId();
+        if (currentUserId == null) {
+            throw new AppException(HttpStatus.UNAUTHORIZED, "Authentication required");
         }
-        return userRepository.findByEmail("demo@skimai.local")
-                .or(() -> userRepository.findByEmail("user@test.com"))
-                .orElseGet(() -> userRepository.findAll().stream().findFirst().orElseGet(() ->
-                        UserEntity.builder()
-                                .id(UUID.randomUUID())
-                                .fullName("Demo User")
-                                .email("demo@skimai.local")
-                                .role("USER")
-                                .status("ACTIVE")
-                                .build()
-                ));
+        return userRepository.findById(currentUserId)
+                .orElseThrow(() -> new AppException(HttpStatus.UNAUTHORIZED, "User not found"));
     }
 
     private void enforceDeepInsightQuota(UserEntity user, UserSubscriptionEntity subscription) {
@@ -2820,16 +2737,15 @@ public class FrontendService {
         return amount.stripTrailingZeros().toPlainString();
     }
 
-    @Transactional(noRollbackFor = Exception.class)
+    @Transactional
     public Map<String, Object> exportReport(String keyword) {
         try {
             UserEntity user = preferredUser();
-            
+
             String normalizedKeyword = keyword == null ? "" : keyword.trim();
-            SearchQueryEntity query = searchQueryRepository.findAll().stream()
-                    .filter(q -> q.getKeyword() != null && q.getKeyword().trim().equalsIgnoreCase(normalizedKeyword))
-                    .max(Comparator.comparing(q -> q.getCreatedAt() != null ? q.getCreatedAt() : java.time.LocalDateTime.MIN))
-                    .orElseThrow(() -> new RuntimeException("No analysis found to export"));
+            SearchQueryEntity query = searchQueryRepository
+                    .findTopByUserAndKeywordIgnoreCaseOrderByCreatedAtDesc(user, normalizedKeyword)
+                    .orElseThrow(() -> new AppException(HttpStatus.NOT_FOUND, "No analysis found to export"));
                     
             AnalysisSnapshotEntity snapshot = analysisSnapshotRepository.findBySearchQueryId(query.getId())
                     .orElseGet(() -> {
@@ -2864,9 +2780,11 @@ public class FrontendService {
             reportRepository.saveAndFlush(report);
             
             return Map.of("success", true);
+        } catch (AppException e) {
+            throw e;
         } catch (Exception e) {
-            e.printStackTrace();
-            return Map.of("success", false, "error", e.getMessage() != null ? e.getMessage() : e.getClass().getName(), "cause", e.getCause() != null ? e.getCause().getMessage() : "none");
+            log.error("Failed to export report for keyword=\"{}\"", keyword, e);
+            return Map.of("success", false, "error", "Export failed");
         }
     }
 
@@ -2876,6 +2794,31 @@ public class FrontendService {
             if (payload == null || !payload.containsKey("data")) {
                 return Map.of("success", false, "message", "Invalid payload");
             }
+
+            // Verify PayOS webhook signature if checksum key is configured
+            if (payosChecksumKey != null && !payosChecksumKey.trim().isEmpty()) {
+                String receivedSignature = payload.get("signature") instanceof String s ? s : null;
+                if (receivedSignature == null) {
+                    return Map.of("success", false, "message", "Missing signature");
+                }
+                Map<?, ?> rawData = (Map<?, ?>) payload.get("data");
+                java.util.TreeMap<String, String> sorted = new java.util.TreeMap<>();
+                for (Map.Entry<?, ?> entry : rawData.entrySet()) {
+                    if (entry.getValue() != null) {
+                        sorted.put(String.valueOf(entry.getKey()), String.valueOf(entry.getValue()));
+                    }
+                }
+                StringBuilder dataStr = new StringBuilder();
+                for (Map.Entry<String, String> entry : sorted.entrySet()) {
+                    if (dataStr.length() > 0) dataStr.append("&");
+                    dataStr.append(entry.getKey()).append("=").append(entry.getValue());
+                }
+                String expectedSignature = hmacSha256(dataStr.toString(), payosChecksumKey);
+                if (!expectedSignature.equalsIgnoreCase(receivedSignature)) {
+                    return Map.of("success", false, "message", "Invalid signature");
+                }
+            }
+
             Map<?, ?> data = (Map<?, ?>) payload.get("data");
             Object orderCodeObj = data.get("orderCode");
             if (orderCodeObj == null) {
@@ -2894,7 +2837,7 @@ public class FrontendService {
             }
             return Map.of("success", false, "message", "Transaction not found");
         } catch (Exception e) {
-            e.printStackTrace();
+            log.error("PayOS webhook handling failed", e);
             return Map.of("success", false, "message", e.getMessage() != null ? e.getMessage() : "Internal error");
         }
     }

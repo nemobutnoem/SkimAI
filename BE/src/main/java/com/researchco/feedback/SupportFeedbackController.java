@@ -4,6 +4,10 @@ import com.researchco.security.SecurityUtils;
 import com.researchco.user.UserEntity;
 import com.researchco.user.UserRepository;
 import com.researchco.common.AppException;
+import jakarta.validation.Valid;
+import jakarta.validation.constraints.Email;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Size;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -31,11 +35,11 @@ public class SupportFeedbackController {
     }
 
     public record SubmitFeedbackRequest(
-            String name,
-            String email,
-            String category,
-            String title,
-            String content
+            @Size(max = 100) String name,
+            @Email @Size(max = 150) String email,
+            @Size(max = 50) String category,
+            @NotBlank @Size(max = 200) String title,
+            @NotBlank @Size(max = 5000) String content
     ) {}
 
     public record FeedbackResponse(
@@ -67,7 +71,7 @@ public class SupportFeedbackController {
     }
 
     @PostMapping("/support/feedback")
-    public FeedbackResponse submitFeedback(@RequestBody SubmitFeedbackRequest request) {
+    public FeedbackResponse submitFeedback(@RequestBody @Valid SubmitFeedbackRequest request) {
         if (request.content() == null || request.content().isBlank()) {
             throw new AppException(HttpStatus.BAD_REQUEST, "Content is required");
         }

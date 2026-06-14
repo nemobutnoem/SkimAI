@@ -43,10 +43,11 @@ public class PlanEntity {
     @Column(name = "export_limit", nullable = false)
     private Integer exportLimit;
 
-    @Column(name = "deep_insight_limit")
-    private Integer deepInsightLimit;
+    @Builder.Default
+    @Column(name = "deep_insight_limit", nullable = false, columnDefinition = "integer default 0")
+    private Integer deepInsightLimit = 0;
 
-    @Column
+    @Column(length = 500)
     private String description;
 
     @CreationTimestamp

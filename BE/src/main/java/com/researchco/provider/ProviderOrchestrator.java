@@ -1,5 +1,7 @@
 package com.researchco.provider;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
@@ -11,6 +13,8 @@ import java.util.stream.Collectors;
 
 @Service
 public class ProviderOrchestrator {
+
+    private static final Logger log = LoggerFactory.getLogger(ProviderOrchestrator.class);
 
     private final Map<String, SearchProvider> providersByCode;
 
@@ -31,8 +35,7 @@ public class ProviderOrchestrator {
                     try {
                         return provider.search(keyword, countryCode, languageCode, timeRange);
                     } catch (Exception e) {
-                        System.err.println("[ERROR] Failed fetching from provider: " + provider.providerCode());
-                        e.printStackTrace();
+                        log.error("Failed fetching from provider [{}]: {}", provider.providerCode(), e.getMessage(), e);
                         return List.<NormalizedSourceItem>of();
                     }
                 }))

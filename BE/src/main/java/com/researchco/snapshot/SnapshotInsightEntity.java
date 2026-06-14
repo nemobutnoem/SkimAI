@@ -37,10 +37,10 @@ public class SnapshotInsightEntity {
     @JoinColumn(name = "snapshot_id", nullable = false)
     private AnalysisSnapshotEntity snapshot;
 
-    @Column
+    @Column(length = 500)
     private String title;
 
-    @Column
+    @Column(columnDefinition = "TEXT")
     private String content;
 
     @CreationTimestamp

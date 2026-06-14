@@ -18,7 +18,6 @@ spring:
       mode: always
 
 server:
-  port: ${SERVER_PORT:8080}
   servlet:
     encoding:
       charset: UTF-8
@@ -33,8 +32,8 @@ app:
     google:
       client-id: ${GOOGLE_CLIENT_ID:84486682480-d2n9j94neqp1stuti5i4of7koont41hq.apps.googleusercontent.com}
   jwt:
-    secret: ${JWT_SECRET:56737450-04d2-4593-922a-c5c29b528799}
-    expiration-ms: ${JWT_EXPIRATION_MS:86400000}
+    secret: ${JWT_SECRET:dev-only-local-secret-must-change-in-production-min32}
+    expiration-ms: ${JWT_EXPIRATION_MS:3600000}
   payment:
     test-mode: ${PAYMENT_TEST_MODE:false}
     bank:
@@ -47,20 +46,20 @@ app:
 
 integration:
   serpapi:
-    api-key: ${SERPAPI_API_KEY:c61ab6a9243e1ae10e443e12785e12962c18b441aeb2c215554689fc650bf5d5}
+    api-key: ${SERPAPI_API_KEY:}
     google-max-results: ${SERPAPI_GOOGLE_MAX_RESULTS:5}
     news-max-results: ${SERPAPI_NEWS_MAX_RESULTS:5}
   stripe:
-    secret-key: ${STRIPE_SECRET_KEY:sk_test_51TE5tTFPLOVqZ09p5aHfArf13WxrgrMhcgEISGszZBLnvSAvWWTvfXR30qXva6ZxfcEpu6DDE2MOp0yEJ31L7yx200t837c2a5}
+    secret-key: ${STRIPE_SECRET_KEY:}
   payos:
     client-id: ${PAYOS_CLIENT_ID:}
     api-key: ${PAYOS_API_KEY:}
     checksum-key: ${PAYOS_CHECKSUM_KEY:}
   gemini:
-    api-key: ${GEMINI_API_KEY:AIzaSyC2Ft90bO2auKp-1Z6YhrMPv7Af5ZkHrKo}
+    api-key: ${GEMINI_API_KEY:}
     model: ${GEMINI_MODEL:gemini-2.5-flash}
   youtube:
-    api-key: ${YOUTUBE_API_KEY:AIzaSyCg6R0ttPTY7jBhWa5m3LrkqjpgXaAH_uk}
+    api-key: ${YOUTUBE_API_KEY:}
     max-results: ${YOUTUBE_MAX_RESULTS:5}
 
 home:

@@ -5,6 +5,8 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.researchco.admin.SystemSettingEntity;
 import com.researchco.admin.SystemSettingRepository;
 import com.researchco.frontend.FrontendDtos;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
@@ -24,6 +26,8 @@ import java.util.stream.Collectors;
 
 @Service
 public class DefaultAiProvider implements AiProvider {
+
+    private static final Logger log = LoggerFactory.getLogger(DefaultAiProvider.class);
 
     private final String apiKey;
     private final String model;
@@ -355,7 +359,7 @@ public class DefaultAiProvider implements AiProvider {
             );
 
         } catch (Exception e) {
-            e.printStackTrace();
+            log.error("Deep insight generation failed", e);
             return blueprint.toResponse();
         }
     }
@@ -843,7 +847,7 @@ public class DefaultAiProvider implements AiProvider {
 
             return responseText.trim().replaceAll("\"", "").toLowerCase(Locale.ROOT);
         } catch (Exception e) {
-            System.err.println("[WARNING] Keyword normalization failed: " + e.getMessage());
+            log.warn("Keyword normalization failed: {}", e.getMessage());
             return clean;
         }
     }
@@ -972,7 +976,7 @@ public class DefaultAiProvider implements AiProvider {
             }
             return fallbackTimeRange(clean);
         } catch (Exception e) {
-            System.err.println("[WARNING] Industry timeframe inference failed: " + e.getMessage());
+            log.warn("Industry timeframe inference failed: {}", e.getMessage());
             return fallbackTimeRange(clean);
         }
     }

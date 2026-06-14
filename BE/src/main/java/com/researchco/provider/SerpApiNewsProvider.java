@@ -2,6 +2,8 @@ package com.researchco.provider;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 import org.springframework.web.util.UriComponentsBuilder;
@@ -20,6 +22,8 @@ import java.util.Map;
 
 @Component
 public class SerpApiNewsProvider implements SearchProvider {
+
+    private static final Logger log = LoggerFactory.getLogger(SerpApiNewsProvider.class);
 
     private final ObjectMapper objectMapper;
     private final HttpClient httpClient;
@@ -114,7 +118,7 @@ public class SerpApiNewsProvider implements SearchProvider {
             }
             return items;
         } catch (Exception e) {
-            System.err.println("[SERPAPI_NEWS] Search failed for keyword=\"" + keyword + "\": " + e.getMessage());
+            log.warn("[SERPAPI_NEWS] Search failed for keyword=\"{}\": {}", keyword, e.getMessage());
             return generateFallbackResults(keyword);
         }
     }
@@ -191,8 +195,7 @@ public class SerpApiNewsProvider implements SearchProvider {
         HttpRequest request = HttpRequest.newBuilder(uri).GET().build();
         HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
         if (response.statusCode() < 200 || response.statusCode() >= 300) {
-            System.err.println("[SERPAPI_NEWS] HTTP " + response.statusCode() + " for request.");
-            System.err.println("[SERPAPI_NEWS] Response body: " + response.body());
+            log.warn("[SERPAPI_NEWS] HTTP {} for request. Body: {}", response.statusCode(), response.body());
             return null;
         }
         return objectMapper.readTree(response.body());

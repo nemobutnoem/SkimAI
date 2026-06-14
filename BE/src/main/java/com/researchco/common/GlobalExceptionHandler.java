@@ -1,5 +1,6 @@
 package com.researchco.common;
 
+import jakarta.validation.ConstraintViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.AuthenticationCredentialsNotFoundException;
@@ -33,6 +34,21 @@ public class GlobalExceptionHandler {
         for (FieldError fieldError : ex.getBindingResult().getFieldErrors()) {
             errors.put(fieldError.getField(), fieldError.getDefaultMessage());
         }
+        Map<String, Object> payload = new HashMap<>();
+        payload.put("message", "Validation failed");
+        payload.put("status", HttpStatus.BAD_REQUEST.value());
+        payload.put("errors", errors);
+        return ResponseEntity.badRequest().body(payload);
+    }
+
+    @ExceptionHandler(ConstraintViolationException.class)
+    public ResponseEntity<Map<String, Object>> handleConstraintViolation(ConstraintViolationException ex) {
+        Map<String, String> errors = new HashMap<>();
+        ex.getConstraintViolations().forEach(cv -> {
+            String path = cv.getPropertyPath().toString();
+            String field = path.contains(".") ? path.substring(path.lastIndexOf('.') + 1) : path;
+            errors.put(field, cv.getMessage());
+        });
         Map<String, Object> payload = new HashMap<>();
         payload.put("message", "Validation failed");
         payload.put("status", HttpStatus.BAD_REQUEST.value());

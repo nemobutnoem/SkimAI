@@ -1,5 +1,10 @@
 package com.researchco.admin;
 
+import jakarta.validation.constraints.DecimalMin;
+import jakarta.validation.constraints.Min;
+import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Size;
+
 public class AdminDtos {
     public record StatItem(
             String label,
@@ -112,10 +117,10 @@ public class AdminDtos {
     ) {}
 
     public record UpdatePlanRequest(
-            java.math.BigDecimal price,
-            Integer searchLimit,
-            Integer exportLimit,
-            Integer deepInsightLimit,
-            String description
+            @NotNull @DecimalMin("0.00") java.math.BigDecimal price,
+            @NotNull @Min(0) Integer searchLimit,
+            @NotNull @Min(0) Integer exportLimit,
+            @Min(0) Integer deepInsightLimit,
+            @Size(max = 500) String description
     ) {}
 }
