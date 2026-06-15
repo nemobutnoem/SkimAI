@@ -942,29 +942,7 @@ ${evidenceItems.map(ev => `- [${ev.source}] ${ev.title}\n  Link: ${ev.url}`).joi
           )}
         </div>
 
-        {sourceRows.length > 0 && (() => {
-          const maxCount = Math.max(...sourceRows.map(r => r.count ?? 1), 1)
-          const colorMap = { 'tăng': 'green', 'giảm': 'red', 'ổn định': 'blue', 'chưa rõ': 'orange' }
-          return (
-            <div className="metric-bar-wrap" style={{ marginTop: 20, paddingTop: 16, borderTop: '1px solid var(--border-color)' }}>
-              <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 4 }}>
-                Phân phối dữ liệu theo nguồn
-              </div>
-              {sourceRows.slice(0, 6).map(row => (
-                <div key={row.source} className="metric-bar-row">
-                  <span className="metric-bar-label">{row.source}</span>
-                  <div className="metric-bar-track">
-                    <div
-                      className={`metric-bar-fill metric-bar-fill-${colorMap[row.direction] ?? 'primary'}`}
-                      style={{ width: `${Math.round(((row.count ?? 1) / maxCount) * 100)}%` }}
-                    />
-                  </div>
-                  <span className="metric-bar-value">{row.count ?? 1}</span>
-                </div>
-              ))}
-            </div>
-          )
-        })()}
+
       </InsightSection>
 
       <InsightSection title="Đánh giá tổng thể" badge="02" isLocked={!isAuthenticated} getCopyText={() => `Trạng thái: ${overall.marketState}\nĐiểm: ${overall.marketScore}/100\nMức quan tâm: ${overall.interestLevel}\nĐộ phủ: ${overall.coverage}%\n\nBằng chứng:\n${overall.evidenceReasons.join('\n')}`}>
