@@ -805,51 +805,7 @@ public class FrontendService {
         }
 
         if (filtered.isEmpty()) {
-            SearchQueryEntity query = searchQueryRepository.findById(queryId).orElse(null);
-            String keyword = query != null ? query.getKeyword() : "artificial intelligence";
-            
-            String[] subtopics;
-            if (source != null && source.trim().toLowerCase().contains("youtube")) {
-                subtopics = new String[]{
-                    keyword + " tutorial",
-                    "learning " + keyword,
-                    keyword + " application",
-                    keyword + " software",
-                    "best " + keyword + " tools",
-                    keyword + " review"
-                };
-            } else if (source != null && source.trim().toLowerCase().contains("news")) {
-                subtopics = new String[]{
-                    keyword + " breakthroughs",
-                    keyword + " regulation",
-                    keyword + " investment",
-                    keyword + " in medicine",
-                    keyword + " startup funding",
-                    keyword + " future impact"
-                };
-            } else {
-                subtopics = new String[]{
-                    "what is " + keyword,
-                    keyword + " guide",
-                    keyword + " trends 2026",
-                    keyword + " technology",
-                    keyword + " benefits",
-                    keyword + " challenges"
-                };
-            }
-            
-            List<FrontendDtos.TrendPoint> fallbackTrends = new ArrayList<>();
-            for (int i = 0; i < subtopics.length; i++) {
-                int rank = i + 1;
-                long viewsShare = 45000 / rank + (long)(Math.random() * 5000);
-                int momentum = 100 - i * 15;
-                fallbackTrends.add(new FrontendDtos.TrendPoint(
-                        subtopics[i],
-                        momentum,
-                        formatCompact(viewsShare) + " lượt xem • 1 đề cập"
-                ));
-            }
-            return fallbackTrends;
+            return List.of();
         }
 
         Map<String, long[]> tokenStats = new HashMap<>();
@@ -983,7 +939,7 @@ public class FrontendService {
             int momentum = maxViews > 0
                     ? clamp((int) Math.round((variedViews * 100.0) / maxViews), 12, 100)
                     : clamp(metric.mentionCount() * 12, 12, 100);
-            int naturalMomentum = clamp(momentum - (int)(Math.random() * 4), 12, 100);
+            int naturalMomentum = momentum;
             if (i == 0) {
                 naturalMomentum = 100;
             }
@@ -1026,26 +982,10 @@ public class FrontendService {
         }
 
         if (filtered.isEmpty()) {
-            long totalViews;
-            long totalMentions;
-            double avgEngagement;
-            if (source != null && source.trim().toLowerCase().contains("youtube")) {
-                totalViews = 250000L + (long)(Math.random() * 100000L);
-                totalMentions = 5;
-                avgEngagement = 0.058;
-            } else if (source != null && source.trim().toLowerCase().contains("news")) {
-                totalViews = 80000L + (long)(Math.random() * 40000L);
-                totalMentions = 5;
-                avgEngagement = 0.035;
-            } else {
-                totalViews = 120000L + (long)(Math.random() * 60000L);
-                totalMentions = 5;
-                avgEngagement = 0.045;
-            }
             return List.of(
-                    new FrontendDtos.StatItem(formatCompact(totalViews), "Tổng lượt xem"),
-                    new FrontendDtos.StatItem(String.valueOf(totalMentions), "Số lượt đề cập"),
-                    new FrontendDtos.StatItem(String.format(Locale.ROOT, "%.2f%%", avgEngagement * 100), "Tương tác trung bình")
+                    new FrontendDtos.StatItem("0", "Tổng lượt xem"),
+                    new FrontendDtos.StatItem("0", "Số lượt đề cập"),
+                    new FrontendDtos.StatItem("0.00%", "Tương tác trung bình")
             );
         }
 
