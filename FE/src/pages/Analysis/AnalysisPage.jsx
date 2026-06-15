@@ -339,7 +339,7 @@ function InsightSection({ title, badge, children, getCopyText, isLocked }) {
         </div>
         {getCopyText && !isLocked && <CopyButton getText={getCopyText} label={title} />}
       </div>
-      <div style={isLocked ? { filter: 'blur(6px)', pointerEvents: 'none', select: 'none', userSelect: 'none' } : {}}>
+      <div style={isLocked ? { filter: 'blur(6px)', pointerEvents: 'none', userSelect: 'none' } : {}}>
         {children}
       </div>
       {isLocked && (
@@ -1074,14 +1074,14 @@ ${evidenceItems.map(ev => `- [${ev.source}] ${ev.title}\n  Link: ${ev.url}`).joi
         </section>
       ) : null}
 
-      <section className="card">
+      <section className="card" style={{ position: 'relative' }}>
         <div className="analysis-section-heading">
           <div>
             <div className="card-title">Bằng chứng đầu vào</div>
             <p className="hint">Chỉ hiển thị để kiểm tra nguồn; các nhận định trên không bổ sung kiến thức ngoài dữ liệu này.</p>
           </div>
         </div>
-        <div className="stack">
+        <div className="stack" style={!isAuthenticated ? { filter: 'blur(6px)', pointerEvents: 'none', userSelect: 'none' } : {}}>
           {(evidenceItems ?? []).slice(0, 6).map((item, idx) => (
             <div key={`${item.source}-${idx}`} className="list-select">
               <div className="list-select-row">
@@ -1100,6 +1100,53 @@ ${evidenceItems.map(ev => `- [${ev.source}] ${ev.title}\n  Link: ${ev.url}`).joi
           ))}
           {!evidenceItems.length ? <p className="hint">{noDataFor('bằng chứng đầu vào')}</p> : null}
         </div>
+        {!isAuthenticated && (
+          <div style={{
+            position: 'absolute',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            backgroundColor: 'rgba(255, 255, 255, 0.45)',
+            backdropFilter: 'blur(3px)',
+            zIndex: 10,
+            padding: '24px',
+            textAlign: 'center',
+            borderRadius: '12px'
+          }}>
+            <div style={{
+              backgroundColor: 'var(--card-bg, #ffffff)',
+              padding: '24px 32px',
+              borderRadius: '16px',
+              boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1)',
+              border: '1px solid var(--border-color, #e5e7eb)',
+              maxWidth: '380px',
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              gap: '12px'
+            }}>
+              <span style={{ fontSize: '28px' }}>🔒</span>
+              <h4 style={{ margin: 0, fontSize: '16px', fontWeight: 700, color: 'var(--text-primary)' }}>
+                Mở khóa danh sách bằng chứng
+              </h4>
+              <p style={{ margin: 0, fontSize: '13px', color: 'var(--text-secondary)', lineHeight: 1.5 }}>
+                Đăng nhập tài khoản (Miễn phí) để xem nguồn tin chi tiết và dữ liệu cào của các bằng chứng thị trường.
+              </p>
+              <Button
+                onClick={() => navigate(ROUTES.LOGIN + `?redirect=${encodeURIComponent(window.location.pathname + window.location.search)}`)}
+                variant="primary"
+                size="sm"
+                style={{ marginTop: '8px', width: '100%', fontWeight: 600 }}
+              >
+                Đăng nhập ngay
+              </Button>
+            </div>
+          </div>
+        )}
       </section>
 
     </div>
