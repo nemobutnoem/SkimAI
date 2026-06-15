@@ -601,37 +601,258 @@ export function AnalysisPage() {
           return;
       }
       
-      const mdContent = `
-# Báo Cáo Phân Tích Thị Trường: ${keyword}
-**Ngày tạo:** ${new Date().toLocaleDateString('vi-VN')}
+      const docHtml = `
+<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w="urn:schemas-microsoft-com:office:word" xmlns="http://www.w3.org/TR/REC-html40">
+<head>
+  <meta charset="utf-8">
+  <title>Báo Cáo Phân Tích Thị Trường: ${keyword}</title>
+  <!--[if gte mso 9]>
+  <xml>
+    <w:WordDocument>
+      <w:View>Print</w:View>
+      <w:Zoom>100</w:Zoom>
+      <w:DoNotOptimizeForBrowser/>
+    </w:WordDocument>
+  </xml>
+  <![endif]-->
+  <style>
+    body {
+      font-family: 'Calibri', 'Segoe UI', Arial, sans-serif;
+      line-height: 1.5;
+      color: #2d3748;
+      margin: 1in;
+    }
+    h1 {
+      font-family: 'Segoe UI', Arial, sans-serif;
+      font-size: 24pt;
+      color: #1a365d;
+      margin-bottom: 5px;
+      font-weight: bold;
+    }
+    .meta-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-bottom: 25px;
+    }
+    .meta-table td {
+      padding: 4px 0;
+      font-size: 10.5pt;
+      color: #718096;
+    }
+    .divider {
+      border-top: 3px solid #3182ce;
+      margin-bottom: 25px;
+    }
+    h2 {
+      font-family: 'Segoe UI', Arial, sans-serif;
+      font-size: 16pt;
+      color: #2b6cb0;
+      margin-top: 30px;
+      margin-bottom: 12px;
+      border-bottom: 1px solid #e2e8f0;
+      padding-bottom: 5px;
+      font-weight: bold;
+    }
+    h3 {
+      font-family: 'Segoe UI', Arial, sans-serif;
+      font-size: 12.5pt;
+      color: #2d3748;
+      margin-top: 20px;
+      margin-bottom: 8px;
+      font-weight: bold;
+    }
+    p, li {
+      font-size: 11pt;
+      margin-bottom: 8px;
+      color: #2d3748;
+    }
+    .kpi-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-bottom: 20px;
+    }
+    .kpi-table th {
+      background-color: #ebf8ff;
+      color: #2b6cb0;
+      font-weight: bold;
+      text-align: left;
+      padding: 10px;
+      border: 1px solid #bee3f8;
+      font-size: 10.5pt;
+    }
+    .kpi-table td {
+      padding: 10px;
+      border: 1px solid #e2e8f0;
+      font-size: 11pt;
+    }
+    .verdict-box {
+      background-color: #f7fafc;
+      border-left: 4px solid #3182ce;
+      padding: 15px;
+      margin-bottom: 25px;
+      border-radius: 4px;
+    }
+    .verdict-box p {
+      margin: 0;
+      font-size: 11.5pt;
+      font-style: italic;
+      color: #2d3748;
+    }
+    .trend-row {
+      margin-bottom: 12px;
+      padding-bottom: 10px;
+      border-bottom: 1px dashed #edf2f7;
+    }
+    .keyword-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 10px;
+      margin-bottom: 20px;
+    }
+    .keyword-table th {
+      background-color: #f7fafc;
+      color: #4a5568;
+      font-weight: bold;
+      text-align: left;
+      padding: 8px;
+      border: 1px solid #e2e8f0;
+      font-size: 10.5pt;
+    }
+    .keyword-table td {
+      padding: 8px;
+      border: 1px solid #e2e8f0;
+      font-size: 10.5pt;
+    }
+    .evidence-item {
+      margin-bottom: 15px;
+      padding: 10px;
+      background-color: #fff;
+      border: 1px solid #edf2f7;
+      border-radius: 4px;
+    }
+    .evidence-title {
+      font-weight: bold;
+      color: #2b6cb0;
+      text-decoration: none;
+    }
+    .evidence-meta {
+      font-size: 9.5pt;
+      color: #718096;
+      margin-top: 4px;
+    }
+  </style>
+</head>
+<body>
+  <h1>Báo Cáo Phân Tích Thị Trường</h1>
+  <table class="meta-table">
+    <tr>
+      <td style="width: 50%;"><strong>Từ khóa nghiên cứu:</strong> ${keyword}</td>
+      <td style="width: 50%; text-align: right;"><strong>Ngày xuất báo cáo:</strong> ${new Date().toLocaleDateString('vi-VN')}</td>
+    </tr>
+  </table>
+  
+  <div class="divider"></div>
+  
+  <h2>1. Tóm Tắt Chỉ Số Thị Trường (KPIs)</h2>
+  <table class="kpi-table">
+    <thead>
+      <tr>
+        <th style="width: 30%;">Chỉ Số</th>
+        <th style="width: 30%;">Giá Trị Phân Tích</th>
+        <th style="width: 40%;">Ý Nghĩa</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><strong>Trạng Thái Thị Trường</strong></td>
+        <td><span style="color: ${overall.marketState === 'tăng trưởng' ? '#2f855a' : overall.marketState === 'giảm sút' ? '#c53030' : '#d69e2e'}; font-weight: bold;">Thị trường đang ${overall.marketState}</span></td>
+        <td>Đánh giá chiều hướng phát triển hiện tại của từ khóa.</td>
+      </tr>
+      <tr>
+        <td><strong>Mức Độ Quan Tâm</strong></td>
+        <td><strong>${overall.interestLevel.toUpperCase()}</strong></td>
+        <td>Mức độ thảo luận và tìm kiếm trên các kênh truyền thông.</td>
+      </tr>
+      <tr>
+        <td><strong>Điểm Thị Trường (Market Score)</strong></td>
+        <td><strong>${overall.marketScore}/100</strong></td>
+        <td>Điểm số tổng hợp năng lực thị trường từ tương tác và lượt xem.</td>
+      </tr>
+      <tr>
+        <td><strong>Tỷ Lệ Bao Phủ (Coverage)</strong></td>
+        <td><strong>${Number(overall.coverage)}%</strong></td>
+        <td>Mức độ phong phú thông tin từ các kênh nguồn thu thập được.</td>
+      </tr>
+      <tr>
+        <td><strong>Tương Tác Trung Bình (Engagement)</strong></td>
+        <td><strong>${pct(overall.avgEngagement)}</strong></td>
+        <td>Tỷ lệ tương tác bình quân (Likes, Comments / Views).</td>
+      </tr>
+    </tbody>
+  </table>
 
-## Tóm Tắt Nhanh
-- **Trạng thái thị trường:** ${overall.marketState}
-- **Mức quan tâm:** ${overall.interestLevel}
-- **Độ tin cậy (Coverage):** ${Number(overall.coverage)}%
-- **Tương tác trung bình:** ${pct(overall.avgEngagement)}
-- **Market Score:** ${overall.marketScore}/100
-- **Market Verdict:** Thị trường đang ${overall.marketState}. Confidence ở mức ${overall.confidenceBand} (${overall.confidenceScore}/100), dựa trên coverage ${Number(overall.coverage)}%, ${overall.sourceCount} nguồn và ${formatNumber(overall.totalComments)} bình luận.
+  <div class="verdict-box">
+    <p>Thị trường cho từ khóa "${keyword}" đang ở trạng thái <strong>${overall.marketState}</strong>. Độ tin cậy dữ liệu đạt mức <strong>${overall.confidenceBand} (${overall.confidenceScore}/100)</strong>, dựa trên tỷ lệ bao phủ <strong>${Number(overall.coverage)}%</strong> với <strong>${overall.sourceCount}</strong> nguồn thông tin chính thức và <strong>${formatNumber(overall.totalComments)}</strong> lượt bình luận được ghi nhận và phân tích.</p>
+  </div>
 
-## Tổng Quan Xu Hướng
-${sourceRows.map(row => `- **${row.source}:** ${row.count} tín hiệu. ${row.summary} (Xu hướng: ${directionLabel(row.direction)})`).join('\n')}
+  <h2>2. Tổng Quan Xu Hướng Theo Kênh Nguồn</h2>
+  <div>
+    ${sourceRows.map(row => `
+      <div class="trend-row">
+        <p style="margin: 0 0 4px;"><strong>${row.source}</strong> (${row.count} tín hiệu nguồn | Xu hướng: <span style="font-weight: bold; color: ${row.direction === 'tăng' ? '#2f855a' : row.direction === 'giảm' ? '#c53030' : '#2d3748'}">${directionLabel(row.direction)}</span>)</p>
+        <p style="margin: 0; color: #4a5568; font-size: 10pt;">${row.summary}</p>
+      </div>
+    `).join('')}
+  </div>
 
-## Top Keywords Liên Quan
-${(data?.relatedKeywords ?? []).slice(0, 10).map(k => `- **${k.keyword}**: ${k.mentionCount} mentions, ${formatNumber(k.totalViews)} views, Sentiment: ${k.sentimentScore}/100`).join('\n')}
+  <h2>3. Phân Tích Cụm Từ Khóa Liên Quan</h2>
+  <table class="keyword-table">
+    <thead>
+      <tr>
+        <th>Cụm Từ Khóa</th>
+        <th>Lượt Nhắc (Mentions)</th>
+        <th>Lượt Xem (Views)</th>
+        <th>Điểm Cảm Xúc (Sentiment)</th>
+      </tr>
+    </thead>
+    <tbody>
+      ${(data?.relatedKeywords ?? []).slice(0, 10).map(k => `
+        <tr>
+          <td><strong>${k.keyword}</strong></td>
+          <td>${k.mentionCount || 0}</td>
+          <td>${formatNumber(k.totalViews)}</td>
+          <td>${k.sentimentScore || 0}/100</td>
+        </tr>
+      `).join('')}
+    </tbody>
+  </table>
 
-## Bằng Chứng Báo Chí
-${evidenceItems.map(ev => `- [${ev.source}] ${ev.title}\n  Link: ${ev.url}`).join('\n\n')}
+  <h2>4. Bằng Chứng & Nguồn Tin Thị Trường</h2>
+  <div>
+    ${evidenceItems.map(ev => `
+      <div class="evidence-item">
+        <p style="margin: 0;"><span style="background-color: #edf2f7; padding: 2px 6px; border-radius: 3px; font-size: 9pt; font-weight: bold; color: #4a5568; margin-right: 8px;">${canonicalSource(ev.source)}</span> <a href="${ev.url || '#'}" class="evidence-title" target="_blank">${ev.title}</a></p>
+        <p class="evidence-meta">Đường dẫn: ${ev.url || 'Không có liên kết trực tiếp'} | Tín hiệu: ${ev.signal || 'N/A'}</p>
+      </div>
+    `).join('')}
+  </div>
+  
+  <div style="margin-top: 50px; text-align: center; font-size: 9pt; color: #a0aec0; border-top: 1px solid #e2e8f0; padding-top: 15px;">
+    Báo cáo được tạo tự động bởi hệ thống SkimAI — Trợ lý Nghiên Cứu Thị Trường Thông Minh
+  </div>
+</body>
+</html>
       `.trim();
       
-      const blob = new Blob([mdContent], { type: 'text/markdown;charset=utf-8' });
+      const blob = new Blob(['\ufeff' + docHtml], { type: 'application/msword;charset=utf-8' });
       const link = document.createElement('a');
       link.href = URL.createObjectURL(blob);
-      link.download = `${keyword}_Market_Report.md`;
+      link.download = `${keyword}_Market_Report.doc`;
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
       
-      alert("Xuất báo cáo thành công! File .md đã được tải về và báo cáo đã được lưu vào Dashboard.");
+      alert("Xuất báo cáo thành công! File báo cáo Word (.doc) đã được tải về và lưu vào Dashboard.");
     } catch (e) {
       alert("Lỗi khi xuất báo cáo: " + e.message);
     } finally {
