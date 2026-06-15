@@ -2011,7 +2011,14 @@ public class FrontendService {
     }
 
     private SearchQueryEntity recordSearchActivity(String keyword, LocaleProfile localeProfile) {
-        UserEntity user = preferredUser();
+        UUID currentUserId = SecurityUtils.currentUserId();
+        if (currentUserId == null) {
+            return null;
+        }
+        UserEntity user = userRepository.findById(currentUserId).orElse(null);
+        if (user == null) {
+            return null;
+        }
         String normalizedKeyword = keyword == null ? "" : keyword.trim();
         String countryCode = localeProfile.countryCode();
         String languageCode = localeProfile.languageCode();

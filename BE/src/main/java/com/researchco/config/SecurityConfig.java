@@ -48,6 +48,7 @@ public class SecurityConfig {
                         .requestMatchers("/api/experts").permitAll()
                         .requestMatchers("/api/payment/payos-webhook").permitAll()
                         .requestMatchers("/api/support/feedback").permitAll()
+                        .requestMatchers("/api/analysis/**").permitAll()
                         .requestMatchers("/api/admin/**").hasRole("ADMIN")
                         .anyRequest().authenticated()
                 )
