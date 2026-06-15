@@ -3,34 +3,23 @@ import { Card } from '../../components/Card'
 import { Link } from 'react-router-dom'
 import { ROUTES } from '../../constants/routes'
 import { appApi } from '../../services/appApi'
+import { DashboardSkeleton } from '../../components/Skeleton'
 
 export function DashboardPage() {
   const [data, setData] = useState(null)
   const [reports, setReports] = useState([])
   const [error, setError] = useState('')
+  const [loading, setLoading] = useState(true)
 
   useEffect(() => {
     let alive = true
 
-    appApi
-      .getDashboard()
-      .then((d) => {
-        if (alive) setData(d)
-      })
-      .catch((e) => {
-        if (alive) setError(e?.message ?? 'Tải thông tin bảng điều khiển thất bại')
-      })
+    Promise.all([
+      appApi.getDashboard().then(d => { if (alive) setData(d) }).catch(e => { if (alive) setError(e?.message ?? 'Tải thông tin bảng điều khiển thất bại') }),
+      appApi.getReports().then(r => { if (alive) setReports(r) }).catch(console.error),
+    ]).finally(() => { if (alive) setLoading(false) })
 
-    appApi
-      .getReports()
-      .then((r) => {
-        if (alive) setReports(r)
-      })
-      .catch(console.error)
-
-    return () => {
-      alive = false
-    }
+    return () => { alive = false }
   }, [])
 
   const quickActions = [
@@ -39,8 +28,40 @@ export function DashboardPage() {
     { label: 'Quản lý tài khoản', hint: 'Xem thông tin tài khoản và thanh toán', to: ROUTES.ACCOUNT },
   ]
 
+  const isNewUser = !loading && (data?.recent?.length ?? 0) === 0 && reports.length === 0
+
+  if (loading) return <DashboardSkeleton />
+
   return (
     <div className="stack page-wrap dashboard-shell">
+
+      {isNewUser && (
+        <div className="onboarding-banner">
+          <div className="onboarding-banner-header">
+            <div className="onboarding-banner-icon">🚀</div>
+            <div>
+              <strong>Chào mừng đến với AISKIM!</strong>
+              <p>Hoàn thành các bước dưới đây để bắt đầu phân tích thị trường.</p>
+            </div>
+          </div>
+          <div className="onboarding-steps">
+            <div className="onboarding-step onboarding-step-done">
+              <span className="onboarding-step-icon">✓</span>
+              <div><strong>Tạo tài khoản</strong><p>Đăng ký thành công</p></div>
+            </div>
+            <div className="onboarding-step">
+              <span className="onboarding-step-icon">2</span>
+              <div><strong>Chạy phân tích đầu tiên</strong><p>Nhập từ khóa sản phẩm bạn muốn nghiên cứu</p></div>
+              <Link to={ROUTES.ANALYSIS} className="btn btn-primary" style={{ marginLeft: 'auto', fontSize: 13, padding: '6px 14px' }}>Bắt đầu →</Link>
+            </div>
+            <div className="onboarding-step">
+              <span className="onboarding-step-icon">3</span>
+              <div><strong>Lưu báo cáo đầu tiên</strong><p>Lưu kết quả để theo dõi xu hướng theo thời gian</p></div>
+            </div>
+          </div>
+        </div>
+      )}
+
       <section className="dashboard-hero card">
         <div className="dashboard-hero-copy">
           <p className="dashboard-kicker">Tổng quan không gian làm việc</p>
@@ -103,8 +124,11 @@ export function DashboardPage() {
                 </Link>
               ))
             ) : (
-              <div className="dashboard-empty-state">
-                Chưa có hoạt động gần đây. Hãy bắt đầu phân tích từ khóa mới để điền dữ liệu.
+              <div className="empty-state">
+                <div className="empty-state-icon">🔍</div>
+                <div className="empty-state-title">Chưa có hoạt động nào</div>
+                <div className="empty-state-desc">Tìm kiếm một từ khóa để bắt đầu theo dõi xu hướng thị trường.</div>
+                <Link to={ROUTES.ANALYSIS} className="btn btn-primary" style={{ fontSize: 13, padding: '8px 18px' }}>Phân tích ngay →</Link>
               </div>
             )}
           </div>
@@ -142,8 +166,10 @@ export function DashboardPage() {
               );
             })
           ) : (
-            <div className="dashboard-empty-state">
-              Chưa có báo cáo hoặc phân tích chuyên sâu nào được lưu.
+            <div className="empty-state">
+              <div className="empty-state-icon">📋</div>
+              <div className="empty-state-title">Chưa có báo cáo nào</div>
+              <div className="empty-state-desc">Lưu kết quả phân tích để xem lại bất cứ lúc nào.</div>
             </div>
           )}
         </div>

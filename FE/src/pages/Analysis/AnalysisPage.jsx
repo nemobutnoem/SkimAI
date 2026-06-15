@@ -1,10 +1,12 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState, useCallback } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { Button } from '../../components/Button'
 import { ROUTES } from '../../constants/routes'
 import { appApi } from '../../services/appApi'
 import { useAuth } from '../../hooks/useAuth'
 import { AnimatedNumber, TypewriterText } from '../../components/Effects'
+import { AnalysisSkeleton } from '../../components/Skeleton'
+import { useToast } from '../../context/ToastContext'
 
 const NO_DATA = 'không có dữ liệu để đánh giá'
 
@@ -309,7 +311,24 @@ function pickChannelRecommendation(sourceRows, overall) {
   return `Ưu tiên ${best.source} vì đây là nguồn có nhiều tín hiệu nhất (${best.count}). Nếu cần ngân sách thấp, dùng nội dung kiểm chứng thêm trước khi chạy paid media.`
 }
 
-function InsightSection({ title, badge, children }) {
+function CopyButton({ getText, label }) {
+  const [copied, setCopied] = useState(false)
+  const handle = () => {
+    const text = typeof getText === 'function' ? getText() : getText
+    if (!text) return
+    navigator.clipboard.writeText(text).then(() => {
+      setCopied(true)
+      setTimeout(() => setCopied(false), 2000)
+    })
+  }
+  return (
+    <button onClick={handle} className="copy-btn" title={`Sao chép ${label ?? ''}`} aria-label={`Sao chép ${label ?? ''}`}>
+      {copied ? '✓' : '⎘'}
+    </button>
+  )
+}
+
+function InsightSection({ title, badge, children, getCopyText }) {
   return (
     <section className="card prompt-insight-card">
       <div className="prompt-insight-head">
@@ -317,6 +336,7 @@ function InsightSection({ title, badge, children }) {
           <span className="prompt-insight-badge">{badge}</span>
           <h3>{title}</h3>
         </div>
+        {getCopyText && <CopyButton getText={getCopyText} label={title} />}
       </div>
       {children}
     </section>
@@ -326,9 +346,11 @@ function InsightSection({ title, badge, children }) {
 export function AnalysisPage() {
   const navigate = useNavigate()
   const { isAuthenticated } = useAuth()
+  const toast = useToast()
   const [searchParams] = useSearchParams()
   const keyword = searchParams.get('keyword')?.trim() || ''
   const [draftKeyword, setDraftKeyword] = useState('')
+  const searchInputRef = useRef(null)
 
   const [data, setData] = useState(null)
   const [evidenceItems, setEvidenceItems] = useState([])
@@ -337,6 +359,27 @@ export function AnalysisPage() {
   const [isExporting, setIsExporting] = useState(false)
   const [streamProgress, setStreamProgress] = useState(0)
   const [_cacheInfo, setCacheInfo] = useState(null)
+
+  const copyToClipboard = useCallback((text, label) => {
+    navigator.clipboard.writeText(text).then(() => {
+      toast.success(`Đã sao chép ${label ?? 'nội dung'}`)
+    }).catch(() => {
+      toast.error('Không thể sao chép — vui lòng thử lại')
+    })
+  }, [toast])
+
+  // `/` shortcut focuses search input
+  useEffect(() => {
+    const handler = (e) => {
+      if (e.key !== '/') return
+      const tag = document.activeElement?.tagName
+      if (tag === 'INPUT' || tag === 'TEXTAREA' || document.activeElement?.isContentEditable) return
+      e.preventDefault()
+      searchInputRef.current?.focus()
+    }
+    document.addEventListener('keydown', handler)
+    return () => document.removeEventListener('keydown', handler)
+  }, [])
 
 
 
@@ -586,9 +629,10 @@ ${evidenceItems.map(ev => `- [${ev.source}] ${ev.title}\n  Link: ${ev.url}`).joi
 
           <div className="input-row analysis-empty-input">
             <input
+              ref={searchInputRef}
               value={draftKeyword}
               onChange={(e) => setDraftKeyword(e.target.value)}
-              placeholder="Thử tìm: phở, xe máy điện, AI agent, xu hướng TikTok Shop..."
+              placeholder="Thử tìm: phở, xe máy điện, AI agent... (bấm / để focus)"
             />
             <Button
               onClick={() => {
@@ -604,6 +648,8 @@ ${evidenceItems.map(ev => `- [${ev.source}] ${ev.title}\n  Link: ${ev.url}`).joi
       </div>
     )
   }
+
+  if (loading && !data) return <AnalysisSkeleton />
 
   return (
     <div className="analysis-shell page-wrap">
@@ -829,7 +875,7 @@ ${evidenceItems.map(ev => `- [${ev.source}] ${ev.title}\n  Link: ${ev.url}`).joi
         </section>
       </div>
 
-      <InsightSection title="Tổng quan xu hướng" badge="01">
+      <InsightSection title="Tổng quan xu hướng" badge="01" getCopyText={() => sourceRows.map(r => `${r.source}: ${r.direction} — ${r.summary}`).join('\n')}>
         <div className="source-trend-list">
           {sourceRows.length ? sourceRows.map((row) => (
             <div className="source-trend-row" key={row.source}>
@@ -845,9 +891,33 @@ ${evidenceItems.map(ev => `- [${ev.source}] ${ev.title}\n  Link: ${ev.url}`).joi
             <p className="hint">{noDataFor('tổng quan xu hướng')}</p>
           )}
         </div>
+
+        {sourceRows.length > 0 && (() => {
+          const maxCount = Math.max(...sourceRows.map(r => r.count ?? 1), 1)
+          const colorMap = { 'tăng': 'green', 'giảm': 'red', 'ổn định': 'blue', 'chưa rõ': 'orange' }
+          return (
+            <div className="metric-bar-wrap" style={{ marginTop: 20, paddingTop: 16, borderTop: '1px solid var(--border-color)' }}>
+              <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 4 }}>
+                Phân phối dữ liệu theo nguồn
+              </div>
+              {sourceRows.slice(0, 6).map(row => (
+                <div key={row.source} className="metric-bar-row">
+                  <span className="metric-bar-label">{row.source}</span>
+                  <div className="metric-bar-track">
+                    <div
+                      className={`metric-bar-fill metric-bar-fill-${colorMap[row.direction] ?? 'primary'}`}
+                      style={{ width: `${Math.round(((row.count ?? 1) / maxCount) * 100)}%` }}
+                    />
+                  </div>
+                  <span className="metric-bar-value">{row.count ?? 1}</span>
+                </div>
+              ))}
+            </div>
+          )
+        })()}
       </InsightSection>
 
-      <InsightSection title="Đánh giá tổng thể" badge="02">
+      <InsightSection title="Đánh giá tổng thể" badge="02" getCopyText={() => `Trạng thái: ${overall.marketState}\nĐiểm: ${overall.marketScore}/100\nMức quan tâm: ${overall.interestLevel}\nĐộ phủ: ${overall.coverage}%\n\nBằng chứng:\n${overall.evidenceReasons.join('\n')}`}>
         <div className="decision-grid">
           <div className="decision-score-card">
             <span className="decision-label">Điểm thị trường</span>
@@ -887,7 +957,7 @@ ${evidenceItems.map(ev => `- [${ev.source}] ${ev.title}\n  Link: ${ev.url}`).joi
         </div>
       </InsightSection>
 
-      <InsightSection title="Tiềm năng thị trường" badge="03">
+      <InsightSection title="Tiềm năng thị trường" badge="03" getCopyText={() => `Điểm cơ hội: ${opportunityRead.score}/100 (${opportunityRead.band})\n${opportunityRead.title}\n${opportunityRead.risk}\n\nHành động đề xuất: ${opportunityRead.nextMove}`}>
         <div className="decision-grid">
           <div className="decision-score-card opportunity-score">
             <span className="decision-label">Điểm cơ hội</span>
@@ -918,15 +988,30 @@ ${evidenceItems.map(ev => `- [${ev.source}] ${ev.title}\n  Link: ${ev.url}`).joi
           </div>
         </div>
         {topKeywords.length ? (
-          <div className="compact-keyword-list">
-            {topKeywords.map((item) => (
-              <span key={item.keyword}>{item.keyword} ({item.mentionCount})</span>
-            ))}
+          <div className="metric-bar-wrap" style={{ marginTop: 20, paddingTop: 16, borderTop: '1px solid var(--border-color)' }}>
+            <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 4 }}>
+              Từ khóa nổi bật
+            </div>
+            {(() => {
+              const maxMentions = Math.max(...topKeywords.map(k => k.mentionCount ?? 1), 1)
+              return topKeywords.map((item, i) => (
+                <div key={item.keyword} className="metric-bar-row">
+                  <span className="metric-bar-label">{item.keyword}</span>
+                  <div className="metric-bar-track">
+                    <div
+                      className="metric-bar-fill metric-bar-fill-primary"
+                      style={{ width: `${Math.round(((item.mentionCount ?? 1) / maxMentions) * 100)}%`, opacity: 1 - i * 0.12 }}
+                    />
+                  </div>
+                  <span className="metric-bar-value">{item.mentionCount ?? 1}</span>
+                </div>
+              ))
+            })()}
           </div>
         ) : null}
       </InsightSection>
 
-      <InsightSection title="Kênh tiếp cận đề xuất" badge="04">
+      <InsightSection title="Kênh tiếp cận đề xuất" badge="04" getCopyText={() => channelRecommendation}>
         <p className="prompt-main-text">{channelRecommendation}</p>
         <div className="tag-wrap">
           {(data?.suggestedActions ?? []).slice(0, 4).map((action) => (

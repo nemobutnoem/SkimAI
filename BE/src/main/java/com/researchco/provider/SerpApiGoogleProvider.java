@@ -196,10 +196,16 @@ public class SerpApiGoogleProvider implements SearchProvider {
         HttpRequest request = HttpRequest.newBuilder(uri).GET().build();
         HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
         if (response.statusCode() < 200 || response.statusCode() >= 300) {
-            log.warn("[SERPAPI_GOOGLE] HTTP {} for request. Body: {}", response.statusCode(), response.body());
+            log.error("[SERPAPI_GOOGLE] HTTP {} — body: {}", response.statusCode(), response.body());
             return null;
         }
-        return objectMapper.readTree(response.body());
+        JsonNode root = objectMapper.readTree(response.body());
+        // SerpAPI trả 200 nhưng body có "error" field khi key sai/hết quota
+        if (root.has("error")) {
+            log.error("[SERPAPI_GOOGLE] API error: {}", root.path("error").asText());
+            return null;
+        }
+        return root;
     }
 
     private String resolveGoogleDomain(String countryCode) {

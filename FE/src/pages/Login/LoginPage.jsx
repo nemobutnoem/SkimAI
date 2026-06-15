@@ -136,6 +136,7 @@ export function LoginPage() {
         {/* Abstract shapes in the background */}
         <div className="login-shape shape-1" />
         <div className="login-shape shape-2" />
+        <div className="login-shape shape-3" />
       </div>
 
       {/* RIGHT SIDE - FORM */}
@@ -143,12 +144,23 @@ export function LoginPage() {
         <div className="login-form-inner">
           <div className="login-header">
             <h2>Chào mừng quay lại</h2>
-            <p>Vui lòng đăng nhập bằng tài khoản Google để tiếp tục sử dụng dịch vụ.</p>
+            <p>Đăng nhập để truy cập dữ liệu thị trường và phân tích AI của bạn.</p>
+          </div>
+
+          <div className="login-trust-strip">
+            <span>🔒 Bảo mật SSL</span>
+            <span>⚡ Phân tích tức thì</span>
+            <span>🇻🇳 Dữ liệu Việt Nam</span>
           </div>
 
           <div className="login-google">
-            <div id="googleSignInBtn" style={{ minHeight: '40px', display: 'flex', justifyContent: 'center', width: '100%' }} />
-            {!googleReady && !googleError && <div className="login-google-hint">Đang tải Đăng nhập Google…</div>}
+            <div id="googleSignInBtn" style={{ minHeight: '44px', display: 'flex', justifyContent: 'center', width: '100%' }} />
+            {!googleReady && !googleError && (
+              <div className="login-google-hint">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
+                Đang tải đăng nhập Google…
+              </div>
+            )}
             {googleError && <div className="login-error">{googleError}</div>}
             {error && <div className="login-error">{error}</div>}
           </div>

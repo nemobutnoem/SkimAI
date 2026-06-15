@@ -195,10 +195,15 @@ public class SerpApiNewsProvider implements SearchProvider {
         HttpRequest request = HttpRequest.newBuilder(uri).GET().build();
         HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
         if (response.statusCode() < 200 || response.statusCode() >= 300) {
-            log.warn("[SERPAPI_NEWS] HTTP {} for request. Body: {}", response.statusCode(), response.body());
+            log.error("[SERPAPI_NEWS] HTTP {} — body: {}", response.statusCode(), response.body());
             return null;
         }
-        return objectMapper.readTree(response.body());
+        JsonNode root = objectMapper.readTree(response.body());
+        if (root.has("error")) {
+            log.error("[SERPAPI_NEWS] API error: {}", root.path("error").asText());
+            return null;
+        }
+        return root;
     }
 
     private String resolveGoogleDomain(String countryCode) {

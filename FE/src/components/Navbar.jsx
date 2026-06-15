@@ -3,8 +3,6 @@ import { useState, useRef, useEffect } from 'react'
 import { ROUTES } from '../constants/routes'
 import { useAuth } from '../hooks/useAuth'
 
-/* ─── Route configs for each context ─── */
-
 const PUBLIC_LINKS = [
   { to: ROUTES.HOME, label: 'Tổng quan' },
   { to: ROUTES.ANALYSIS, label: 'Nghiên cứu thị trường' },
@@ -31,28 +29,19 @@ const ADMIN_LINKS = [
   { to: ROUTES.ADMIN_SETTINGS, label: 'Cài đặt' },
 ]
 
-/* Helper: get initials from user */
 function getInitials(user) {
-  if (user?.name) {
-    return user.name.split(' ').map((w) => w[0]).join('').toUpperCase().slice(0, 2)
-  }
-  if (user?.email) {
-    return user.email.slice(0, 2).toUpperCase()
-  }
+  if (user?.name) return user.name.split(' ').map((w) => w[0]).join('').toUpperCase().slice(0, 2)
+  if (user?.email) return user.email.slice(0, 2).toUpperCase()
   return 'AD'
 }
 
-/* ─── Avatar Dropdown ─── */
 function AvatarDropdown({ user, isAdmin, isOnAdminPage, onLogout }) {
   const [open, setOpen] = useState(false)
   const ref = useRef(null)
   const navigate = useNavigate()
 
-  /* Close on outside click */
   useEffect(() => {
-    const handler = (e) => {
-      if (ref.current && !ref.current.contains(e.target)) setOpen(false)
-    }
+    const handler = (e) => { if (ref.current && !ref.current.contains(e.target)) setOpen(false) }
     document.addEventListener('mousedown', handler)
     return () => document.removeEventListener('mousedown', handler)
   }, [])
@@ -71,91 +60,129 @@ function AvatarDropdown({ user, isAdmin, isOnAdminPage, onLogout }) {
             {user?.email && <span className="dropdown-email">{user.email}</span>}
           </div>
           <div className="dropdown-divider" />
-
           {isAdmin && isOnAdminPage && (
-            <button className="dropdown-item" onClick={() => { navigate(ROUTES.ADMIN_SETTINGS); setOpen(false) }}>
-              ⚙️ Cài đặt
-            </button>
+            <button className="dropdown-item" onClick={() => { navigate(ROUTES.ADMIN_SETTINGS); setOpen(false) }}>⚙️ Cài đặt</button>
           )}
-
           {isAdmin && !isOnAdminPage && (
-            <button className="dropdown-item" onClick={() => { navigate(ROUTES.ACCOUNT); setOpen(false) }}>
-              👤 Tài khoản
-            </button>
+            <button className="dropdown-item" onClick={() => { navigate(ROUTES.ACCOUNT); setOpen(false) }}>👤 Tài khoản</button>
           )}
-
           {!isAdmin && (
-            <button className="dropdown-item" onClick={() => { navigate(ROUTES.ACCOUNT); setOpen(false) }}>
-              👤 Tài khoản
-            </button>
+            <button className="dropdown-item" onClick={() => { navigate(ROUTES.ACCOUNT); setOpen(false) }}>👤 Tài khoản</button>
           )}
-
           <div className="dropdown-divider" />
-          <button className="dropdown-item dropdown-item-danger" onClick={() => { onLogout(); setOpen(false) }}>
-            🚪 Đăng xuất
-          </button>
+          <button className="dropdown-item dropdown-item-danger" onClick={() => { onLogout(); setOpen(false) }}>🚪 Đăng xuất</button>
         </div>
       )}
     </div>
   )
 }
 
-/* ─── Navbar Component ─── */
+function HamburgerMenu({ links, extraLinks = [], user, isAuthenticated, isAdmin, isOnAdminPage, onLogout, onClose }) {
+  const navigate = useNavigate()
+  return (
+    <>
+      <div className="mobile-overlay" onClick={onClose} />
+      <div className="mobile-menu">
+        <div className="mobile-menu-header">
+          <span className="mobile-menu-brand">AISKIM</span>
+          <button className="mobile-menu-close" onClick={onClose} aria-label="Đóng">✕</button>
+        </div>
+        <nav className="mobile-menu-nav">
+          {links.map((link) => (
+            <NavLink
+              key={link.to}
+              to={link.to}
+              className={({ isActive }) => `mobile-menu-link${isActive ? ' active' : ''}`}
+              onClick={onClose}
+            >
+              {link.label}
+            </NavLink>
+          ))}
+          {extraLinks.map((link) => (
+            <NavLink
+              key={link.to}
+              to={link.to}
+              className={({ isActive }) => `mobile-menu-link${isActive ? ' active' : ''}`}
+              onClick={onClose}
+            >
+              {link.label}
+            </NavLink>
+          ))}
+        </nav>
+        <div className="mobile-menu-footer">
+          {isAuthenticated ? (
+            <>
+              {user && (
+                <div className="mobile-menu-user">
+                  <div className="avatar" style={{ width: 36, height: 36, fontSize: 13 }}>{getInitials(user)}</div>
+                  <div>
+                    <strong>{user?.name || 'Người dùng'}</strong>
+                    {user?.email && <span>{user.email}</span>}
+                  </div>
+                </div>
+              )}
+              <button className="btn btn-secondary" style={{ width: '100%', marginTop: 12 }} onClick={() => { onLogout(); onClose() }}>
+                Đăng xuất
+              </button>
+            </>
+          ) : (
+            <NavLink to={ROUTES.LOGIN} className="btn btn-primary" style={{ width: '100%', textAlign: 'center' }} onClick={onClose}>
+              Đăng nhập
+            </NavLink>
+          )}
+        </div>
+      </div>
+    </>
+  )
+}
 
 export function Navbar() {
   const { isAuthenticated, user, logout } = useAuth()
   const navigate = useNavigate()
   const location = useLocation()
+  const [mobileOpen, setMobileOpen] = useState(false)
 
   const isAdmin = user?.role === 'admin'
   const isOnAdminPage = location.pathname.startsWith('/admin')
 
-  /* Pick the right link set */
   const links = isOnAdminPage ? ADMIN_LINKS : isAuthenticated ? USER_LINKS : PUBLIC_LINKS
 
-  const handleLogout = () => {
-    logout()
-    navigate(ROUTES.HOME)
-  }
+  const handleLogout = () => { logout(); navigate(ROUTES.HOME) }
+
+  // Close mobile menu on route change
+  useEffect(() => { setMobileOpen(false) }, [location.pathname])
+
+  // Prevent body scroll when mobile menu open
+  useEffect(() => {
+    document.body.style.overflow = mobileOpen ? 'hidden' : ''
+    return () => { document.body.style.overflow = '' }
+  }, [mobileOpen])
+
+  const adminExtraLinks = isAdmin && !isOnAdminPage ? [{ to: ROUTES.ADMIN_DASHBOARD, label: 'Admin' }] : []
 
   /* ── Admin navbar ── */
   if (isOnAdminPage && isAdmin) {
     return (
       <header className="app-header">
         <div className="app-header-inner">
-          <div
-            className="app-brand"
-            role="button"
-            tabIndex={0}
-            onClick={() => navigate(ROUTES.HOME)}
-          >
-            AISKIM
-          </div>
-
+          <div className="app-brand" role="button" tabIndex={0} onClick={() => navigate(ROUTES.HOME)}>AISKIM</div>
           <span className="admin-section-badge">Admin</span>
-
           <nav className="app-nav">
             {links.map((link) => (
-              <NavLink
-                key={link.to}
-                to={link.to}
-                className={({ isActive }) =>
-                  ['app-link', isActive ? 'active' : ''].join(' ').trim()
-                }
-              >
+              <NavLink key={link.to} to={link.to} className={({ isActive }) => ['app-link', isActive ? 'active' : ''].join(' ').trim()}>
                 {link.label}
               </NavLink>
             ))}
           </nav>
-
           <div className="app-header-right">
-            <NavLink to={ROUTES.DASHBOARD} className="app-back-link">
-              ← Giao diện User
-            </NavLink>
-            <button className="icon-btn" title="Tìm kiếm">🔍</button>
+            <NavLink to={ROUTES.DASHBOARD} className="app-back-link">← Giao diện User</NavLink>
             <AvatarDropdown user={user} isAdmin={isAdmin} isOnAdminPage={isOnAdminPage} onLogout={handleLogout} />
           </div>
+          <button className="hamburger" onClick={() => setMobileOpen(true)} aria-label="Mở menu">
+            <span /><span /><span />
+          </button>
         </div>
+        {mobileOpen && <HamburgerMenu links={links} user={user} isAuthenticated={isAuthenticated} isAdmin={isAdmin} isOnAdminPage={isOnAdminPage} onLogout={handleLogout} onClose={() => setMobileOpen(false)} />}
       </header>
     )
   }
@@ -165,43 +192,27 @@ export function Navbar() {
     return (
       <header className="app-header">
         <div className="app-header-inner">
-          <div
-            className="app-brand"
-            role="button"
-            tabIndex={0}
-            onClick={() => navigate(ROUTES.HOME)}
-          >
-            AISKIM
-          </div>
-
+          <div className="app-brand" role="button" tabIndex={0} onClick={() => navigate(ROUTES.HOME)}>AISKIM</div>
           <nav className="app-nav">
             {links.map((link) => (
-              <NavLink
-                key={link.to}
-                to={link.to}
-                className={({ isActive }) =>
-                  ['app-link', isActive ? 'active' : ''].join(' ').trim()
-                }
-              >
+              <NavLink key={link.to} to={link.to} className={({ isActive }) => ['app-link', isActive ? 'active' : ''].join(' ').trim()}>
                 {link.label}
               </NavLink>
             ))}
             {isAdmin && (
-              <NavLink
-                to={ROUTES.ADMIN_DASHBOARD}
-                className={({ isActive }) =>
-                  ['app-link', isActive ? 'active' : ''].join(' ').trim()
-                }
-              >
+              <NavLink to={ROUTES.ADMIN_DASHBOARD} className={({ isActive }) => ['app-link', isActive ? 'active' : ''].join(' ').trim()}>
                 Admin
               </NavLink>
             )}
           </nav>
-
           <div className="app-header-right">
             <AvatarDropdown user={user} isAdmin={isAdmin} isOnAdminPage={isOnAdminPage} onLogout={handleLogout} />
           </div>
+          <button className="hamburger" onClick={() => setMobileOpen(true)} aria-label="Mở menu">
+            <span /><span /><span />
+          </button>
         </div>
+        {mobileOpen && <HamburgerMenu links={links} extraLinks={adminExtraLinks} user={user} isAuthenticated={isAuthenticated} isAdmin={isAdmin} isOnAdminPage={isOnAdminPage} onLogout={handleLogout} onClose={() => setMobileOpen(false)} />}
       </header>
     )
   }
@@ -210,35 +221,22 @@ export function Navbar() {
   return (
     <header className="app-header">
       <div className="app-header-inner">
-        <div
-          className="app-brand"
-          role="button"
-          tabIndex={0}
-          onClick={() => navigate(ROUTES.HOME)}
-        >
-          AISKIM
-        </div>
-
+        <div className="app-brand" role="button" tabIndex={0} onClick={() => navigate(ROUTES.HOME)}>AISKIM</div>
         <nav className="app-nav">
           {links.map((link) => (
-            <NavLink
-              key={link.to}
-              to={link.to}
-              className={({ isActive }) =>
-                ['app-link', isActive ? 'active' : ''].join(' ').trim()
-              }
-            >
+            <NavLink key={link.to} to={link.to} className={({ isActive }) => ['app-link', isActive ? 'active' : ''].join(' ').trim()}>
               {link.label}
             </NavLink>
           ))}
         </nav>
-
         <div className="app-header-right">
-          <NavLink to={ROUTES.LOGIN} className="btn btn-primary">
-            Đăng nhập
-          </NavLink>
+          <NavLink to={ROUTES.LOGIN} className="btn btn-primary">Đăng nhập</NavLink>
         </div>
+        <button className="hamburger" onClick={() => setMobileOpen(true)} aria-label="Mở menu">
+          <span /><span /><span />
+        </button>
       </div>
+      {mobileOpen && <HamburgerMenu links={links} user={user} isAuthenticated={isAuthenticated} isAdmin={isAdmin} isOnAdminPage={isOnAdminPage} onLogout={handleLogout} onClose={() => setMobileOpen(false)} />}
     </header>
   )
 }
