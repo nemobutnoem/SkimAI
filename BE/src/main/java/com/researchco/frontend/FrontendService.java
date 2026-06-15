@@ -2756,13 +2756,19 @@ public class FrontendService {
                         .findFirstByUserAndStatusOrderByStartDateDesc(user, "ACTIVE").orElse(null);
                 PlanEntity exportPlan = exportSub != null ? exportSub.getPlan()
                         : planRepository.findByName("FREE").orElse(null);
-                if (exportPlan != null && exportPlan.getExportLimit() != null && exportPlan.getExportLimit() > 0) {
-                    long exported = reportRepository.countByUserIdAndStatusIgnoreCase(user.getId(), "EXPORTED");
-                    if (exported >= exportPlan.getExportLimit()) {
-                        throw new AppException(HttpStatus.FORBIDDEN,
-                                "Bạn đã đạt giới hạn " + exportPlan.getExportLimit()
-                                        + " lượt xuất báo cáo của gói " + exportPlan.getName() + ".");
-                    }
+                
+                int exportLimit = (exportPlan != null && exportPlan.getExportLimit() != null) ? exportPlan.getExportLimit() : 0;
+                
+                if (exportLimit <= 0) {
+                    throw new AppException(HttpStatus.FORBIDDEN, 
+                            "Gói tài khoản " + (exportPlan != null ? exportPlan.getName() : "FREE") + " không hỗ trợ xuất báo cáo. Vui lòng nâng cấp lên gói PRO để sử dụng tính năng này.");
+                }
+
+                long exported = reportRepository.countByUserIdAndStatusIgnoreCase(user.getId(), "EXPORTED");
+                if (exported >= exportLimit) {
+                    throw new AppException(HttpStatus.FORBIDDEN,
+                            "Bạn đã đạt giới hạn " + exportLimit
+                                    + " lượt xuất báo cáo của gói " + exportPlan.getName() + ".");
                 }
             }
 
