@@ -281,9 +281,16 @@ function buildOpportunityRead(data, overall, sourceRows) {
     // 4. Intent multiplier (2.0x for commercial/actionable intent)
     const intentRegex = /(mua|bán|giá|review|so sánh|học|khóa học|tốt nhất|dịch vụ|phần mềm|tự động|hướng dẫn|tool|đánh giá|cách làm|thương hiệu|nhập khẩu|phân phối|chính hãng|uy tín|chất lượng|buy|price|best|vs|compare|how to|course|software|service|guide|comparison)/i;
     const hasIntent = intentRegex.test(k.keyword);
-    const intentMultiplier = hasIntent ? 2.0 : 1.0;
     
-    return (viewsScore + engagementScore + mentionScore) * intentMultiplier;
+    // 5. Geographic/place name penalty (0.1x to prevent generic locations from being chosen as market opportunities)
+    const geoRegex = /^(quang ngai|quảng ngãi|ha noi|hà nội|hồ chí minh|ho chi minh|tphcm|hcm|đà nẵng|da nang|hải phòng|hai phong|cần thơ|can tho|nha trang|đà lạt|da lat|nhật bản|nhat ban|trung quốc|trung quoc|hàn quốc|han quoc|việt nam|viet nam|thái lan|thai lan|singapore|wikipedia)$/i;
+    const isGeo = geoRegex.test(k.keyword.trim());
+    
+    let multiplier = 1.0;
+    if (hasIntent) multiplier = 2.0;
+    if (isGeo) multiplier = 0.1;
+    
+    return (viewsScore + engagementScore + mentionScore) * multiplier;
   };
 
   const strongest = [...keywords].sort((a, b) => getKeywordScore(b) - getKeywordScore(a))[0];
