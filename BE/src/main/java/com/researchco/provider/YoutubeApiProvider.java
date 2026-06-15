@@ -145,18 +145,18 @@ public class YoutubeApiProvider implements SearchProvider {
     private List<NormalizedSourceItem> generateFallbackResults(String keyword) {
         List<NormalizedSourceItem> results = new ArrayList<>();
         String[] titles = {
-            "Google Gemini Spark & The Future of " + titleCase(keyword),
-            "How I Built a Startup with " + titleCase(keyword) + " in 24 Hours",
-            titleCase(keyword) + ": The Ultimate Career Guide for 2026",
-            "The Terrifying Future of " + titleCase(keyword) + " - Dario Amodei",
-            "Is " + titleCase(keyword) + " Already Out of Control? (60 Minutes)"
+            "Understanding " + titleCase(keyword) + ": A Beginner's Guide",
+            "How to Get Started with " + titleCase(keyword) + " (Step-by-Step)",
+            titleCase(keyword) + ": Top Tips & Common Mistakes to Avoid",
+            "The Future of " + titleCase(keyword) + ": What You Need to Know",
+            "Is " + titleCase(keyword) + " Worth It? (Honest Review & Comparison)"
         };
         String[] descriptions = {
-            "A deep dive into Google's latest AI model Gemini Spark and how it's shaping the landscape of " + keyword + ".",
-            "Building a fully functional software startup using OpenAI GPT models and other " + keyword + " tools.",
-            "Which skills are in highest demand? We map out the best learning paths for " + keyword + " jobs in 2026.",
-            "Dario Amodei, CEO of Anthropic, discusses the exponential growth and safety concerns of " + keyword + " systems.",
-            "60 Minutes reports on the rapid advancement of " + keyword + " models like ChatGPT, Claude, and Gemini."
+            "A deep dive into " + keyword + " and how it works. We explain the core concepts and get you up to speed.",
+            "Learn how to set up, build, or implement " + keyword + " easily with this simple step-by-step video tutorial.",
+            "We share the best practices for " + keyword + " and point out the critical mistakes most beginners make.",
+            "Experts discuss the growth, future trends, and upcoming changes of " + keyword + " in the next few years.",
+            "We review the popular options for " + keyword + " and compare them to help you make the best choice."
         };
         String[] channels = {
             "MKBHD",
@@ -176,7 +176,7 @@ public class YoutubeApiProvider implements SearchProvider {
             "UCmeU2DYiVy80wMBGZzEWnbw",
             "UCwSozl89jl2zUDzQ4jGJD3g",
             "UCBi2mrWuNuyYy4gbM6fU18Q",
-            "UCsN32BtMd0IoByjJRNF12cw",
+            "UCBi2mrWuNuyYy4gbM6fU18Q",
             "UCy123456789abc"
         };
         long[] subscriberCounts = {
@@ -189,13 +189,13 @@ public class YoutubeApiProvider implements SearchProvider {
 
         for (int i = 0; i < titles.length; i++) {
             int rank = i + 1;
-            long estViews = Math.max(10000, 300000 / rank + (long)(Math.random() * 25000));
-            long estLikes = Math.max(100, estViews / 40 + (long)(Math.random() * 500));
-            long estComments = Math.max(10, estViews / 150 + (long)(Math.random() * 100));
+            long estViews = Math.max(2000, 25000 / rank + (long)(Math.random() * 3000));
+            long estLikes = Math.max(100, estViews / 45 + (long)(Math.random() * 100));
+            long estComments = Math.max(15, estViews / 160 + (long)(Math.random() * 30));
             double estEngagement = estViews > 0 ? (double)(estLikes + estComments) / estViews : 0.05;
 
             List<String> tags = List.of(keyword.toLowerCase(), channels[i].toLowerCase());
-            List<String> topics = List.of("Technology", "Science");
+            List<String> topics = List.of("Education", "Information");
 
             String enrichedSnippet = descriptions[i] + " ; views=" + estViews + " ; likes=" + estLikes + " ; comments=" + estComments + 
                 " ; subscribers=" + subscriberCounts[i] + " ; duration=PT12M34S ; tags=" + String.join("|", tags);

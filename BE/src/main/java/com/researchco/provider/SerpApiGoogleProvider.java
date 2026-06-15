@@ -127,18 +127,18 @@ public class SerpApiGoogleProvider implements SearchProvider {
     private List<NormalizedSourceItem> generateFallbackResults(String keyword) {
         List<NormalizedSourceItem> items = new ArrayList<>();
         String[] titles = {
-            "What is " + keyword + "? A complete guide",
-            "Top trends in " + keyword + " for 2026",
-            "How " + keyword + " is transforming business productivity",
+            "What is " + keyword + "? A complete overview",
+            "Latest trends and developments in " + keyword + " market",
+            "How " + keyword + " is shaping modern consumer behavior",
             "The future of " + keyword + ": Challenges and opportunities",
-            "Why " + keyword + " is the next major tech frontier"
+            "Why " + keyword + " continues to attract significant global interest"
         };
         String[] snippets = {
-            "Discover everything you need to know about " + keyword + ". Explore its core definitions, how it works under the hood, and its key applications in modern industries.",
-            "As we look ahead, " + keyword + " continues to evolve at a rapid pace. Here are the top trends and developments shaping the landscape this year, including key industry breakthroughs.",
-            "Businesses worldwide are leveraging " + keyword + " to optimize workflows, automate routine tasks, and drive strategic growth. Read about the latest real-world adoption case studies.",
-            "While " + keyword + " offers unprecedented potential, it also brings major ethical and security challenges. Experts discuss the roadmap for safe and sustainable integration.",
-            "Investments in " + keyword + " are surging to new heights. Industry leaders share their insights on why this space represents the most critical technology shift of the decade."
+            "Discover key definitions, basic concepts, and fundamental structures of " + keyword + " in this comprehensive overview.",
+            "As we look ahead, " + keyword + " continues to evolve with changing demands. Here are the top trends and dynamics shaping this space.",
+            "Analysts look at how " + keyword + " affects modern habits, workflows, and consumer decision making in the current landscape.",
+            "While " + keyword + " offers excellent potential, it also faces unique challenges. Experts discuss the roadmap for sustainable development.",
+            "Investments and public interest in " + keyword + " are rising. Leaders share insights on why this represents a significant market shift."
         };
         String[] domains = {
             "wikipedia.org",
@@ -157,10 +157,13 @@ public class SerpApiGoogleProvider implements SearchProvider {
 
         for (int i = 0; i < titles.length; i++) {
             int rank = i + 1;
-            long estViews = Math.max(20000, 150000 / rank + (long)(Math.random() * 12000));
-            long estLikes = Math.max(100, estViews / 25 + (long)(Math.random() * 400));
-            long estComments = Math.max(20, estViews / 100 + (long)(Math.random() * 80));
+            long estViews = Math.max(500, 8500 / rank + (long)(Math.random() * 1500));
+            long estLikes = Math.max(10, estViews / 40 + (long)(Math.random() * 50));
+            long estComments = Math.max(2, estViews / 150 + (long)(Math.random() * 15));
             double estEngagement = estViews > 0 ? (double)(estLikes + estComments) / estViews : 0.05;
+
+            LocalDateTime dt = LocalDateTime.now().minusDays(i);
+            String formattedDate = dt.format(java.time.format.DateTimeFormatter.ISO_LOCAL_DATE);
 
             Map<String, Object> rawPayload = new LinkedHashMap<>();
             rawPayload.put("provider", providerCode());
@@ -169,7 +172,7 @@ public class SerpApiGoogleProvider implements SearchProvider {
             rawPayload.put("displayedLink", "https://www." + domains[i] + "/search?q=" + keyword);
             rawPayload.put("cachedPageLink", "");
             rawPayload.put("relatedPagesLink", "");
-            rawPayload.put("date", "2026-06-12");
+            rawPayload.put("date", formattedDate);
             rawPayload.put("viewCount", estViews);
             rawPayload.put("likeCount", estLikes);
             rawPayload.put("commentCount", estComments);
@@ -184,7 +187,7 @@ public class SerpApiGoogleProvider implements SearchProvider {
                     "https://www." + domains[i] + "/article/" + keyword.toLowerCase().replaceAll("[^a-zA-Z0-9]+", "-"),
                     sources[i],
                     "SerpApi Google Fallback",
-                    LocalDateTime.now().minusDays(i),
+                    dt,
                     inferSentiment(titles[i] + " " + snippets[i]),
                     rawPayload
             ));

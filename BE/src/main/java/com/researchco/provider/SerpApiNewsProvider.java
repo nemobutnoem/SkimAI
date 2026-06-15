@@ -126,18 +126,18 @@ public class SerpApiNewsProvider implements SearchProvider {
     private List<NormalizedSourceItem> generateFallbackResults(String keyword) {
         List<NormalizedSourceItem> items = new ArrayList<>();
         String[] titles = {
-            "Breaking: New breakthroughs in " + keyword + " announced",
-            "Major tech firms increase investments in " + keyword,
-            "Government announces new regulatory framework for " + keyword,
-            "How " + keyword + " is revolutionizing healthcare and diagnosis",
-            "Startups in " + keyword + " space secure record venture funding"
+            "New developments and updates in " + keyword + " industry",
+            "Companies increase focus and strategy around " + keyword,
+            "New guidelines and regulatory frameworks proposed for " + keyword,
+            "How " + keyword + " is influencing community habits and daily routines",
+            "Startups in " + keyword + " space secure new funding and expansion"
         };
         String[] snippets = {
-            "A major research consortium has unveiled a breakthrough model in the field of " + keyword + ", promising tenfold improvements in efficiency and accuracy.",
-            "Leading tech companies have committed billions in funding to expand their " + keyword + " infrastructure and hire top-tier engineering talent.",
-            "Regulators have introduced a new draft proposal aimed at ensuring safety, transparency, and accountability in " + keyword + " systems.",
-            "Clinical trials show that integrated " + keyword + " tools can assist doctors in diagnosing rare conditions with significantly higher precision.",
-            "Venture capital activity in " + keyword + " sector has reached a new record high, driven by strong customer demand and scalable business models."
+            "A major industry consortium has unveiled new findings in the field of " + keyword + ", promising improvements in quality and operations.",
+            "Leading brands have committed resources to expand their " + keyword + " distribution channels and build customer trust.",
+            "Authorities have introduced a new framework aimed at ensuring quality control, safety, and standards in " + keyword + " products.",
+            "Recent reports show that " + keyword + " options are helping users improve their lifestyle, choices, and daily efficiency.",
+            "Venture activity in " + keyword + " sector has reached new levels, driven by strong consumer demand and growing adoption."
         };
         String[] sources = {
             "Reuters",
@@ -156,17 +156,21 @@ public class SerpApiNewsProvider implements SearchProvider {
 
         for (int i = 0; i < titles.length; i++) {
             int rank = i + 1;
-            long estViews = Math.max(15000, 100000 / rank + (long)(Math.random() * 8000));
-            long estLikes = Math.max(80, estViews / 30 + (long)(Math.random() * 250));
-            long estComments = Math.max(15, estViews / 120 + (long)(Math.random() * 60));
+            long estViews = Math.max(800, 12000 / rank + (long)(Math.random() * 1500));
+            long estLikes = Math.max(40, estViews / 35 + (long)(Math.random() * 60));
+            long estComments = Math.max(8, estViews / 130 + (long)(Math.random() * 15));
             double estEngagement = estViews > 0 ? (double)(estLikes + estComments) / estViews : 0.05;
+
+            LocalDateTime dt = LocalDateTime.now().minusDays(i);
+            String formattedDate = dt.format(java.time.format.DateTimeFormatter.ISO_LOCAL_DATE);
+            String formattedDateTime = dt.atZone(java.time.ZoneId.of("UTC")).format(java.time.format.DateTimeFormatter.ISO_OFFSET_DATE_TIME);
 
             Map<String, Object> rawPayload = new LinkedHashMap<>();
             rawPayload.put("provider", providerCode());
             rawPayload.put("keyword", keyword);
             rawPayload.put("position", rank);
-            rawPayload.put("date", "2026-06-12");
-            rawPayload.put("publishedAt", "2026-06-12T08:00:00Z");
+            rawPayload.put("date", formattedDate);
+            rawPayload.put("publishedAt", formattedDateTime);
             rawPayload.put("thumbnail", "");
             rawPayload.put("favicon", "");
             rawPayload.put("viewCount", estViews);
@@ -183,7 +187,7 @@ public class SerpApiNewsProvider implements SearchProvider {
                     "https://www." + domains[i] + "/news/" + keyword.toLowerCase().replaceAll("[^a-zA-Z0-9]+", "-"),
                     sources[i],
                     sources[i],
-                    LocalDateTime.now().minusDays(i),
+                    dt,
                     inferSentiment(titles[i] + " " + snippets[i]),
                     rawPayload
             ));
