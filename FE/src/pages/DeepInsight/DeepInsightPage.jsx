@@ -253,67 +253,172 @@ export function DeepInsightPage() {
           return;
       }
 
-      // Target Persona section in markdown
-      let personaMd = '';
+      // Target Persona section in HTML
+      let personaHtml = '';
       if (data?.targetPersona) {
         const persona = data.targetPersona;
-        personaMd = `
-## 🎯 Chân Dung Khách Hàng (Target Persona)
-- **Mô tả chung:** ${persona.description || 'Chưa có thông tin mô tả.'}
-- **Vấn đề & Nỗi đau lớn nhất (Painpoints):**
-${(persona.painPoints || []).map(p => `  - ${p}`).join('\n')}
-- **Hành vi & Ý định tìm kiếm (Search Intent):**
-${(persona.searchIntents || []).map(s => `  - ${s}`).join('\n')}
-        `.trim();
+        personaHtml = `
+          <h2>5. Chân Dung Khách Hàng (Target Persona)</h2>
+          <div class="section-box">
+            <p><strong>Mô tả chung:</strong> ${persona.description || 'Chưa có thông tin mô tả.'}</p>
+            <h3>Vấn đề & Nỗi đau lớn nhất (Painpoints)</h3>
+            <ul>
+              ${(persona.painPoints || []).map(p => `<li>${p}</li>`).join('')}
+            </ul>
+            <h3>Hành vi & Ý định tìm kiếm (Search Intent)</h3>
+            <ul>
+              ${(persona.searchIntents || []).map(s => `<li>${s}</li>`).join('')}
+            </ul>
+          </div>
+        `;
       }
 
-      // Competitor Map section in markdown
-      let competitorsMd = '';
+      // Competitor Map section in HTML
+      let competitorsHtml = '';
       if (data?.competitors && data.competitors.length > 0) {
-        competitorsMd = `
-## ⚔️ Bản Đồ Đối Thủ Cạnh Tranh (Competitor Map)
-${data.competitors.map((c, idx) => `
-### ${idx + 1}. ${c.name}
-- **Liên kết:** ${c.channelUrl || 'N/A'}
-- **Sức mạnh:** ${c.strengthLevel || 'N/A'}
-- **Theo dõi (Subs):** ${c.followers || 'N/A'}
-- **Tần suất hoạt động:** ${c.frequency || 'N/A'}
-- **AI Chiến lược:** ${c.note || 'N/A'}
-`.trim()).join('\n\n')}
-        `.trim();
+        competitorsHtml = `
+          <h2>6. Bản Đồ Đối Thủ Cạnh Tranh (Competitor Map)</h2>
+          ${data.competitors.map((c, idx) => `
+            <div class="section-box" style="margin-bottom: 15px;">
+              <h3>${idx + 1}. ${c.name}</h3>
+              <p><strong>Liên kết:</strong> ${c.channelUrl || 'N/A'}</p>
+              <p><strong>Sức mạnh:</strong> ${c.strengthLevel || 'N/A'}</p>
+              <p><strong>Theo dõi (Subs):</strong> ${c.followers || 'N/A'}</p>
+              <p><strong>Tần suất hoạt động:</strong> ${c.frequency || 'N/A'}</p>
+              <p><strong>AI Chiến lược:</strong> ${c.note || 'N/A'}</p>
+            </div>
+          `).join('')}
+        `;
       }
 
-      const mdContent = `
-# Báo Cáo Phân Tích Chuyên Sâu (AI Deep Insight): ${keyword}
-**Ngày tạo:** ${new Date().toLocaleDateString('vi-VN')}
-**Nguồn dữ liệu tập trung:** ${activeSource}
+      const docHtml = `
+<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w="urn:schemas-microsoft-com:office:word" xmlns="http://www.w3.org/TR/REC-html40">
+<head>
+  <meta charset="utf-8">
+  <title>Báo Cáo Phân Tích Chuyên Sâu: ${keyword}</title>
+  <!--[if gte mso 9]>
+  <xml>
+    <w:WordDocument>
+      <w:View>Print</w:View>
+      <w:Zoom>100</w:Zoom>
+      <w:DoNotOptimizeForBrowser/>
+    </w:WordDocument>
+  </xml>
+  <![endif]-->
+  <style>
+    body {
+      font-family: 'Calibri', 'Segoe UI', Arial, sans-serif;
+      line-height: 1.5;
+      color: #2d3748;
+      margin: 1in;
+    }
+    h1 {
+      font-family: 'Segoe UI', Arial, sans-serif;
+      font-size: 24pt;
+      color: #1a365d;
+      margin-bottom: 5px;
+      font-weight: bold;
+    }
+    .meta-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-bottom: 25px;
+    }
+    .meta-table td {
+      padding: 4px 0;
+      font-size: 10.5pt;
+      color: #718096;
+    }
+    .divider {
+      border-top: 3px solid #3182ce;
+      margin-bottom: 25px;
+    }
+    h2 {
+      font-family: 'Segoe UI', Arial, sans-serif;
+      font-size: 16pt;
+      color: #2b6cb0;
+      margin-top: 30px;
+      margin-bottom: 12px;
+      border-bottom: 1px solid #e2e8f0;
+      padding-bottom: 5px;
+      font-weight: bold;
+    }
+    h3 {
+      font-family: 'Segoe UI', Arial, sans-serif;
+      font-size: 12.5pt;
+      color: #2d3748;
+      margin-top: 20px;
+      margin-bottom: 8px;
+      font-weight: bold;
+    }
+    p, li {
+      font-size: 11pt;
+      margin-bottom: 8px;
+      color: #2d3748;
+    }
+    .section-box {
+      background-color: #f7fafc;
+      border-left: 4px solid #3182ce;
+      padding: 15px;
+      margin-bottom: 20px;
+      border-radius: 4px;
+    }
+  </style>
+</head>
+<body>
+  <h1>Báo Cáo Phân Tích Chuyên Sâu (AI Deep Insight)</h1>
+  <table class="meta-table">
+    <tr>
+      <td style="width: 50%;"><strong>Từ khóa nghiên cứu:</strong> ${keyword}</td>
+      <td style="width: 50%; text-align: right;"><strong>Ngày xuất báo cáo:</strong> ${new Date().toLocaleDateString('vi-VN')}</td>
+    </tr>
+    <tr>
+      <td style="width: 50%;"><strong>Nguồn dữ liệu tập trung:</strong> ${activeSource}</td>
+      <td style="width: 50%; text-align: right;"><strong>Hệ thống:</strong> SkimAI Platform</td>
+    </tr>
+  </table>
+  <div class="divider"></div>
 
-## 📊 Market Insight (Nhận định thị trường)
-- **Tóm tắt phát hiện:** ${signalSummary}
+  <h2>1. Market Insight (Nhận định thị trường)</h2>
+  <div class="section-box">
+    <p>${signalSummary}</p>
+  </div>
 
-## 💬 Chủ đề thảo luận chính
-${discussionTopics.map(t => `- **${t.name}**: ${t.change}`).join('\n')}
+  <h2>2. Chủ Đề Thảo Luận Chính</h2>
+  <ul>
+    ${discussionTopics.map(t => `<li><strong>${t.name}</strong>: ${t.change}</li>`).join('')}
+  </ul>
 
-## 🎯 Opportunities (Cơ hội thị trường đề xuất)
-${opportunityCards.map(opp => `- **${opp.title}**: ${opp.desc}`).join('\n')}
+  <h2>3. Cơ Hội Thị Trường Đề Xuất (Opportunities)</h2>
+  <ul>
+    ${opportunityCards.map(opp => `<li><strong>${opp.title}</strong>: ${opp.desc}</li>`).join('')}
+  </ul>
 
-## ✨ Strategic Recommendation (Khuyến nghị chiến lược)
-### ${strategicRecommendation.title}
-${strategicRecommendation.desc}
+  <h2>4. Khuyến Nghị Chiến Lược (Strategic Recommendation)</h2>
+  <div class="section-box">
+    <h3>${strategicRecommendation.title}</h3>
+    <p>${strategicRecommendation.desc}</p>
+  </div>
 
-${personaMd ? `\n${personaMd}` : ''}
-${competitorsMd ? `\n${competitorsMd}` : ''}
+  ${personaHtml}
+  ${competitorsHtml}
+
+  <div style="margin-top: 50px; text-align: center; font-size: 9pt; color: #a0aec0; border-top: 1px solid #e2e8f0; padding-top: 15px;">
+    Báo cáo được tạo tự động bởi hệ thống SkimAI — Trợ lý Nghiên Cứu Thị Trường Thông Minh
+  </div>
+</body>
+</html>
       `.trim();
 
-      const blob = new Blob([mdContent], { type: 'text/markdown;charset=utf-8' });
+      const blob = new Blob(['\ufeff' + docHtml], { type: 'application/msword;charset=utf-8' });
       const link = document.createElement('a');
       link.href = URL.createObjectURL(blob);
-      link.download = `${keyword}_Deep_Insight_Report.md`;
+      link.download = `${keyword}_Deep_Insight_Report.doc`;
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
 
-      alert("Xuất báo cáo chuyên sâu thành công! File .md đã được tải về và báo cáo đã được lưu vào Dashboard.");
+      alert("Xuất báo cáo chuyên sâu thành công! File báo cáo Word (.doc) đã được tải về và báo cáo đã được lưu vào Dashboard.");
     } catch (e) {
       alert("Lỗi khi xuất báo cáo: " + e.message);
     } finally {
