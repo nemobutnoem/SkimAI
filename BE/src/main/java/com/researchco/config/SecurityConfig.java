@@ -86,20 +86,29 @@ public class SecurityConfig {
                         .filter(origin -> !origin.isBlank())
                         .toList()
         );
-        if (!allowedOrigins.contains("http://localhost:5173")) {
-            allowedOrigins.add("http://localhost:5173");
-        }
-        if (!allowedOrigins.contains("http://127.0.0.1:5173")) {
-            allowedOrigins.add("http://127.0.0.1:5173");
-        }
-        if (!allowedOrigins.contains("http://localhost:5174")) {
-            allowedOrigins.add("http://localhost:5174");
-        }
-        if (!allowedOrigins.contains("http://127.0.0.1:5174")) {
-            allowedOrigins.add("http://127.0.0.1:5174");
+
+        List<String> allowedOriginPatterns = new ArrayList<>();
+        for (String origin : allowedOrigins) {
+            allowedOriginPatterns.add(origin);
         }
 
-        configuration.setAllowedOrigins(allowedOrigins);
+        // Add patterns for localhost and 127.0.0.1 on any port
+        if (!allowedOriginPatterns.contains("http://localhost:[*]")) {
+            allowedOriginPatterns.add("http://localhost:[*]");
+        }
+        if (!allowedOriginPatterns.contains("http://127.0.0.1:[*]")) {
+            allowedOriginPatterns.add("http://127.0.0.1:[*]");
+        }
+        // Add pattern for Vercel preview and production deployments
+        if (!allowedOriginPatterns.contains("https://*.vercel.app")) {
+            allowedOriginPatterns.add("https://*.vercel.app");
+        }
+        // Add pattern for user's domain
+        if (!allowedOriginPatterns.contains("https://*.io.vn")) {
+            allowedOriginPatterns.add("https://*.io.vn");
+        }
+
+        configuration.setAllowedOriginPatterns(allowedOriginPatterns);
         configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
         configuration.setAllowedHeaders(List.of("Authorization", "Content-Type"));
         configuration.setAllowCredentials(true);
