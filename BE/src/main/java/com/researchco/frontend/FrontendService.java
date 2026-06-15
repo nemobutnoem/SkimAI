@@ -558,6 +558,27 @@ public class FrontendService {
             );
         }
 
+        SearchQueryEntity queryEntity = null;
+        if (analysis.searchQueryId() != null && !analysis.searchQueryId().isBlank()) {
+            try {
+                queryEntity = searchQueryRepository.findById(UUID.fromString(analysis.searchQueryId())).orElse(null);
+            } catch (Exception ex) {
+                // ignore
+            }
+        }
+        if (queryEntity == null) {
+            String normalizedKeyword = getNormalizedTopic(request.keyword());
+            LocaleProfile localeProfile = resolveLocaleProfile(normalizedKeyword);
+            queryEntity = recordSearchActivity(normalizedKeyword, localeProfile);
+            if (queryEntity == null) {
+                queryEntity = findQueryByKeyword(normalizedKeyword).orElseGet(() -> fallbackQuery(normalizedKeyword));
+                if (queryEntity.getId() == null) {
+                    queryEntity.setId(UUID.randomUUID());
+                }
+                queryEntity = searchQueryRepository.save(queryEntity);
+            }
+        }
+
         // 1. Check if cached report exists in reports table for this user, keyword and source
         String targetTitle = request.source().trim() + " Deep Insight";
         Optional<com.researchco.report.ReportEntity> cachedReport = reportRepository
@@ -649,7 +670,7 @@ public class FrontendService {
                 } catch (Exception ex) {
                     // ignore
                 }
-                SearchQueryEntity queryEntity = searchQueryRepository.findById(UUID.fromString(analysis.searchQueryId())).orElse(null);
+                
                 com.researchco.report.ReportEntity report = com.researchco.report.ReportEntity.builder()
                         .user(user)
                         .searchQuery(queryEntity)
@@ -672,7 +693,6 @@ public class FrontendService {
                 // ignore
             }
 
-            SearchQueryEntity queryEntity = searchQueryRepository.findById(UUID.fromString(analysis.searchQueryId())).orElse(null);
             com.researchco.report.ReportEntity report = com.researchco.report.ReportEntity.builder()
                     .user(user)
                     .searchQuery(queryEntity)
@@ -685,11 +705,13 @@ public class FrontendService {
         }
 
         // Re-calculate stats dynamically based on the selected source focus
-        UUID creatorQueryId = UUID.fromString(analysis.searchQueryId());
+        UUID creatorQueryId = queryEntity.getId();
         try {
-            AnalysisSnapshotEntity snap = analysisSnapshotRepository.findById(UUID.fromString(analysis.snapshotId())).orElse(null);
-            if (snap != null && snap.getSearchQuery() != null) {
-                creatorQueryId = snap.getSearchQuery().getId();
+            if (analysis.snapshotId() != null && !analysis.snapshotId().isBlank() && !"OFFLINE_DEMO".equals(analysis.snapshotId())) {
+                AnalysisSnapshotEntity snap = analysisSnapshotRepository.findById(UUID.fromString(analysis.snapshotId())).orElse(null);
+                if (snap != null && snap.getSearchQuery() != null) {
+                    creatorQueryId = snap.getSearchQuery().getId();
+                }
             }
         } catch (Exception e) {
             // fallback
@@ -732,7 +754,10 @@ public class FrontendService {
 
         List<FrontendDtos.CompetitorMapItem> competitors = response.competitors();
         if (competitors == null || competitors.isEmpty() || isMockCompetitors(competitors, response.keyword())) {
-            competitors = buildDynamicCompetitors(creatorQueryId, response.keyword());
+            List<FrontendDtos.CompetitorMapItem> dynamicComps = buildDynamicCompetitors(creatorQueryId, response.keyword());
+            if (dynamicComps != null && !dynamicComps.isEmpty()) {
+                competitors = dynamicComps;
+            }
         }
 
         return new FrontendDtos.DeepInsightResponse(
