@@ -339,7 +339,7 @@ public class FrontendService {
                         clamp((keywords.size() * 18) + (news.size() * 12), 15, 72),
                         "Độ tin cậy thấp"
                 ),
-                buildResearchGuard(kw, keywords, news, 120, Math.max(1, getAvailableAnalysisSources().size() - 1))
+                buildResearchGuard(kw, keywords, news, 120, Math.max(1, getAvailableAnalysisSources().size() - 1), true)
         );
     }
 
@@ -382,7 +382,7 @@ public class FrontendService {
                         clamp((keywords.size() * 18) + (news.size() * 12), 15, 72),
                         "Độ tin cậy thấp"
                 ),
-                buildResearchGuard(kw, keywords, news, 120, Math.max(1, getAvailableAnalysisSources().size() - 1))
+                buildResearchGuard(kw, keywords, news, 120, Math.max(1, getAvailableAnalysisSources().size() - 1), false)
         );
     }
 
@@ -695,9 +695,21 @@ public class FrontendService {
             // fallback
         }
 
-        List<FrontendDtos.StatItem> dynamicStats = calculateSourceStats(creatorQueryId, request.source());
-        List<FrontendDtos.TrendPoint> dynamicTrendPoints = calculateSourceTrendPoints(creatorQueryId, request.source());
-        String dynamicInsight = response.marketInsight();
+        boolean isOfflineMode = "OFFLINE_DEMO".equals(analysis.snapshotId());
+
+        List<FrontendDtos.StatItem> dynamicStats = isOfflineMode 
+                ? List.of(
+                        new FrontendDtos.StatItem("N/A", "Tổng lượt xem"),
+                        new FrontendDtos.StatItem("N/A", "Số lượt đề cập"),
+                        new FrontendDtos.StatItem("N/A", "Tương tác trung bình")
+                )
+                : calculateSourceStats(creatorQueryId, request.source());
+        List<FrontendDtos.TrendPoint> dynamicTrendPoints = isOfflineMode
+                ? List.of(new FrontendDtos.TrendPoint(analysis.keyword(), 50, "N/A (Chế độ offline)"))
+                : calculateSourceTrendPoints(creatorQueryId, request.source());
+        String dynamicInsight = isOfflineMode 
+                ? String.format("Nhận định thị trường không khả dụng ở chế độ ngoại tuyến (Offline) đối với từ khóa \"%s\".", analysis.keyword())
+                : response.marketInsight();
         try {
             String viewsStr = dynamicStats.get(0).value();
             long sourceMentions = Long.parseLong(dynamicStats.get(1).value());
@@ -2027,7 +2039,8 @@ public class FrontendService {
                 relatedKeywords,
                 news,
                 dataQuality.freshnessMinutes(),
-                dataQuality.sourceDiversity()
+                dataQuality.sourceDiversity(),
+                isOfflineMode
         );
 
         return new FrontendDtos.AnalysisResponse(
@@ -2531,7 +2544,8 @@ public class FrontendService {
             List<FrontendDtos.KeywordMetric> metrics,
             List<String> news,
             int freshnessMinutes,
-            int sourceDiversity
+            int sourceDiversity,
+            boolean isOffline
     ) {
         int keywordCount = metrics == null ? 0 : metrics.size();
         long totalViews = metrics == null ? 0L : metrics.stream().mapToLong(FrontendDtos.KeywordMetric::totalViews).sum();
@@ -2553,7 +2567,12 @@ public class FrontendService {
         String status;
         String message;
         boolean deepInsightEnabled;
-        if (score >= 70) {
+        if (isOffline) {
+            status = "Sẵn sàng (Offline)";
+            message = "Hệ thống đang hoạt động ở chế độ ngoại tuyến (Offline). Tất cả các tính năng đều khả dụng bằng dữ liệu mẫu.";
+            deepInsightEnabled = true;
+            score = 100;
+        } else if (score >= 70) {
             status = "Sẵn sàng";
             message = "Từ khóa có ý định thị trường mạnh mẽ và đủ bằng chứng để phân tích đáng tin cậy.";
             deepInsightEnabled = true;

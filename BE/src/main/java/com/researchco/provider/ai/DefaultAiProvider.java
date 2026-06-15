@@ -54,6 +54,50 @@ public class DefaultAiProvider implements AiProvider {
             String source) {
         DeepInsightBlueprint blueprint = buildBlueprint(contextData, source);
 
+        boolean isOfflineMode = "OFFLINE_DEMO".equals(contextData.snapshotId());
+        if (isOfflineMode) {
+            return new FrontendDtos.DeepInsightResponse(
+                    blueprint.keyword(),
+                    blueprint.source(),
+                    String.format("Hệ thống đang hoạt động ở chế độ ngoại tuyến (Offline). Nhận định chi tiết cho từ khóa \"%s\" không khả dụng.", blueprint.keyword()),
+                    List.of("Nhóm cơ hội không khả dụng ở chế độ ngoại tuyến."),
+                    "Khuyến nghị chiến lược không khả dụng ở chế độ ngoại tuyến.",
+                    List.of(
+                            new FrontendDtos.StatItem("N/A", "Tổng lượt xem"),
+                            new FrontendDtos.StatItem("N/A", "Số lượt đề cập"),
+                            new FrontendDtos.StatItem("N/A", "Tương tác trung bình")
+                    ),
+                    List.of(
+                            new FrontendDtos.SignalItem("Tín hiệu nhu cầu khách hàng", "Không khả dụng (Chế độ offline)"),
+                            new FrontendDtos.SignalItem("Động lực thảo luận", "Không khả dụng (Chế độ offline)"),
+                            new FrontendDtos.SignalItem("Hệ quả cạnh tranh", "Không khả dụng (Chế độ offline)")
+                    ),
+                    List.of(new FrontendDtos.TrendPoint(blueprint.keyword(), 50, "N/A (Chế độ offline)")),
+                    new FrontendDtos.SentimentBlock(
+                            List.of(
+                                    new FrontendDtos.SentimentBar("Tích cực", 0, "var(--green)", "text-green"),
+                                    new FrontendDtos.SentimentBar("Trung lập", 100, "var(--gray-500)", ""),
+                                    new FrontendDtos.SentimentBar("Tiêu cực", 0, "var(--red)", "text-red")
+                            ),
+                            List.of(new FrontendDtos.TopicItem("Không khả dụng", "Offline"))
+                    ),
+                    List.of(
+                            new FrontendDtos.OpportunityCard("Tính năng hạn chế", "Cơ hội thị trường không khả dụng ở chế độ ngoại tuyến.", "mint")
+                    ),
+                    new FrontendDtos.StrategicRecommendation(
+                            "Khuyến nghị chiến lược",
+                            "Vui lòng kết nối API hoặc cấu hình API key để nhận được phân tích và khuyến nghị chiến lược chính xác từ AI.",
+                            List.of(
+                                    new FrontendDtos.StatItem("N/A", "Tổng lượt thích"),
+                                    new FrontendDtos.StatItem("N/A", "Tổng bình luận"),
+                                    new FrontendDtos.StatItem("N/A", "Chủ đề phụ tiềm năng")
+                            )
+                    ),
+                    blueprint.competitors(),
+                    blueprint.targetPersona()
+            );
+        }
+
         String activeProvider = systemSettingRepository.findById("ai_provider")
                 .map(SystemSettingEntity::getValue)
                 .map(String::toUpperCase)
