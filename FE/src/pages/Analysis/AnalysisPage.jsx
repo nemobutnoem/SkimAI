@@ -262,8 +262,32 @@ function buildOpportunityRead(data, overall, sourceRows) {
       strongest: null,
     }
   }
-  const strongest = [...keywords].sort((a, b) => (b.mentionCount || 0) - (a.mentionCount || 0))[0]
-  const bestSource = sourceRows.find((row) => row.count > 0)
+
+  const getKeywordScore = (k) => {
+    if (!k) return 0;
+    const viewsVal = Number(k.totalViews || 0);
+    const engagementVal = Number(k.avgEngagement || 0);
+    const mentionsVal = Number(k.mentionCount || 0);
+    
+    // 1. Views signal (log10 scale)
+    const viewsScore = viewsVal > 0 ? Math.min(25, Math.log10(viewsVal) * 5) : 0;
+    
+    // 2. Engagement signal
+    const engagementScore = Math.min(20, engagementVal * 100);
+    
+    // 3. Mentions count signal
+    const mentionScore = Math.min(15, mentionsVal * 3);
+    
+    // 4. Intent multiplier (2.0x for commercial/actionable intent)
+    const intentRegex = /(mua|bán|giá|review|so sánh|học|khóa học|tốt nhất|dịch vụ|phần mềm|tự động|hướng dẫn|tool|đánh giá|cách làm|thương hiệu|nhập khẩu|phân phối|chính hãng|uy tín|chất lượng|buy|price|best|vs|compare|how to|course|software|service|guide|comparison)/i;
+    const hasIntent = intentRegex.test(k.keyword);
+    const intentMultiplier = hasIntent ? 2.0 : 1.0;
+    
+    return (viewsScore + engagementScore + mentionScore) * intentMultiplier;
+  };
+
+  const strongest = [...keywords].sort((a, b) => getKeywordScore(b) - getKeywordScore(a))[0];
+  const bestSource = sourceRows.find((row) => row.count > 0);
   if (!strongest) {
     return {
       title: `Từ khóa có tín hiệu ${overall.interestLevel}, nhưng chưa thấy cụm cơ hội rõ.`,
@@ -275,24 +299,34 @@ function buildOpportunityRead(data, overall, sourceRows) {
       strongest: null,
     }
   }
-  const mentionScore = clamp((strongest.mentionCount || 0) * 10, 0, 35)
-  const engagementSignal = clamp(Math.round((strongest.avgEngagement || overall.avgEngagement) * 300), 0, 20)
-  const sourceSignal = clamp(overall.sourceCount * 6, 0, 20)
-  const marketSignal = clamp(Math.round(overall.marketScore * 0.25), 0, 25)
-  const rawScore = clamp(mentionScore + engagementSignal + sourceSignal + marketSignal, 0, 100)
-  const score = (strongest.mentionCount || 0) < 5 && overall.totalComments < 30
+
+  const keywordPotential = clamp(Math.round(getKeywordScore(strongest)), 0, 40);
+  const engagementSignal = clamp(Math.round((strongest.avgEngagement || overall.avgEngagement) * 200), 0, 15);
+  const sourceSignal = clamp(overall.sourceCount * 5, 0, 20);
+  const marketSignal = clamp(Math.round(overall.marketScore * 0.25), 0, 25);
+  const rawScore = clamp(keywordPotential + engagementSignal + sourceSignal + marketSignal, 0, 100);
+  
+  const score = (strongest.mentionCount || 0) < 2 && overall.totalComments < 15
     ? Math.min(rawScore, 48)
-    : rawScore
-  const band = score >= 70 ? 'mạnh' : score >= 40 ? 'vừa' : 'yếu'
+    : rawScore;
+  const band = score >= 70 ? 'mạnh' : score >= 40 ? 'vừa' : 'yếu';
+
+  const intentRegex = /(mua|bán|giá|review|so sánh|học|khóa học|tốt nhất|dịch vụ|phần mềm|tự động|hướng dẫn|tool|đánh giá|cách làm|thương hiệu|nhập khẩu|phân phối|chính hãng|uy tín|chất lượng|buy|price|best|vs|compare|how to|course|software|service|guide|comparison)/i;
+  const hasIntent = intentRegex.test(strongest.keyword);
+  const firstReason = hasIntent
+    ? `"${strongest.keyword}" có cụm từ ý định (intent) nổi bật thu hút ${formatNumber(strongest.totalViews)} lượt xem.`
+    : `"${strongest.keyword}" ghi nhận mức độ quan tâm cao nhất (${formatNumber(strongest.totalViews)} views, ${strongest.mentionCount || 0} lượt nhắc).`;
+
   const why = [
-    `"${strongest.keyword}" là cụm lặp lại nhiều nhất (${strongest.mentionCount || 0} lần).`,
+    firstReason,
     `${bestSource ? `${bestSource.source} là nguồn có tín hiệu nổi bật nhất (${bestSource.count}).` : 'Chưa có nguồn nổi bật rõ ràng.'}`,
     `Market score hiện tại là ${overall.marketScore}/100, mức quan tâm ${overall.interestLevel}.`,
-  ]
+  ];
+  
   const risk = score < 50
     ? 'Tín hiệu cơ hội còn sớm; chưa nên xem đây là nhu cầu thị trường lớn.'
-    : 'Cơ hội có tín hiệu đáng chú ý nhưng vẫn cần kiểm chứng bằng dữ liệu theo intent mua/so sánh.'
-  const nextMove = `Kiểm chứng thêm các truy vấn liên quan đến "${strongest.keyword}" như giá, review, so sánh, mua ở đâu và đối thủ trực tiếp.`
+    : 'Cơ hội có tín hiệu đáng chú ý nhưng vẫn cần kiểm chứng bằng dữ liệu theo intent mua/so sánh.';
+  const nextMove = `Kiểm chứng thêm các truy vấn liên quan đến "${strongest.keyword}" như giá, review, so sánh, mua ở đâu và đối thủ trực tiếp.`;
   return {
     title: `Cơ hội chính nằm ở cụm "${strongest.keyword}".`,
     score,
