@@ -1723,8 +1723,14 @@ public class FrontendService {
             return List.of();
         }
 
-        String timeRange = aiProvider.inferTimeRange(keyword);
-        log.debug("AI inferred timeRange=\"{}\" for keyword=\"{}\"", timeRange, keyword);
+        String timeRange;
+        if (SecurityUtils.currentUserId() == null) {
+            timeRange = "12m";
+            log.debug("Anonymous search: bypassed AI timeRange inference, using default: {}", timeRange);
+        } else {
+            timeRange = aiProvider.inferTimeRange(keyword);
+            log.debug("AI inferred timeRange=\"{}\" for keyword=\"{}\"", timeRange, keyword);
+        }
 
         List<NormalizedSourceItem> results = providerOrchestrator.aggregate(
                 activeCodes,
@@ -2078,6 +2084,11 @@ public class FrontendService {
         String clean = keyword.trim().toLowerCase(Locale.ROOT);
         if (keywordCache.containsKey(clean)) {
             return keywordCache.get(clean);
+        }
+
+        if (SecurityUtils.currentUserId() == null) {
+            keywordCache.put(clean, clean);
+            return clean;
         }
 
         // Hardcoded common rules for speed

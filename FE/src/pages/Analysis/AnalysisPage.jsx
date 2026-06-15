@@ -328,17 +328,67 @@ function CopyButton({ getText, label }) {
   )
 }
 
-function InsightSection({ title, badge, children, getCopyText }) {
+function InsightSection({ title, badge, children, getCopyText, isLocked }) {
+  const navigate = useNavigate()
   return (
-    <section className="card prompt-insight-card">
+    <section className="card prompt-insight-card" style={{ position: 'relative' }}>
       <div className="prompt-insight-head">
         <div>
           <span className="prompt-insight-badge">{badge}</span>
           <h3>{title}</h3>
         </div>
-        {getCopyText && <CopyButton getText={getCopyText} label={title} />}
+        {getCopyText && !isLocked && <CopyButton getText={getCopyText} label={title} />}
       </div>
-      {children}
+      <div style={isLocked ? { filter: 'blur(6px)', pointerEvents: 'none', select: 'none', userSelect: 'none' } : {}}>
+        {children}
+      </div>
+      {isLocked && (
+        <div style={{
+          position: 'absolute',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          backgroundColor: 'rgba(255, 255, 255, 0.45)',
+          backdropFilter: 'blur(3px)',
+          zIndex: 10,
+          padding: '24px',
+          textAlign: 'center',
+          borderRadius: '12px'
+        }}>
+          <div style={{
+            backgroundColor: 'var(--card-bg, #ffffff)',
+            padding: '24px 32px',
+            borderRadius: '16px',
+            boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1)',
+            border: '1px solid var(--border-color, #e5e7eb)',
+            maxWidth: '380px',
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            gap: '12px'
+          }}>
+            <span style={{ fontSize: '28px' }}>🔒</span>
+            <h4 style={{ margin: 0, fontSize: '16px', fontWeight: 700, color: 'var(--text-primary)' }}>
+              Mở khóa phân tích sâu AI
+            </h4>
+            <p style={{ margin: 0, fontSize: '13px', color: 'var(--text-secondary)', lineHeight: 1.5 }}>
+              Đăng nhập tài khoản (Miễn phí) để xem đánh giá chi tiết thị trường, tiềm năng cơ hội và gợi ý từ AI.
+            </p>
+            <Button
+              onClick={() => navigate(ROUTES.LOGIN + `?redirect=${encodeURIComponent(window.location.pathname + window.location.search)}`)}
+              variant="primary"
+              size="sm"
+              style={{ marginTop: '8px', width: '100%', fontWeight: 600 }}
+            >
+              Đăng nhập ngay
+            </Button>
+          </div>
+        </div>
+      )}
     </section>
   )
 }
@@ -917,7 +967,7 @@ ${evidenceItems.map(ev => `- [${ev.source}] ${ev.title}\n  Link: ${ev.url}`).joi
         })()}
       </InsightSection>
 
-      <InsightSection title="Đánh giá tổng thể" badge="02" getCopyText={() => `Trạng thái: ${overall.marketState}\nĐiểm: ${overall.marketScore}/100\nMức quan tâm: ${overall.interestLevel}\nĐộ phủ: ${overall.coverage}%\n\nBằng chứng:\n${overall.evidenceReasons.join('\n')}`}>
+      <InsightSection title="Đánh giá tổng thể" badge="02" isLocked={!isAuthenticated} getCopyText={() => `Trạng thái: ${overall.marketState}\nĐiểm: ${overall.marketScore}/100\nMức quan tâm: ${overall.interestLevel}\nĐộ phủ: ${overall.coverage}%\n\nBằng chứng:\n${overall.evidenceReasons.join('\n')}`}>
         <div className="decision-grid">
           <div className="decision-score-card">
             <span className="decision-label">Điểm thị trường</span>
@@ -957,7 +1007,7 @@ ${evidenceItems.map(ev => `- [${ev.source}] ${ev.title}\n  Link: ${ev.url}`).joi
         </div>
       </InsightSection>
 
-      <InsightSection title="Tiềm năng thị trường" badge="03" getCopyText={() => `Điểm cơ hội: ${opportunityRead.score}/100 (${opportunityRead.band})\n${opportunityRead.title}\n${opportunityRead.risk}\n\nHành động đề xuất: ${opportunityRead.nextMove}`}>
+      <InsightSection title="Tiềm năng thị trường" badge="03" isLocked={!isAuthenticated} getCopyText={() => `Điểm cơ hội: ${opportunityRead.score}/100 (${opportunityRead.band})\n${opportunityRead.title}\n${opportunityRead.risk}\n\nHành động đề xuất: ${opportunityRead.nextMove}`}>
         <div className="decision-grid">
           <div className="decision-score-card opportunity-score">
             <span className="decision-label">Điểm cơ hội</span>
@@ -1011,7 +1061,7 @@ ${evidenceItems.map(ev => `- [${ev.source}] ${ev.title}\n  Link: ${ev.url}`).joi
         ) : null}
       </InsightSection>
 
-      <InsightSection title="Kênh tiếp cận đề xuất" badge="04" getCopyText={() => channelRecommendation}>
+      <InsightSection title="Kênh tiếp cận đề xuất" badge="04" isLocked={!isAuthenticated} getCopyText={() => channelRecommendation}>
         <p className="prompt-main-text">{channelRecommendation}</p>
         <div className="tag-wrap">
           {(data?.suggestedActions ?? []).slice(0, 4).map((action) => (
