@@ -288,7 +288,13 @@ function buildOpportunityRead(data, overall, sourceRows) {
     
     let multiplier = 1.0;
     if (hasIntent) multiplier = 2.0;
-    if (isGeo) multiplier = 0.1;
+    
+    // 6. Generic/noise word penalty (0.01x to prevent helper/conjunction phrases like "đuoc theo" from being chosen)
+    const noiseRegex = /^(đuoc|duoc|được|đươc|đuợc|theo|bởi|boi|như|nhu|cho|với|voi|này|nay|của|cua|trên|tren|dưới|duoi|trong|ngoài|ngoai|cùng|cung|cũng|để|de|đến|den|đi|di|lại|lai|về|ve|thì|thi|cách|cach|ngày|ngay|tuần|tuan|tháng|thang|năm|nam|người|nguoi|nhà|nha|nước|nuoc|việt|viet|nam|tin|tức|mới|moi|và|va|là|la|các|cac|những|nhung|một|mot|hai|ba|bốn|bon|năm|nam|sáu|sau|bảy|bay|tám|tam|chín|chin|mười|muoi|trước|truoc|sau|sau|khi|khi|chưa|chua|đã|da|rồi|roi|qua|qua|quá|qua|nhiều|nhieu|ít|it|hơn|hon|nhất|nhat|rất|rat|cực|cuc|đều|deu|cứ|cu|ra|vào|vao|lên|len|xuống|xuong|đây|day|kia|do|đó|nọ|no|thế|the|nào|nao|sao|gì|gi|đâu|dau|ai|chi|chỉ|cơ|co|hội|hoi|bằng|bang|chứng|chung)$/i;
+    const words = k.keyword.toLowerCase().split(/\s+/);
+    const isAllNoise = words.every(w => noiseRegex.test(w) || w.length < 3);
+
+    if (isGeo || isAllNoise) multiplier = 0.01;
     
     return (viewsScore + engagementScore + mentionScore) * multiplier;
   };

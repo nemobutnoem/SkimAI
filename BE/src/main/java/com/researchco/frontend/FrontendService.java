@@ -846,7 +846,8 @@ public class FrontendService {
             "mot", "một", "hai", "ba", "bon", "nam", "năm", "sau", "sáu", "bay", "bảy", "tam", "tám", "chin", "chín", "muoi", "mười",
             "nay", "này", "kia", "do", "đó", "tren", "trên", "duoi", "dưới", "trong", "ngoai", "ngoài",
             "va", "và", "la", "là", "cua", "của", "cho", "voi", "với", "cac", "các", "nhung", "những", "cung", "cũng",
-            "de", "để", "ra", "vào", "den", "đến", "di", "đi", "lai", "lại", "ve", "về", "thi", "thì", "dan", "danh", "tinh", "long", "thanh", "thng"
+            "de", "để", "ra", "vào", "den", "đến", "di", "đi", "lai", "lại", "ve", "về", "thi", "thì", "dan", "danh", "tinh", "long", "thanh", "thng",
+            "theo", "đuoc", "đươc", "đuợc", "bởi", "boi", "ngày", "ngay", "tuần", "tuan", "tháng", "thang", "người", "nguoi", "nhà", "nha"
         ));
 
         for (SourceItemEntity item : filtered) {
@@ -1848,7 +1849,8 @@ public class FrontendService {
             "mot", "một", "hai", "ba", "bon", "nam", "năm", "sau", "sáu", "bay", "bảy", "tam", "tám", "chin", "chín", "muoi", "mười",
             "nay", "này", "kia", "do", "đó", "tren", "trên", "duoi", "dưới", "trong", "ngoai", "ngoài",
             "va", "và", "la", "là", "cua", "của", "cho", "voi", "với", "cac", "các", "nhung", "những", "cung", "cũng",
-            "de", "để", "ra", "vào", "den", "đến", "di", "đi", "lai", "lại", "ve", "về", "thi", "thì", "dan", "danh", "tinh", "long", "thanh", "thng"
+            "de", "để", "ra", "vào", "den", "đến", "di", "đi", "lai", "lại", "ve", "về", "thi", "thì", "dan", "danh", "tinh", "long", "thanh", "thng",
+            "theo", "đuoc", "đươc", "đuợc", "bởi", "boi", "ngày", "ngay", "tuần", "tuan", "tháng", "thang", "người", "nguoi", "nhà", "nha"
         ));
         for (NormalizedSourceItem item : items) {
             long itemViews = 0L;
