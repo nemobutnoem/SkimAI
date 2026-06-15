@@ -135,8 +135,8 @@ const realApi = {
         const readyState = eventSource.readyState
         if (readyState === EventSource.CLOSED) {
           eventSource.close()
+          onError?.({ message: 'Stream connection error', readyState })
         }
-        onError?.({ message: 'Stream connection error', readyState })
       }
       
       return eventSource
