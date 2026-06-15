@@ -202,6 +202,7 @@ public class YoutubeApiProvider implements SearchProvider {
 
             Map<String, Object> rawPayload = new HashMap<>();
             rawPayload.put("provider", providerCode());
+            rawPayload.put("isFallback", true);
             rawPayload.put("videoId", videoIds[i]);
             rawPayload.put("channelId", channelIds[i]);
             rawPayload.put("channelTitle", channels[i]);

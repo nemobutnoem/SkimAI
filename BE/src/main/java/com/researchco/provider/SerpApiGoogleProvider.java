@@ -167,6 +167,7 @@ public class SerpApiGoogleProvider implements SearchProvider {
 
             Map<String, Object> rawPayload = new LinkedHashMap<>();
             rawPayload.put("provider", providerCode());
+            rawPayload.put("isFallback", true);
             rawPayload.put("keyword", keyword);
             rawPayload.put("position", rank);
             rawPayload.put("displayedLink", "https://www." + domains[i] + "/search?q=" + keyword);

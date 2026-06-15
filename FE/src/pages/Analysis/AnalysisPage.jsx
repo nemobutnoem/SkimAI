@@ -154,6 +154,7 @@ function buildSourceTrendRows(data, evidenceItems) {
 }
 
 function buildOverallRead(data, sourceRows, timelinePoints) {
+  const isOffline = data?.snapshotId === 'OFFLINE_DEMO'
   const keywords = data?.relatedKeywords ?? []
   const totalMentions = keywords.reduce((sum, item) => sum + (item.mentionCount || 0), 0)
   const totalViews = keywords.reduce((sum, item) => sum + (item.totalViews || 0), 0)
@@ -213,13 +214,20 @@ function buildOverallRead(data, sourceRows, timelinePoints) {
   const confidenceScore = clamp(Math.round((evidenceCoverage * 0.45) + (diversityScore * 1.4) + (keywords.length * 6) + (totalComments > 0 ? 8 : 0)), 0, 100)
   const confidenceBand = confidenceScore >= 75 ? 'cao' : confidenceScore >= 45 ? 'vừa' : 'thấp'
   const hasData = keywords.length || sourceRows.some((row) => row.count > 0)
-  const evidenceReasons = [
+  const evidenceReasons = isOffline ? [
+    'Số lượt xem không khả dụng (Chế độ offline)',
+    'Số bình luận không khả dụng (Chế độ offline)',
+    'Số lượng thảo luận không khả dụng (Chế độ offline)',
+    `${sourceCount} nguồn có bằng chứng trực tiếp (ngoại tuyến)`,
+  ] : [
     `${formatNumber(totalViews)} views quan sát được`,
     `${formatNumber(totalComments)} bình luận từ dữ liệu hiện có`,
     `${formatNumber(totalMentions)} tín hiệu keyword`,
     `${sourceCount} nguồn có bằng chứng trực tiếp`,
   ]
-  const missingData = [
+  const missingData = isOffline ? [
+    'Hệ thống đang hoạt động ở chế độ offline do không kết nối được với API thực tế.'
+  ] : [
     totalComments < 30 ? 'Thảo luận còn mỏng nên khó kết luận nhu cầu mua thật.' : null,
     sourceCount < 4 ? 'Độ đa dạng nguồn còn thấp, dễ bị lệch bởi một vài website.' : null,
     evidenceCoverage < 60 ? 'Evidence coverage chưa đủ mạnh để chấm confidence cao.' : null,
@@ -227,6 +235,7 @@ function buildOverallRead(data, sourceRows, timelinePoints) {
   ].filter(Boolean)
 
   return {
+    isOffline,
     hasData,
     marketState,
     interestLevel,
@@ -251,6 +260,17 @@ function buildOverallRead(data, sourceRows, timelinePoints) {
 
 function buildOpportunityRead(data, overall, sourceRows) {
   const keywords = data?.relatedKeywords ?? []
+  if (overall.isOffline) {
+    return {
+      title: 'Không khả dụng (Chế độ offline)',
+      score: 0,
+      band: 'không khả dụng',
+      why: ['Dữ liệu cơ hội từ khóa không khả dụng ở chế độ ngoại tuyến.'],
+      risk: 'Không thể xác định cơ hội thị trường thực tế khi không có kết nối API.',
+      nextMove: 'Vui lòng kiểm tra kết nối mạng hoặc cấu hình API key để nhận đề xuất.',
+      strongest: null,
+    }
+  }
   if (!overall.hasData) {
     return {
       title: noDataFor('tiềm năng thị trường'),
@@ -817,12 +837,12 @@ export function AnalysisPage() {
       </tr>
       <tr>
         <td><strong>Mức Độ Quan Tâm</strong></td>
-        <td><strong>${overall.interestLevel.toUpperCase()}</strong></td>
+        <td><strong>${overall.isOffline ? 'N/A' : overall.interestLevel.toUpperCase()}</strong></td>
         <td>Mức độ thảo luận và tìm kiếm trên các kênh truyền thông.</td>
       </tr>
       <tr>
         <td><strong>Điểm Thị Trường (Market Score)</strong></td>
-        <td><strong>${overall.marketScore}/100</strong></td>
+        <td><strong>${overall.isOffline ? 'N/A' : `${overall.marketScore}/100`}</strong></td>
         <td>Điểm số tổng hợp năng lực thị trường từ tương tác và lượt xem.</td>
       </tr>
       <tr>
@@ -832,14 +852,14 @@ export function AnalysisPage() {
       </tr>
       <tr>
         <td><strong>Tương Tác Trung Bình (Engagement)</strong></td>
-        <td><strong>${pct(overall.avgEngagement)}</strong></td>
+        <td><strong>${overall.isOffline ? 'N/A' : pct(overall.avgEngagement)}</strong></td>
         <td>Tỷ lệ tương tác bình quân (Likes, Comments / Views).</td>
       </tr>
     </tbody>
   </table>
 
   <div class="verdict-box">
-    <p>Thị trường cho từ khóa "${keyword}" đang ở trạng thái <strong>${overall.marketState}</strong>. Độ tin cậy dữ liệu đạt mức <strong>${overall.confidenceBand} (${overall.confidenceScore}/100)</strong>, dựa trên tỷ lệ bao phủ <strong>${Number(overall.coverage)}%</strong> với <strong>${overall.sourceCount}</strong> nguồn thông tin chính thức và <strong>${formatNumber(overall.totalComments)}</strong> lượt bình luận được ghi nhận và phân tích.</p>
+    <p>Thị trường cho từ khóa "${keyword}" đang ở trạng thái <strong>${overall.marketState}</strong>. ${overall.isOffline ? 'Số liệu lượt xem và bình luận không khả dụng do hệ thống đang hoạt động ngoại tuyến.' : `Độ tin cậy dữ liệu đạt mức <strong>${overall.confidenceBand} (${overall.confidenceScore}/100)</strong>, dựa trên tỷ lệ bao phủ <strong>${Number(overall.coverage)}%</strong> với <strong>${overall.sourceCount}</strong> nguồn thông tin chính thức và <strong>${formatNumber(overall.totalComments)}</strong> lượt bình luận được ghi nhận và phân tích.`}</p>
   </div>
 
   <h2>2. Tổng Quan Xu Hướng Theo Kênh Nguồn</h2>
@@ -866,8 +886,8 @@ export function AnalysisPage() {
       ${(data?.relatedKeywords ?? []).slice(0, 10).map(k => `
         <tr>
           <td><strong>${k.keyword}</strong></td>
-          <td>${k.mentionCount || 0}</td>
-          <td>${formatNumber(k.totalViews)}</td>
+          <td>${overall.isOffline ? 'N/A' : (k.mentionCount || 0)}</td>
+          <td>${overall.isOffline ? 'N/A' : formatNumber(k.totalViews)}</td>
           <td>${k.sentimentScore || 0}/100</td>
         </tr>
       `).join('')}
@@ -1123,16 +1143,19 @@ export function AnalysisPage() {
             <span className="tooltip-container">
               <span className="tooltip-icon">!</span>
               <span className="tooltip-text">
-                {overall.hasData
-                  ? `Xu hướng các thảo luận: ${overall.upCount} nguồn tăng, ${overall.downCount} nguồn giảm, ${overall.stableCount} nguồn ổn định. ${overall.stateReason}`
-                  : "Được tính bằng cách so sánh tổng số nguồn tin có xu hướng Tăng và Giảm. Nếu số nguồn Tăng nhiều hơn Giảm, thị trường được coi là Tăng trưởng."
+                {overall.isOffline
+                  ? "Trạng thái thị trường dựa trên nguồn lưu trữ ngoại tuyến."
+                  : (overall.hasData
+                    ? `Xu hướng các thảo luận: ${overall.upCount} nguồn tăng, ${overall.downCount} nguồn giảm, ${overall.stableCount} nguồn ổn định. ${overall.stateReason}`
+                    : "Được tính bằng cách so sánh tổng số nguồn tin có xu hướng Tăng và Giảm. Nếu số nguồn Tăng nhiều hơn Giảm, thị trường được coi là Tăng trưởng."
+                  )
                 }
               </span>
             </span>
           </span>
           <strong style={{
             textTransform: 'uppercase',
-            color: overall.hasData 
+            color: (overall.hasData && !overall.isOffline)
               ? (overall.marketState?.toLowerCase() === 'tăng trưởng' ? 'var(--green)' : overall.marketState?.toLowerCase() === 'giảm sút' ? 'var(--red)' : '#f59e0b') 
               : 'var(--text-muted)'
           }}>
@@ -1145,20 +1168,23 @@ export function AnalysisPage() {
             <span className="tooltip-container">
               <span className="tooltip-icon">!</span>
               <span className="tooltip-text">
-                {overall.hasData
-                  ? `Market Score đạt ${overall.marketScore}/100. Đánh giá từ ${formatNumber(overall.totalViews)} views, ${formatNumber(overall.totalComments)} bình luận, và ${overall.totalMentions} lượt nhắc từ khóa.`
-                  : "Dựa trên điểm số Market Score (0-100), tổng hợp từ lượt xem, bình luận, tỷ lệ tương tác và độ đa dạng nguồn tin của từ khóa liên quan."
+                {overall.isOffline
+                  ? "Số liệu không khả dụng do hệ thống đang hoạt động ở chế độ ngoại tuyến (Offline)."
+                  : (overall.hasData
+                    ? `Market Score đạt ${overall.marketScore}/100. Đánh giá từ ${formatNumber(overall.totalViews)} views, ${formatNumber(overall.totalComments)} bình luận, và ${overall.totalMentions} lượt nhắc từ khóa.`
+                    : "Dựa trên điểm số Market Score (0-100), tổng hợp từ lượt xem, bình luận, tỷ lệ tương tác và độ đa dạng nguồn tin của từ khóa liên quan."
+                  )
                 }
               </span>
             </span>
           </span>
           <strong style={{
             textTransform: 'uppercase',
-            color: overall.hasData 
+            color: (overall.hasData && !overall.isOffline)
               ? (overall.interestLevel?.toLowerCase() === 'cao' ? 'var(--green)' : overall.interestLevel?.toLowerCase() === 'thấp' ? 'var(--red)' : '#f59e0b') 
               : 'var(--text-muted)'
           }}>
-            {overall.hasData ? overall.interestLevel : 'chưa đủ dữ liệu'}
+            {overall.isOffline ? 'N/A' : (overall.hasData ? overall.interestLevel : 'chưa đủ dữ liệu')}
           </strong>
         </section>
         <section className="card prompt-summary-card">
@@ -1167,9 +1193,12 @@ export function AnalysisPage() {
             <span className="tooltip-container">
               <span className="tooltip-icon">!</span>
               <span className="tooltip-text">
-                {overall.hasData
-                  ? `Độ phủ dữ liệu đạt ${overall.coverage}%. Thu thập trực tiếp từ ${overall.sourceCount} kênh nguồn và ${overall.totalKeywords} cụm từ khóa.`
-                  : "Tỷ lệ bao phủ thông tin (Evidence Coverage) đo lường mức độ phong phú và đầy đủ của dữ liệu thu thập được từ các nguồn so với từ khóa tìm kiếm."
+                {overall.isOffline
+                  ? `Độ phủ dữ liệu đạt ${overall.coverage}%. Thu thập trực tiếp từ ${overall.sourceCount} kênh nguồn ngoại tuyến.`
+                  : (overall.hasData
+                    ? `Độ phủ dữ liệu đạt ${overall.coverage}%. Thu thập trực tiếp từ ${overall.sourceCount} kênh nguồn và ${overall.totalKeywords} cụm từ khóa.`
+                    : "Tỷ lệ bao phủ thông tin (Evidence Coverage) đo lường mức độ phong phú và đầy đủ của dữ liệu thu thập được từ các nguồn so với từ khóa tìm kiếm."
+                  )
                 }
               </span>
             </span>
@@ -1182,14 +1211,21 @@ export function AnalysisPage() {
             <span className="tooltip-container">
               <span className="tooltip-icon">!</span>
               <span className="tooltip-text">
-                {overall.hasData
-                  ? `Tương tác bình quân đạt ${pct(overall.avgEngagement)}. Tính dựa trên các chỉ số tương tác (like, comment, share / views) từ ${overall.totalKeywords} cụm từ khóa.`
-                  : "Tỷ lệ tương tác trung bình (Likes + Comments / Views) của 6 cụm từ khóa liên quan nổi bật nhất thu thập được từ các bài đăng."
+                {overall.isOffline
+                  ? "Số liệu không khả dụng do hệ thống đang hoạt động ở chế độ ngoại tuyến (Offline)."
+                  : (overall.hasData
+                    ? `Tương tác bình quân đạt ${pct(overall.avgEngagement)}. Tính dựa trên các chỉ số tương tác (like, comment, share / views) từ ${overall.totalKeywords} cụm từ khóa.`
+                    : "Tỷ lệ tương tác trung bình (Likes + Comments / Views) của 6 cụm từ khóa liên quan nổi bật nhất thu thập được từ các bài đăng."
+                  )
                 }
               </span>
             </span>
           </span>
-          <strong><AnimatedNumber value={overall.avgEngagement * 100} format={(v) => v.toFixed(2)} />%</strong>
+          {overall.isOffline ? (
+            <strong>N/A</strong>
+          ) : (
+            <strong><AnimatedNumber value={overall.avgEngagement * 100} format={(v) => v.toFixed(2)} />%</strong>
+          )}
         </section>
       </div>
 
@@ -1217,19 +1253,21 @@ export function AnalysisPage() {
         <div className="decision-grid">
           <div className="decision-score-card">
             <span className="decision-label">Điểm thị trường</span>
-            <strong>{overall.hasData ? <><AnimatedNumber value={overall.marketScore} />/100</> : 'N/A'}</strong>
+            <strong>{overall.isOffline ? 'N/A' : (overall.hasData ? <><AnimatedNumber value={overall.marketScore} />/100</> : 'N/A')}</strong>
             <div className="score-track">
-              <div className="score-fill" style={{ width: `${overall.hasData ? overall.marketScore : 0}%` }} />
+              <div className="score-fill" style={{ width: `${(overall.hasData && !overall.isOffline) ? overall.marketScore : 0}%` }} />
             </div>
-            <p>{overall.hasData ? `Mức quan tâm: ${overall.interestLevel}` : noDataFor('mức độ quan tâm hiện tại')}</p>
+            <p>{overall.isOffline ? 'Không khả dụng (Chế độ offline)' : (overall.hasData ? `Mức quan tâm: ${overall.interestLevel}` : noDataFor('mức độ quan tâm hiện tại'))}</p>
           </div>
           <div className="decision-verdict">
             <span className="decision-label">Đánh giá chung</span>
-            <h4>{overall.hasData ? `Thị trường đang ${overall.marketState}` : noDataFor('đánh giá tổng thể')}</h4>
+            <h4>{overall.isOffline ? 'Không khả dụng (Chế độ offline)' : (overall.hasData ? `Thị trường đang ${overall.marketState}` : noDataFor('đánh giá tổng thể'))}</h4>
             <p>
-              {overall.hasData
-                ? `Độ tin cậy ở mức ${overall.confidenceBand} (${overall.confidenceScore}/100), dựa trên độ phủ ${Number(overall.coverage)}%, ${overall.sourceCount} nguồn và ${formatNumber(overall.totalComments)} bình luận.`
-                : noDataFor('độ tin cậy')}
+              {overall.isOffline
+                ? 'Dữ liệu tương tác và lượt xem không khả dụng ở chế độ ngoại tuyến.'
+                : (overall.hasData
+                  ? `Độ tin cậy ở mức ${overall.confidenceBand} (${overall.confidenceScore}/100), dựa trên độ phủ ${Number(overall.coverage)}%, ${overall.sourceCount} nguồn và ${formatNumber(overall.totalComments)} bình luận.`
+                  : noDataFor('độ tin cậy'))}
             </p>
           </div>
         </div>
@@ -1253,15 +1291,15 @@ export function AnalysisPage() {
         </div>
       </InsightSection>
 
-      <InsightSection title="Tiềm năng thị trường" badge="03" isLocked={!isAuthenticated} getCopyText={() => `Điểm cơ hội: ${opportunityRead.score}/100 (${opportunityRead.band})\n${opportunityRead.title}\n${opportunityRead.risk}\n\nHành động đề xuất: ${opportunityRead.nextMove}`}>
+      <InsightSection title="Tiềm năng thị trường" badge="03" isLocked={!isAuthenticated} getCopyText={() => overall.isOffline ? 'Dữ liệu không khả dụng ở chế độ offline.' : `Điểm cơ hội: ${opportunityRead.score}/100 (${opportunityRead.band})\n${opportunityRead.title}\n${opportunityRead.risk}\n\nHành động đề xuất: ${opportunityRead.nextMove}`}>
         <div className="decision-grid">
           <div className="decision-score-card opportunity-score">
             <span className="decision-label">Điểm cơ hội</span>
-            <strong>{opportunityRead.score}/100</strong>
+            <strong>{overall.isOffline ? 'N/A' : `${opportunityRead.score}/100`}</strong>
             <div className="score-track">
-              <div className="score-fill" style={{ width: `${opportunityRead.score}%` }} />
+              <div className="score-fill" style={{ width: `${overall.isOffline ? 0 : opportunityRead.score}%` }} />
             </div>
-            <p>Độ mạnh tín hiệu: {opportunityRead.band}</p>
+            <p>Độ mạnh tín hiệu: {overall.isOffline ? 'không khả dụng' : opportunityRead.band}</p>
           </div>
           <div className="decision-verdict">
             <span className="decision-label">Cơ hội tốt nhất</span>
@@ -1283,7 +1321,7 @@ export function AnalysisPage() {
             <p className="prompt-main-text">{opportunityRead.nextMove}</p>
           </div>
         </div>
-        {topKeywords.length ? (
+        {topKeywords.length && !overall.isOffline ? (
           <div className="metric-bar-wrap" style={{ marginTop: 20, paddingTop: 16, borderTop: '1px solid var(--border-color)' }}>
             <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 4 }}>
               Từ khóa nổi bật

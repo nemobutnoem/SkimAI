@@ -327,7 +327,7 @@ public class FrontendService {
         return new FrontendDtos.AnalysisResponse(
                 kw,
                 query.getId().toString(),
-                null,
+                "OFFLINE_DEMO",
                 getAvailableAnalysisSources(),
                 fallbackInsights,
                 keywords,
@@ -398,6 +398,13 @@ public class FrontendService {
     @Transactional
     public void saveSnapshot(SearchQueryEntity query, List<NormalizedSourceItem> items, List<FrontendDtos.KeywordMetric> relatedKeywords) {
         if (query == null || query.getId() == null) {
+            return;
+        }
+        boolean isOfflineMode = items.stream().anyMatch(item -> 
+                item.rawPayload() instanceof Map && Boolean.TRUE.equals(((Map<?,?>)item.rawPayload()).get("isFallback"))
+        );
+        if (isOfflineMode) {
+            log.info("Skipping saveSnapshot because we are in offline fallback mode for keyword: {}", query.getKeyword());
             return;
         }
         try {
@@ -1177,6 +1184,10 @@ public class FrontendService {
             ));
         }
 
+        boolean isOfflineMode = items.stream().anyMatch(item -> 
+                item.rawPayload() instanceof Map && Boolean.TRUE.equals(((Map<?,?>)item.rawPayload()).get("isFallback"))
+        );
+
         return items.stream()
                 .limit(8)
                 .map(item -> {
@@ -1188,10 +1199,13 @@ public class FrontendService {
                         likes = toLong(payload.get("likeCount"));
                         comments = toLong(payload.get("commentCount"));
                     }
+                    String metricText = isOfflineMode 
+                            ? "Số liệu không khả dụng (Chế độ offline)"
+                            : String.format("Lượt xem %s | Lượt thích %s | Bình luận %s", formatCompact(views), formatCompact(likes), formatCompact(comments));
                     return new FrontendDtos.EvidenceItem(
                             item.sourceName() == null || item.sourceName().isBlank() ? "Nguồn nghiên cứu" : item.sourceName(),
                             firstMeaningfulText(item.title(), "Nguồn không có tiêu đề"),
-                            String.format("Lượt xem %s | Lượt thích %s | Bình luận %s", formatCompact(views), formatCompact(likes), formatCompact(comments)),
+                            metricText,
                             cleanSnippet(item.snippet(), item.title()),
                             extractEvidenceUrl(item),
                             item.sentimentLabel() != null ? item.sentimentLabel() : "NEUTRAL",
@@ -1748,6 +1762,10 @@ public class FrontendService {
     private FrontendDtos.AnalysisResponse buildLiveAnalysis(SearchQueryEntity trackedQuery, String keyword, List<NormalizedSourceItem> items) {
         String kw = keyword == null ? "" : keyword.trim();
 
+        boolean isOfflineMode = items.stream().anyMatch(item -> 
+                item.rawPayload() instanceof Map && Boolean.TRUE.equals(((Map<?,?>)item.rawPayload()).get("isFallback"))
+        );
+
         // Aggregate total metrics across all items
         long totalViews = 0L;
         long totalLikes = 0L;
@@ -1778,37 +1796,43 @@ public class FrontendService {
         String engagementPct = String.format("%.2f", avgEngagement * 100);
 
         // 1 — Trend Insight
-        String trendText = String.format(
-                "Trong số %d video được phân tích, \"%s\" đã tạo ra tổng cộng %s lượt xem với tỷ lệ tương tác trung bình là %s%%. %s",
-                items.size(), kw, formatCompact(totalViews), engagementPct,
-                totalViews > 100000
-                        ? "Điều này cho thấy sự quan tâm mạnh mẽ và ngày càng tăng từ người tiêu dùng."
-                        : "Chủ đề này đang mới nổi — tiếp cận sớm có thể nắm bắt nhu cầu đang gia tăng."
-        );
+        String trendText = isOfflineMode 
+                ? String.format("Hệ thống đang hoạt động ở chế độ ngoại tuyến (Offline) do không kết nối được API. Không thể truy xuất số liệu tương tác cho từ khóa \"%s\" tại thời điểm này.", kw)
+                : String.format(
+                        "Trong số %d video được phân tích, \"%s\" đã tạo ra tổng cộng %s lượt xem với tỷ lệ tương tác trung bình là %s%%. %s",
+                        items.size(), kw, formatCompact(totalViews), engagementPct,
+                        totalViews > 100000
+                                ? "Điều này cho thấy sự quan tâm mạnh mẽ và ngày càng tăng từ người tiêu dùng."
+                                : "Chủ đề này đang mới nổi — tiếp cận sớm có thể nắm bắt nhu cầu đang gia tăng."
+                );
 
         // 2 — Media Signal
         String topChannels = channels.stream().limit(3).collect(Collectors.joining(", "));
-        String mediaText = String.format(
-                "Nội dung về \"%s\" đang được sản xuất tích cực bởi %d nhà sáng tạo bao gồm %s. %s",
-                kw, channels.size(), topChannels.isEmpty() ? "nhiều kênh khác nhau" : topChannels,
-                channels.size() >= 3
-                        ? "Bối cảnh nội dung cạnh tranh cho thấy mức độ liên quan cao của thị trường."
-                        : "Sự phủ sóng hạn chế của các nhà sáng tạo mở ra cơ hội để xây dựng tiếng nói thị trường sớm."
-        );
+        String mediaText = isOfflineMode
+                ? String.format("Trong chế độ ngoại tuyến (Offline), hệ thống ghi nhận %d nguồn thảo luận lưu trữ về \"%s\" nhưng thông tin chi tiết của kênh không khả dụng.", items.size(), kw)
+                : String.format(
+                        "Nội dung về \"%s\" đang được sản xuất tích cực bởi %d nhà sáng tạo bao gồm %s. %s",
+                        kw, channels.size(), topChannels.isEmpty() ? "nhiều kênh khác nhau" : topChannels,
+                        channels.size() >= 3
+                                ? "Bối cảnh nội dung cạnh tranh cho thấy mức độ liên quan cao của thị trường."
+                                : "Sự phủ sóng hạn chế của các nhà sáng tạo mở ra cơ hội để xây dựng tiếng nói thị trường sớm."
+                );
 
         // 3 — Social Sentiment
         long totalSentiment = positive + negative + neutral;
         int positiveRate = totalSentiment > 0 ? (int) (positive * 100 / totalSentiment) : 0;
         int negativeRate = totalSentiment > 0 ? (int) (negative * 100 / totalSentiment) : 0;
-        String sentimentText = String.format(
-                "Phát hiện %d%% cảm xúc tích cực và %d%% cảm xúc tiêu cực trên tổng số %s lượt thích và %s lượt bình luận. %s",
-                positiveRate, negativeRate, formatCompact(totalLikes), formatCompact(totalComments),
-                positiveRate >= 60
-                        ? "Phản hồi chung rất thuận lợi — nền tảng vững chắc để thâm nhập thị trường."
-                        : positiveRate >= 30
-                                ? "Phát hiện các tín hiệu hỗn hợp — khuyến nghị phân tích đối thủ cạnh tranh sâu hơn."
-                                : "Khuyến nghị thận trọng — cảm xúc tiêu cực có thể cho thấy rào cản thị trường."
-        );
+        String sentimentText = isOfflineMode
+                ? "Dữ liệu cảm xúc (Sentiment) không khả dụng ở chế độ ngoại tuyến (Offline) do thiếu thông tin lượt thích và bình luận thực tế."
+                : String.format(
+                        "Phát hiện %d%% cảm xúc tích cực và %d%% cảm xúc tiêu cực trên tổng số %s lượt thích và %s lượt bình luận. %s",
+                        positiveRate, negativeRate, formatCompact(totalLikes), formatCompact(totalComments),
+                        positiveRate >= 60
+                                ? "Phản hồi chung rất thuận lợi — nền tảng vững chắc để thâm nhập thị trường."
+                                : positiveRate >= 30
+                                        ? "Phát hiện các tín hiệu hỗn hợp — khuyến nghị phân tích đối thủ cạnh tranh sâu hơn."
+                                        : "Khuyến nghị thận trọng — cảm xúc tiêu cực có thể cho thấy rào cản thị trường."
+                );
 
         // 4 — Keyword Opportunity (build phrases first)
         Map<String, long[]> phraseStats = new HashMap<>();
@@ -1901,7 +1925,7 @@ public class FrontendService {
         String keywordLower = kw.trim().toLowerCase(Locale.ROOT);
 
         Map<String, long[]> candidateStats = phraseStats.isEmpty() ? tokenStats : phraseStats;
-        List<FrontendDtos.KeywordMetric> relatedKeywords = candidateStats.entrySet().stream()
+        List<FrontendDtos.KeywordMetric> relatedKeywords = isOfflineMode ? List.of() : candidateStats.entrySet().stream()
                 .filter(entry -> entry.getKey().length() >= 4)
                 .filter(entry -> !stopWords.contains(entry.getKey()))
                 .filter(entry -> !isPermutationOfSearchKeyword(entry.getKey(), keywordLower))
@@ -1918,13 +1942,15 @@ public class FrontendService {
         String topKws = relatedKeywords.stream().limit(3).map(FrontendDtos.KeywordMetric::keyword)
                 .map(k -> "\"" + k + "\"")
                 .collect(Collectors.joining(", "));
-        String kwOpportunityText = relatedKeywords.isEmpty()
-            ? "Chưa phát hiện tín hiệu từ khóa liên quan cho \"" + kw + "\"."
-            : String.format(
-                "Đã phát hiện các từ khóa liên quan cho \"%s\": %s.",
-                kw,
-                topKws
-            );
+        String kwOpportunityText = isOfflineMode
+            ? "Đề xuất từ khóa liên quan không khả dụng ở chế độ ngoại tuyến (Offline)."
+            : (relatedKeywords.isEmpty()
+                ? "Chưa phát hiện tín hiệu từ khóa liên quan cho \"" + kw + "\"."
+                : String.format(
+                    "Đã phát hiện các từ khóa liên quan cho \"%s\": %s.",
+                    kw,
+                    topKws
+                ));
         long totalMentions = relatedKeywords.stream()
                 .mapToLong(FrontendDtos.KeywordMetric::mentionCount)
                 .sum();
@@ -1942,28 +1968,28 @@ public class FrontendService {
                         trendText,
                         sourceEvidence,
                         evidenceConfidence,
-                        String.format("Đề cập: %s | Lượt xem: %s", formatCompact(totalMentions), formatCompact(totalViews))
+                        isOfflineMode ? "Đề cập: N/A | Lượt xem: N/A" : String.format("Đề cập: %s | Lượt xem: %s", formatCompact(totalMentions), formatCompact(totalViews))
                 ),
                 new FrontendDtos.InsightItem(
                         "Tín hiệu truyền thông",
                         mediaText,
                         sourceEvidence,
                         clamp(evidenceConfidence - 3, 50, 90),
-                        String.format("Nguồn: %d | Kênh: %d", items.size(), channels.size())
+                        isOfflineMode ? String.format("Nguồn: %d | Kênh: N/A", items.size()) : String.format("Nguồn: %d | Kênh: %d", items.size(), channels.size())
                 ),
                 new FrontendDtos.InsightItem(
                         "Cảm xúc xã hội",
                         sentimentText,
                         sourceEvidence,
                         clamp(evidenceConfidence - 2, 50, 90),
-                        String.format("Lượt thích: %s | Bình luận: %s", formatCompact(totalLikes), formatCompact(totalComments))
+                        isOfflineMode ? "Lượt thích: N/A | Bình luận: N/A" : String.format("Lượt thích: %s | Bình luận: %s", formatCompact(totalLikes), formatCompact(totalComments))
                 ),
                 new FrontendDtos.InsightItem(
                         "Cơ hội từ khóa",
                         kwOpportunityText,
                         sourceEvidence,
                         clamp(evidenceConfidence - 1, 50, 90),
-                        String.format("Nhóm từ khóa: %d", relatedKeywords.size())
+                        isOfflineMode ? "Nhóm từ khóa: N/A" : String.format("Nhóm từ khóa: %d", relatedKeywords.size())
                 )
         );
 
@@ -1988,7 +2014,7 @@ public class FrontendService {
                 (int) Math.round((Math.min(items.size(), 30) / 30.0) * 60 + (Math.min(relatedKeywords.size(), 8) / 8.0) * 40),
                 20,
                 98
-        );
+                );
         int qualityScore = clamp((evidenceCoveragePct + evidenceConfidence) / 2, 45, 95);
         FrontendDtos.DataQuality dataQuality = new FrontendDtos.DataQuality(
                 5,
@@ -2007,7 +2033,7 @@ public class FrontendService {
         return new FrontendDtos.AnalysisResponse(
                 kw,
                 trackedQuery != null ? trackedQuery.getId().toString() : null,
-                null,
+                isOfflineMode ? "OFFLINE_DEMO" : null,
                 getAvailableAnalysisSources(),
                 insights,
                 relatedKeywords,
