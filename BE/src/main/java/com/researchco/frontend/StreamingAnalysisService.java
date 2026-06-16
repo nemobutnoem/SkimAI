@@ -228,7 +228,8 @@ public class StreamingAnalysisService {
 
     private SearchQueryEntity fallbackQuery(String keyword) {
         SearchQueryEntity query = new SearchQueryEntity();
-        query.setKeyword(keyword);
+        query.setId(java.util.UUID.randomUUID());
+        query.setKeyword(keyword == null ? "" : keyword.trim());
         query.setCreatedAt(LocalDateTime.now());
         return query;
     }
