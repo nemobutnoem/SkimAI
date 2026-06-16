@@ -291,6 +291,41 @@ export function DeepInsightPage() {
         `;
       }
 
+      // Regional Potential section in HTML
+      let regionalPotentialHtml = '';
+      if (data?.regionalPotential) {
+        const regional = data.regionalPotential;
+        regionalPotentialHtml = `
+          <h2>7. Tiềm Năng Khu Vực (Regional Potential)</h2>
+          <div class="section-box">
+            <p><strong>Nhận xét địa lý:</strong> ${regional.analysisText || 'Chưa có thông tin phân tích.'}</p>
+            <h3>Bảng phân bố nhu cầu theo tỉnh thành</h3>
+            <table style="width: 100%; border-collapse: collapse; margin-top: 10px; margin-bottom: 20px; border: 1px solid #cbd5e0;">
+              <thead>
+                <tr style="background-color: #edf2f7;">
+                  <th style="border: 1px solid #cbd5e0; padding: 8px; text-align: left;">Khu vực / Tỉnh thành</th>
+                  <th style="border: 1px solid #cbd5e0; padding: 8px; text-align: center;">Tỷ lệ quan tâm (%)</th>
+                  <th style="border: 1px solid #cbd5e0; padding: 8px; text-align: center;">Mức độ cầu</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${(regional.topRegions || []).map(r => `
+                  <tr>
+                    <td style="border: 1px solid #cbd5e0; padding: 8px;">${r.regionName}</td>
+                    <td style="border: 1px solid #cbd5e0; padding: 8px; text-align: center;">${r.percentage}%</td>
+                    <td style="border: 1px solid #cbd5e0; padding: 8px; text-align: center;">${r.demandLevel}</td>
+                  </tr>
+                `).join('')}
+              </tbody>
+            </table>
+            <h3>Nhận định địa lý & Phân phối tiếp thị</h3>
+            <ul>
+              ${(regional.geographicInsights || []).map(g => `<li>${g}</li>`).join('')}
+            </ul>
+          </div>
+        `;
+      }
+
       const docHtml = `
 <html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w="urn:schemas-microsoft-com:office:word" xmlns="http://www.w3.org/TR/REC-html40">
 <head>
@@ -501,6 +536,12 @@ export function DeepInsightPage() {
               onClick={() => setActiveReportTab('competitor')}
             >
               ⚔️ Bản đồ đối thủ
+            </button>
+            <button
+              className={`di-report-tab-btn${activeReportTab === 'regional' ? ' active' : ''}`}
+              onClick={() => setActiveReportTab('regional')}
+            >
+              📍 Tiềm năng khu vực
             </button>
           </div>
 
@@ -874,6 +915,89 @@ export function DeepInsightPage() {
                       </p>
                     </div>
                   )}
+                </div>
+              )}
+            </div>
+          )}
+
+          {activeReportTab === 'regional' && (
+            <div className="di-section-card">
+              <div className="di-section-title">📍 Tiềm năng khu vực tại Việt Nam</div>
+              <p className="hint" style={{ marginBottom: '20px' }}>
+                Phân tích mức độ quan tâm và tiềm năng thị trường theo vùng địa lý Việt Nam được AI nhận diện từ dữ liệu tín hiệu.
+              </p>
+              
+              {loading && !data ? (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+                  <div className="di-persona-desc-card" style={{ padding: '20px' }}>
+                    <div className="skeleton-pulse" style={{ height: '16px', width: '90%', margin: '8px 0', background: 'var(--gray-200)', borderRadius: '4px' }} />
+                    <div className="skeleton-pulse" style={{ height: '16px', width: '70%', background: 'var(--gray-200)', borderRadius: '4px' }} />
+                  </div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                    {[1, 2, 3].map((idx) => (
+                      <div key={idx} style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
+                        <div className="skeleton-pulse" style={{ height: '14px', width: '100px', background: 'var(--gray-200)', borderRadius: '4px' }} />
+                        <div className="skeleton-pulse" style={{ height: '10px', flex: 1, background: 'var(--gray-100)', borderRadius: '4px' }} />
+                        <div className="skeleton-pulse" style={{ height: '14px', width: '40px', background: 'var(--gray-200)', borderRadius: '4px' }} />
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+                  <div className="di-persona-desc-card" style={{ padding: '16px 20px', borderLeft: '4px solid var(--primary)' }}>
+                    <p style={{ margin: 0, fontSize: '14.5px', lineHeight: '1.6', color: 'var(--gray-800)' }}>
+                      {data?.regionalPotential?.analysisText || `Mô hình AI đang phân tích dữ liệu phân bố vùng miền cho từ khóa "${keyword}".`}
+                    </p>
+                  </div>
+
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '24px', marginTop: '10px' }}>
+                    {/* Top Regions List with Progress Bars */}
+                    <div style={{ background: '#f8fafc', padding: '20px', borderRadius: '12px', border: '1px solid #e2e8f0' }}>
+                      <h5 style={{ margin: '0 0 15px', color: 'var(--gray-800)', fontSize: '15px', fontWeight: '600' }}>📊 Lượng quan tâm theo tỉnh thành</h5>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+                        {data?.regionalPotential?.topRegions?.length ? (
+                          data.regionalPotential.topRegions.map((region, idx) => (
+                            <div key={idx} style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '13px' }}>
+                                <span style={{ fontWeight: '600', color: 'var(--gray-800)' }}>{region.regionName}</span>
+                                <span style={{ color: 'var(--gray-500)', fontSize: '12px' }}>
+                                  {region.percentage}% • <strong style={{ color: region.demandLevel === 'Cao' ? 'var(--green)' : region.demandLevel === 'Trung bình' ? '#f59e0b' : 'var(--red)' }}>{region.demandLevel}</strong>
+                                </span>
+                              </div>
+                              <div style={{ height: '8px', background: '#e2e8f0', borderRadius: '4px', overflow: 'hidden' }}>
+                                <div style={{ 
+                                  height: '100%', 
+                                  background: region.demandLevel === 'Cao' ? 'var(--green)' : region.demandLevel === 'Trung bình' ? '#f59e0b' : 'var(--red)',
+                                  width: `${region.percentage}%`,
+                                  transition: 'width 0.6s ease-out'
+                                }} />
+                              </div>
+                            </div>
+                          ))
+                        ) : (
+                          <p className="hint">Chưa có thông tin phân bố địa lý.</p>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Geographic Insights */}
+                    <div style={{ background: '#f8fafc', padding: '20px', borderRadius: '12px', border: '1px solid #e2e8f0' }}>
+                      <h5 style={{ margin: '0 0 15px', color: 'var(--gray-800)', fontSize: '15px', fontWeight: '600' }}>💡 Nhận định địa lý từ AI</h5>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                        {data?.regionalPotential?.geographicInsights?.length ? (
+                          data.regionalPotential.geographicInsights.map((insight, idx) => (
+                            <div key={idx} style={{ display: 'flex', gap: '10px', alignItems: 'flex-start', fontSize: '13px', lineHeight: '1.5', color: 'var(--gray-700)' }}>
+                              <span style={{ color: 'var(--primary)', fontWeight: 'bold' }}>•</span>
+                              <span>{insight}</span>
+                            </div>
+                          ))
+                        ) : (
+                          <p className="hint">Chưa có nhận định địa lý cụ thể.</p>
+                        )}
+                      </div>
+                    </div>
+                  </div>
                 </div>
               )}
             </div>

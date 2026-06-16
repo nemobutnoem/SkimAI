@@ -94,7 +94,16 @@ public class DefaultAiProvider implements AiProvider {
                             )
                     ),
                     blueprint.competitors(),
-                    blueprint.targetPersona()
+                    blueprint.targetPersona(),
+                    new FrontendDtos.RegionalPotential(
+                            "Phân tích tiềm năng khu vực không khả dụng ở chế độ ngoại tuyến (Offline) đối với từ khóa \"" + blueprint.keyword() + "\".",
+                            List.of(
+                                    new FrontendDtos.RegionContribution("Hà Nội", 0, "N/A (Offline)"),
+                                    new FrontendDtos.RegionContribution("TP. Hồ Chí Minh", 0, "N/A (Offline)"),
+                                    new FrontendDtos.RegionContribution("Đà Nẵng", 0, "N/A (Offline)")
+                            ),
+                            List.of("Vui lòng cấu hình API key và kết nối Internet để chạy phân tích địa lý chi tiết.")
+                    )
             );
         }
 
@@ -148,7 +157,7 @@ public class DefaultAiProvider implements AiProvider {
 
         String prompt = String.format(
                 """
-                Act as a senior market research strategist. You are writing a professional, comprehensive deep market insight report in Vietnamese.
+                Act as a senior market research strategist. You are writing a professional, comprehensive deep market insight report in Vietnamese focusing exclusively on the Vietnam market and its target regions/provinces.
                 
                 You are NOT analyzing only the keyword. You must synthesize the full research context that has already been collected from external APIs for the keyword "%s".
 
@@ -239,6 +248,19 @@ public class DefaultAiProvider implements AiProvider {
                       "Hành vi/Ý định tìm kiếm 1",
                       "Hành vi/Ý định tìm kiếm 2",
                       "Hành vi/Ý định tìm kiếm 3"
+                    ]
+                  },
+                  "regionalPotential": {
+                    "analysisText": "Đoạn phân tích từ 3-4 câu tiếng Việt về sự phân bố nhu cầu và tiềm năng phát triển của từ khóa này tại các vùng miền/tỉnh thành của Việt Nam...",
+                    "topRegions": [
+                      { "regionName": "Tên tỉnh thành/khu vực tại Việt Nam (ví dụ: Hà Nội)", "percentage": 40, "demandLevel": "Cao" },
+                      { "regionName": "Tên tỉnh thành/khu vực thứ hai", "percentage": 30, "demandLevel": "Cao" },
+                      { "regionName": "Tên tỉnh thành/khu vực thứ ba", "percentage": 20, "demandLevel": "Trung bình" },
+                      { "regionName": "Tên tỉnh thành/khu vực thứ tư", "percentage": 10, "demandLevel": "Thấp" }
+                    ],
+                    "geographicInsights": [
+                      "Insight cụ thể 1 về nhu cầu theo vùng miền tại Việt Nam bằng tiếng Việt...",
+                      "Insight cụ thể 2 về phân phối hoặc tối ưu quảng cáo địa phương bằng tiếng Việt..."
                     ]
                   }
                 }
@@ -382,6 +404,28 @@ public class DefaultAiProvider implements AiProvider {
             }
             FrontendDtos.TargetPersona targetPersona = new FrontendDtos.TargetPersona(desc, painPoints, searchIntents);
 
+            JsonNode regionNode = jsonResult.path("regionalPotential");
+            String regAnalysis = regionNode.path("analysisText").asText(blueprint.regionalPotential().analysisText());
+            final List<FrontendDtos.RegionContribution> regionList = new ArrayList<>();
+            regionNode.path("topRegions").forEach(node -> regionList.add(new FrontendDtos.RegionContribution(
+                    node.path("regionName").asText(),
+                    node.path("percentage").asInt(0),
+                    node.path("demandLevel").asText("Trung bình")
+            )));
+            if (regionList.isEmpty()) {
+                regionList.addAll(blueprint.regionalPotential().topRegions());
+            }
+            final List<String> geographicInsights = new ArrayList<>();
+            regionNode.path("geographicInsights").forEach(node -> geographicInsights.add(node.asText()));
+            if (geographicInsights.isEmpty()) {
+                geographicInsights.addAll(blueprint.regionalPotential().geographicInsights());
+            }
+            FrontendDtos.RegionalPotential regionalPotential = new FrontendDtos.RegionalPotential(
+                    regAnalysis,
+                    regionList,
+                    geographicInsights
+            );
+
             return new FrontendDtos.DeepInsightResponse(
                     contextData.keyword(),
                     source,
@@ -399,7 +443,8 @@ public class DefaultAiProvider implements AiProvider {
                             strategicStats
                     ),
                     competitors,
-                    targetPersona
+                    targetPersona,
+                    regionalPotential
             );
 
         } catch (Exception e) {
@@ -715,6 +760,21 @@ public class DefaultAiProvider implements AiProvider {
                 )
         );
 
+        FrontendDtos.RegionalPotential fallbackRegionalPotential = new FrontendDtos.RegionalPotential(
+                String.format("Tại thị trường Việt Nam, từ khóa \"%s\" ghi nhận lượng quan tâm lớn nhất tại các đô thị trọng điểm nhờ mật độ dân cư cao và thói quen tiêu dùng hiện đại.", keyword),
+                List.of(
+                        new FrontendDtos.RegionContribution("Hà Nội", 40, "Cao"),
+                        new FrontendDtos.RegionContribution("TP. Hồ Chí Minh", 35, "Cao"),
+                        new FrontendDtos.RegionContribution("Đà Nẵng", 15, "Trung bình"),
+                        new FrontendDtos.RegionContribution("Các tỉnh khác", 10, "Thấp")
+                ),
+                List.of(
+                        String.format("Miền Bắc (đặc biệt là Hà Nội) thể hiện xu hướng tìm kiếm chủ động đối với \"%s\".", keyword),
+                        String.format("Khu vực TP. Hồ Chí Minh đóng góp tỷ lệ tương tác thương mại lớn nhất nhờ mức độ sẵn sàng thanh toán cao."),
+                        "Khuyến nghị ưu tiên ngân sách tiếp thị địa phương tại các thành phố lớn trước khi mở rộng diện rộng."
+                )
+        );
+
         return new DeepInsightBlueprint(
                 keyword,
                 source,
@@ -735,7 +795,8 @@ public class DefaultAiProvider implements AiProvider {
                 opportunityCards,
                 strategicStats,
                 fallbackCompetitors,
-                fallbackPersona
+                fallbackPersona,
+                fallbackRegionalPotential
         );
     }
 
@@ -1038,7 +1099,8 @@ public class DefaultAiProvider implements AiProvider {
             List<FrontendDtos.OpportunityCard> opportunityCards,
             List<FrontendDtos.StatItem> strategicStats,
             List<FrontendDtos.CompetitorMapItem> competitors,
-            FrontendDtos.TargetPersona targetPersona
+            FrontendDtos.TargetPersona targetPersona,
+            FrontendDtos.RegionalPotential regionalPotential
     ) {
         FrontendDtos.DeepInsightResponse toResponse() {
             return new FrontendDtos.DeepInsightResponse(
@@ -1058,7 +1120,8 @@ public class DefaultAiProvider implements AiProvider {
                             strategicStats
                     ),
                     competitors,
-                    targetPersona
+                    targetPersona,
+                    regionalPotential
             );
         }
     }

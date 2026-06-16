@@ -197,6 +197,14 @@ public class FrontendDtos {
             List<String> searchIntents
     ) {}
 
+    public record RegionContribution(String regionName, int percentage, String demandLevel) {}
+
+    public record RegionalPotential(
+            String analysisText,
+            List<RegionContribution> topRegions,
+            List<String> geographicInsights
+    ) {}
+
     public record DeepInsightResponse(
             String keyword,
             String source,
@@ -210,7 +218,8 @@ public class FrontendDtos {
             List<OpportunityCard> opportunityCards,
             StrategicRecommendation strategicRecommendation,
             List<CompetitorMapItem> competitors,
-            TargetPersona targetPersona
+            TargetPersona targetPersona,
+            RegionalPotential regionalPotential
     ) {
     }
 
