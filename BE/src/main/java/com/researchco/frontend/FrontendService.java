@@ -785,13 +785,18 @@ public class FrontendService {
 
         FrontendDtos.RegionalPotential dynamicRegionalPotential = isOfflineMode 
                 ? new FrontendDtos.RegionalPotential(
-                        String.format("Phân tích tiềm năng khu vực không khả dụng ở chế độ ngoại tuyến (Offline) đối với từ khóa \"%s\".", analysis.keyword()),
+                        String.format("Hệ thống đang chạy ở chế độ ngoại tuyến (Offline Demo) đối với từ khóa \"%s\". Dưới đây là phân tích phân bố địa lý giả lập tại thị trường Việt Nam.", analysis.keyword()),
                         List.of(
-                                new FrontendDtos.RegionContribution("Hà Nội", 0, "N/A (Offline)"),
-                                new FrontendDtos.RegionContribution("TP. Hồ Chí Minh", 0, "N/A (Offline)"),
-                                new FrontendDtos.RegionContribution("Đà Nẵng", 0, "N/A (Offline)")
+                                new FrontendDtos.RegionContribution("Hà Nội", 40, "Cao"),
+                                new FrontendDtos.RegionContribution("TP. Hồ Chí Minh", 35, "Cao"),
+                                new FrontendDtos.RegionContribution("Đà Nẵng", 15, "Trung bình"),
+                                new FrontendDtos.RegionContribution("Các tỉnh khác", 10, "Thấp")
                         ),
-                        List.of("Vui lòng kết nối Internet để chạy phân tích địa lý chi tiết.")
+                        List.of(
+                                String.format("Dữ liệu demo cho thấy Hà Nội và TP.HCM luôn chiếm tỉ lệ quan tâm cao nhất đối với từ khóa \"%s\".", analysis.keyword()),
+                                "Miền Trung (Đà Nẵng) ghi nhận lượng quan tâm ổn định và có tiềm năng phát triển phân phối.",
+                                "Lưu ý: Đây là dữ liệu giả lập. Vui lòng cấu hình API key hợp lệ và kết nối Internet để AI phân tích thời gian thực."
+                        )
                 )
                 : response.regionalPotential();
 
