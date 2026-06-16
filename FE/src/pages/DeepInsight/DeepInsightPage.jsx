@@ -68,7 +68,7 @@ export function DeepInsightPage() {
 
   const availableSources = analysisContext?.dataSources?.length
     ? analysisContext.dataSources
-    : ['Google Search', 'Google News', 'YouTube Signals', 'Cross-source synthesis']
+    : ['Google Search', 'Google News', 'YouTube', 'Cross-source synthesis']
 
   useEffect(() => {
     if (!keyword) {

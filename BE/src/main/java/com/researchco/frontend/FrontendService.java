@@ -2078,7 +2078,7 @@ public class FrontendService {
         return switch (providerCode == null ? "" : providerCode.trim().toUpperCase(Locale.ROOT)) {
             case "SERPAPI_GOOGLE" -> "Google Search";
             case "SERPAPI_NEWS" -> "Google News";
-            case "YOUTUBE_API" -> "YouTube Signals";
+            case "YOUTUBE_API" -> "YouTube";
             default -> titleCase(providerCode == null ? "Research Source" : providerCode.replace('_', ' '));
         };
     }
