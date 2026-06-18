@@ -1199,35 +1199,26 @@ public class FrontendService {
         if (freshQueryOpt.isPresent()) {
             List<SourceItemEntity> cachedItems = sourceItemRepository.findBySearchQueryId(freshQueryOpt.get().getId());
             if (cachedItems != null && !cachedItems.isEmpty()) {
-                boolean isOfflineMode = cachedItems.stream().anyMatch(item -> {
-                    if (item.getRawPayload() != null) {
-                        try {
-                            Map<?, ?> payload = objectMapper.readValue(item.getRawPayload(), Map.class);
-                            return Boolean.TRUE.equals(payload.get("isFallback"));
-                        } catch (Exception e) {
-                            return false;
-                        }
-                    }
-                    return false;
-                });
                 return cachedItems.stream()
                         .limit(8)
                         .map(item -> {
                             long views = 0L;
                             long likes = 0L;
                             long comments = 0L;
+                            boolean itemOffline = false;
                             if (item.getRawPayload() != null) {
                                 try {
                                     Map<?, ?> payload = objectMapper.readValue(item.getRawPayload(), Map.class);
                                     views = toLong(payload.get("viewCount"));
                                     likes = toLong(payload.get("likeCount"));
                                     comments = toLong(payload.get("commentCount"));
+                                    itemOffline = Boolean.TRUE.equals(payload.get("isFallback"));
                                 } catch (Exception e) {
                                     // ignore
                                 }
                             }
-                            String metricText = isOfflineMode 
-                                    ? "Số liệu không khả dụng (Chế độ offline)"
+                            String metricText = itemOffline 
+                                    ? "N/A"
                                     : String.format("Lượt xem %s | Lượt thích %s | Bình luận %s", formatCompact(views), formatCompact(likes), formatCompact(comments));
                             return new FrontendDtos.EvidenceItem(
                                     item.getSourceName() == null || item.getSourceName().isBlank() ? "Nguồn nghiên cứu" : item.getSourceName(),
@@ -1257,23 +1248,21 @@ public class FrontendService {
             ));
         }
 
-        boolean isOfflineMode = items.stream().anyMatch(item -> 
-                item.rawPayload() instanceof Map && Boolean.TRUE.equals(((Map<?,?>)item.rawPayload()).get("isFallback"))
-        );
-
         return items.stream()
                 .limit(8)
                 .map(item -> {
                     long views = 0L;
                     long likes = 0L;
                     long comments = 0L;
+                    boolean itemOffline = false;
                     if (item.rawPayload() instanceof Map<?, ?> payload) {
                         views = toLong(payload.get("viewCount"));
                         likes = toLong(payload.get("likeCount"));
                         comments = toLong(payload.get("commentCount"));
+                        itemOffline = Boolean.TRUE.equals(payload.get("isFallback"));
                     }
-                    String metricText = isOfflineMode 
-                            ? "Số liệu không khả dụng (Chế độ offline)"
+                    String metricText = itemOffline 
+                            ? "N/A"
                             : String.format("Lượt xem %s | Lượt thích %s | Bình luận %s", formatCompact(views), formatCompact(likes), formatCompact(comments));
                     return new FrontendDtos.EvidenceItem(
                             item.sourceName() == null || item.sourceName().isBlank() ? "Nguồn nghiên cứu" : item.sourceName(),
@@ -3173,8 +3162,8 @@ public class FrontendService {
         String name = sourceName != null ? sourceName.toLowerCase() : "";
         String plat = platform != null ? platform.toLowerCase() : "";
         
-        if (name.contains("wikipedia")) {
-            return "Cung cấp các khái niệm nền tảng, định nghĩa kỹ thuật cốt lõi và lịch sử phát triển của \"" + keyword + "\".";
+        if (name.contains("harvard") || name.contains("hbr")) {
+            return "Phân tích học thuật, nghiên cứu tình huống quản trị và chiến lược lãnh đạo về \"" + keyword + "\".";
         }
         if (name.contains("forbes")) {
             return "Phân tích tác động kinh tế, xu hướng đầu tư tài chính và các mô hình kinh doanh tiềm năng xoay quanh \"" + keyword + "\".";

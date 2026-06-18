@@ -78,7 +78,7 @@ public class SerpApiGoogleProvider implements SearchProvider {
                 String title = text(result, "title", keyword + " market result");
                 String snippet = text(result, "snippet", "Search result related to " + keyword);
                 String link = text(result, "link", "");
-                if (link.isBlank()) {
+                if (link.isBlank() || link.toLowerCase(java.util.Locale.ROOT).contains("wikipedia.org")) {
                     continue;
                 }
 
@@ -127,28 +127,28 @@ public class SerpApiGoogleProvider implements SearchProvider {
     private List<NormalizedSourceItem> generateFallbackResults(String keyword) {
         List<NormalizedSourceItem> items = new ArrayList<>();
         String[] titles = {
-            "What is " + keyword + "? A complete overview",
+            "Bloomberg Business: Financial outlook on " + keyword + " industry",
             "Latest trends and developments in " + keyword + " market",
             "How " + keyword + " is shaping modern consumer behavior",
             "The future of " + keyword + ": Challenges and opportunities",
             "Why " + keyword + " continues to attract significant global interest"
         };
         String[] snippets = {
-            "Discover key definitions, basic concepts, and fundamental structures of " + keyword + " in this comprehensive overview.",
+            "Get complete analysis of " + keyword + " market capitalization, financial performance, and key economic drivers.",
             "As we look ahead, " + keyword + " continues to evolve with changing demands. Here are the top trends and dynamics shaping this space.",
             "Analysts look at how " + keyword + " affects modern habits, workflows, and consumer decision making in the current landscape.",
             "While " + keyword + " offers excellent potential, it also faces unique challenges. Experts discuss the roadmap for sustainable development.",
             "Investments and public interest in " + keyword + " are rising. Leaders share insights on why this represents a significant market shift."
         };
         String[] domains = {
-            "wikipedia.org",
+            "bloomberg.com",
             "forbes.com",
             "mckinsey.com",
             "wired.com",
             "techcrunch.com"
         };
         String[] sources = {
-            "Wikipedia",
+            "Bloomberg",
             "Forbes",
             "McKinsey & Company",
             "Wired",
