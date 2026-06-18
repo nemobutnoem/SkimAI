@@ -95,7 +95,9 @@ public class FrontendController {
 
     @GetMapping("/analysis/evidence")
     public List<FrontendDtos.EvidenceItem> getAnalysisEvidence(@RequestParam(name = "keyword", defaultValue = "") @Size(max = 255) String keyword) {
-        return frontendService.getAnalysisEvidence(keyword);
+        synchronized (getLock(keyword)) {
+            return frontendService.getAnalysisEvidence(keyword);
+        }
     }
 
     @GetMapping("/analysis/compare")

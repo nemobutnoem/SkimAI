@@ -1189,7 +1189,62 @@ public class FrontendService {
     }
 
     public List<FrontendDtos.EvidenceItem> getAnalysisEvidence(String keyword) {
-        List<NormalizedSourceItem> items = fetchLiveSources(keyword);
+        String normalizedKeyword = getNormalizedTopic(keyword);
+        
+        // 1. TÌM SNAPSHOT FRESH TRONG VÒNG 1 GIỜ ĐỂ TRÁNH GỌI LIVE API NHIỀU LẦN
+        LocalDateTime oneHourAgo = LocalDateTime.now().minusHours(1);
+        Optional<SearchQueryEntity> freshQueryOpt = searchQueryRepository
+                .findByKeywordWithFreshSnapshot(normalizedKeyword, oneHourAgo).stream().findFirst();
+
+        if (freshQueryOpt.isPresent()) {
+            List<SourceItemEntity> cachedItems = sourceItemRepository.findBySearchQueryId(freshQueryOpt.get().getId());
+            if (cachedItems != null && !cachedItems.isEmpty()) {
+                boolean isOfflineMode = cachedItems.stream().anyMatch(item -> {
+                    if (item.getRawPayload() != null) {
+                        try {
+                            Map<?, ?> payload = objectMapper.readValue(item.getRawPayload(), Map.class);
+                            return Boolean.TRUE.equals(payload.get("isFallback"));
+                        } catch (Exception e) {
+                            return false;
+                        }
+                    }
+                    return false;
+                });
+                return cachedItems.stream()
+                        .limit(8)
+                        .map(item -> {
+                            long views = 0L;
+                            long likes = 0L;
+                            long comments = 0L;
+                            if (item.getRawPayload() != null) {
+                                try {
+                                    Map<?, ?> payload = objectMapper.readValue(item.getRawPayload(), Map.class);
+                                    views = toLong(payload.get("viewCount"));
+                                    likes = toLong(payload.get("likeCount"));
+                                    comments = toLong(payload.get("commentCount"));
+                                } catch (Exception e) {
+                                    // ignore
+                                }
+                            }
+                            String metricText = isOfflineMode 
+                                    ? "Số liệu không khả dụng (Chế độ offline)"
+                                    : String.format("Lượt xem %s | Lượt thích %s | Bình luận %s", formatCompact(views), formatCompact(likes), formatCompact(comments));
+                            return new FrontendDtos.EvidenceItem(
+                                    item.getSourceName() == null || item.getSourceName().isBlank() ? "Nguồn nghiên cứu" : item.getSourceName(),
+                                    firstMeaningfulText(item.getTitle(), "Nguồn không có tiêu đề"),
+                                    metricText,
+                                    cleanSnippet(item.getSnippet(), item.getTitle()),
+                                    item.getUrl(),
+                                    item.getSentimentLabel() != null ? item.getSentimentLabel() : "NEUTRAL",
+                                    item.getPlatform() != null ? item.getPlatform() : ""
+                            );
+                        })
+                        .toList();
+            }
+        }
+
+        // 2. Fetch live sources nếu không có snapshot fresh
+        List<NormalizedSourceItem> items = fetchLiveSources(normalizedKeyword);
         if (items.isEmpty()) {
             return List.of(new FrontendDtos.EvidenceItem(
                     "Tổng hợp đa nguồn",
