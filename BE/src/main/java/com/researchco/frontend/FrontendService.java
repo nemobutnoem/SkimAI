@@ -593,13 +593,35 @@ public class FrontendService {
             }
         }
 
+        // Find current snapshot
+        AnalysisSnapshotEntity currentSnapshot = null;
+        if (analysis.snapshotId() != null && !analysis.snapshotId().isBlank() && !"OFFLINE_DEMO".equals(analysis.snapshotId()) && !"N/A".equals(analysis.snapshotId())) {
+            try {
+                currentSnapshot = analysisSnapshotRepository.findById(UUID.fromString(analysis.snapshotId())).orElse(null);
+            } catch (Exception e) {
+                // ignore
+            }
+        }
+
         // 1. Check if cached report exists in reports table for this user, keyword and source
         String targetTitle = request.source().trim() + " Deep Insight";
         Optional<com.researchco.report.ReportEntity> cachedReport = reportRepository
-                .findFirstCachedDeepInsight(user.getId(), "DEEP_INSIGHT", request.keyword(), targetTitle);
+                .findFirstCachedDeepInsight(user.getId(), "DEEP_INSIGHT", request.keyword(), targetTitle)
+                .stream().findFirst();
+
+        boolean isCacheValid = false;
+        if (cachedReport.isPresent()) {
+            isCacheValid = true;
+            if (currentSnapshot != null && currentSnapshot.getUpdatedAt() != null) {
+                LocalDateTime reportTime = cachedReport.get().getCreatedAt();
+                if (reportTime != null && currentSnapshot.getUpdatedAt().isAfter(reportTime)) {
+                    isCacheValid = false; // Snapshot was updated after report creation -> cache is stale
+                }
+            }
+        }
 
         FrontendDtos.DeepInsightResponse response;
-        if (cachedReport.isPresent()) {
+        if (isCacheValid && cachedReport.isPresent()) {
             try {
                 response = objectMapper.readValue(cachedReport.get().getReportContent(), FrontendDtos.DeepInsightResponse.class);
                 
@@ -706,6 +728,7 @@ public class FrontendService {
                 com.researchco.report.ReportEntity report = com.researchco.report.ReportEntity.builder()
                         .user(user)
                         .searchQuery(queryEntity)
+                        .snapshot(currentSnapshot)
                         .title(targetTitle)
                         .status("DEEP_INSIGHT")
                         .reportContent(reportContentJson)
@@ -728,6 +751,7 @@ public class FrontendService {
             com.researchco.report.ReportEntity report = com.researchco.report.ReportEntity.builder()
                     .user(user)
                     .searchQuery(queryEntity)
+                    .snapshot(currentSnapshot)
                     .title(targetTitle)
                     .status("DEEP_INSIGHT")
                     .reportContent(reportContentJson)

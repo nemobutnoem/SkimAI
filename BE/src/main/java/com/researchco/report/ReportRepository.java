@@ -27,5 +27,6 @@ public interface ReportRepository extends JpaRepository<ReportEntity, UUID> {
     List<ReportEntity> findByStatusIgnoreCaseOrderByCreatedAtDesc(String status);
 
     @Query("SELECT r FROM ReportEntity r WHERE r.user.id = :userId AND LOWER(r.status) = LOWER(:status) AND r.searchQuery IS NOT NULL AND LOWER(TRIM(r.searchQuery.keyword)) = LOWER(TRIM(:keyword)) AND LOWER(TRIM(r.title)) = LOWER(TRIM(:title)) ORDER BY r.createdAt DESC")
-    Optional<ReportEntity> findFirstCachedDeepInsight(@Param("userId") UUID userId, @Param("status") String status, @Param("keyword") String keyword, @Param("title") String title);
+    List<ReportEntity> findFirstCachedDeepInsight(@Param("userId") UUID userId, @Param("status") String status, @Param("keyword") String keyword, @Param("title") String title);
+
 }
