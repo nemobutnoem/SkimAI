@@ -34,6 +34,9 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.annotation.Propagation;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 
@@ -89,6 +92,10 @@ public class FrontendService {
     private final HttpClient httpClient = HttpClient.newHttpClient();
     private final String stripeSecretKey;
     private final String frontendBaseUrl;
+
+    @Autowired
+    @Lazy
+    private FrontendService self;
 
     @Value("${app.payment.bank.id:MB}")
     private String paymentBankId;
@@ -275,7 +282,7 @@ public class FrontendService {
     public FrontendDtos.AnalysisResponse getAnalysis(String keyword) {
         String normalizedKeyword = getNormalizedTopic(keyword);
         LocaleProfile localeProfile = resolveLocaleProfile(normalizedKeyword);
-        SearchQueryEntity trackedQuery = recordSearchActivity(normalizedKeyword, localeProfile);
+        SearchQueryEntity trackedQuery = self.recordSearchActivity(normalizedKeyword, localeProfile);
         
         // 1. TÌM SNAPSHOT FRESH TỪ BẤT KỲ USER NÀO (SHARE ACROSS USERS ĐỂ TIẾT KIỆM TOKEN)
         LocalDateTime oneHourAgo = LocalDateTime.now().minusHours(1);
@@ -327,12 +334,12 @@ public class FrontendService {
         return new FrontendDtos.AnalysisResponse(
                 kw,
                 query.getId().toString(),
-                "OFFLINE_DEMO",
+                "N/A",
                 getAvailableAnalysisSources(),
                 fallbackInsights,
                 keywords,
                 news,
-                List.of("So sánh đòn bẩy đối thủ", "Dự báo nhu cầu", "Phân tích từ khóa hàng đầu", "Nhận định khán giả"),
+                List.of(),
                 new FrontendDtos.DataQuality(
                         120,
                         Math.max(1, getAvailableAnalysisSources().size() - 1),
@@ -375,7 +382,7 @@ public class FrontendService {
                 fallbackInsights,
                 keywords,
                 news,
-                List.of("So sánh đòn bẩy đối thủ", "Dự báo nhu cầu", "Phân tích từ khóa hàng đầu", "Nhận định khán giả"),
+                List.of(),
                 new FrontendDtos.DataQuality(
                         120,
                         Math.max(1, getAvailableAnalysisSources().size() - 1),
@@ -436,9 +443,8 @@ public class FrontendService {
             
             AnalysisSnapshotEntity savedSnapshot = analysisSnapshotRepository.save(snapshot);
             
-            // Delete existing keywords for this snapshot
-            List<SnapshotKeywordEntity> existingKeywords = snapshotKeywordRepository.findBySnapshotId(savedSnapshot.getId());
-            snapshotKeywordRepository.deleteAll(existingKeywords);
+            // Delete existing keywords for this snapshot using optimized query
+            snapshotKeywordRepository.deleteBySnapshotId(savedSnapshot.getId());
             
             // Save new keywords
             for (FrontendDtos.KeywordMetric km : relatedKeywords) {
@@ -453,9 +459,8 @@ public class FrontendService {
                 snapshotKeywordRepository.save(sk);
             }
 
-            // Save new source items for this query
-            List<SourceItemEntity> existingSourceItems = sourceItemRepository.findBySearchQueryId(query.getId());
-            sourceItemRepository.deleteAll(existingSourceItems);
+            // Save new source items for this query using optimized query
+            sourceItemRepository.deleteBySearchQueryId(query.getId());
 
             List<SearchProviderEntity> activeProviders = searchProviderRepository.findByIsActiveTrue();
             Map<String, SearchProviderEntity> providerMap = activeProviders.stream()
@@ -578,7 +583,7 @@ public class FrontendService {
         if (queryEntity == null) {
             String normalizedKeyword = getNormalizedTopic(request.keyword());
             LocaleProfile localeProfile = resolveLocaleProfile(normalizedKeyword);
-            queryEntity = recordSearchActivity(normalizedKeyword, localeProfile);
+            queryEntity = self.recordSearchActivity(normalizedKeyword, localeProfile);
             if (queryEntity == null) {
                 queryEntity = findQueryByKeyword(normalizedKeyword).orElseGet(() -> fallbackQuery(normalizedKeyword));
                 if (queryEntity.getId() == null) {
@@ -744,7 +749,7 @@ public class FrontendService {
             // fallback
         }
 
-        boolean isOfflineMode = "OFFLINE_DEMO".equals(analysis.snapshotId());
+        boolean isOfflineMode = "OFFLINE_DEMO".equals(analysis.snapshotId()) || "N/A".equals(analysis.snapshotId());
 
         List<FrontendDtos.StatItem> dynamicStats = isOfflineMode 
                 ? List.of(
@@ -754,33 +759,35 @@ public class FrontendService {
                 )
                 : calculateSourceStats(creatorQueryId, request.source());
         List<FrontendDtos.TrendPoint> dynamicTrendPoints = isOfflineMode
-                ? List.of(new FrontendDtos.TrendPoint(analysis.keyword(), 50, "N/A (Chế độ offline)"))
+                ? List.of(new FrontendDtos.TrendPoint(analysis.keyword(), 0, "N/A"))
                 : calculateSourceTrendPoints(creatorQueryId, request.source());
         String dynamicInsight = isOfflineMode 
-                ? String.format("Nhận định thị trường không khả dụng ở chế độ ngoại tuyến (Offline) đối với từ khóa \"%s\".", analysis.keyword())
+                ? "N/A"
                 : response.marketInsight();
-        try {
-            String viewsStr = dynamicStats.get(0).value();
-            long sourceMentions = Long.parseLong(dynamicStats.get(1).value());
-            String engStr = dynamicStats.get(2).value().replace("%", "");
-            double sourceEngagement = Double.parseDouble(engStr) / 100.0;
-            
-            dynamicInsight = String.format(
-                Locale.ROOT,
-                "Dựa trên các tín hiệu hiện tại từ %s, từ khóa \"%s\" ghi nhận %d lượt đề cập và khoảng %s lượt xem tổng hợp. Tương tác trung bình đạt %.2f%%, cho thấy %s.",
-                displaySourceName(request.source()),
-                analysis.keyword(),
-                sourceMentions,
-                viewsStr,
-                sourceEngagement * 100,
-                sourceEngagement >= 0.04 ? "sự quan tâm mạnh mẽ từ khách hàng mục tiêu với tỷ lệ tương tác cao" : "đây là một xu hướng mới nổi cần theo dõi thêm để đánh giá tiềm năng thực tế"
-            );
-        } catch (Exception e) {
-            // Fallback to original AI response text
+        if (!isOfflineMode) {
+            try {
+                String viewsStr = dynamicStats.get(0).value();
+                long sourceMentions = Long.parseLong(dynamicStats.get(1).value());
+                String engStr = dynamicStats.get(2).value().replace("%", "");
+                double sourceEngagement = Double.parseDouble(engStr) / 100.0;
+                
+                dynamicInsight = String.format(
+                    Locale.ROOT,
+                    "Dựa trên các tín hiệu hiện tại từ %s, từ khóa \"%s\" ghi nhận %d lượt đề cập và khoảng %s lượt xem tổng hợp. Tương tác trung bình đạt %.2f%%, cho thấy %s.",
+                    displaySourceName(request.source()),
+                    analysis.keyword(),
+                    sourceMentions,
+                    viewsStr,
+                    sourceEngagement * 100,
+                    sourceEngagement >= 0.04 ? "sự quan tâm mạnh mẽ từ khách hàng mục tiêu với tỷ lệ tương tác cao" : "đây là một xu hướng mới nổi cần theo dõi thêm để đánh giá tiềm năng thực tế"
+                );
+            } catch (Exception e) {
+                // Fallback to original AI response text
+            }
         }
 
-        List<FrontendDtos.CompetitorMapItem> competitors = response.competitors();
-        if (competitors == null || competitors.isEmpty() || isMockCompetitors(competitors, response.keyword())) {
+        List<FrontendDtos.CompetitorMapItem> competitors = isOfflineMode ? List.of() : response.competitors();
+        if (!isOfflineMode && (competitors == null || competitors.isEmpty() || isMockCompetitors(competitors, response.keyword()))) {
             List<FrontendDtos.CompetitorMapItem> dynamicComps = buildDynamicCompetitors(creatorQueryId, response.keyword());
             if (dynamicComps != null && !dynamicComps.isEmpty()) {
                 competitors = dynamicComps;
@@ -788,20 +795,7 @@ public class FrontendService {
         }
 
         FrontendDtos.RegionalPotential dynamicRegionalPotential = isOfflineMode 
-                ? new FrontendDtos.RegionalPotential(
-                        String.format("Hệ thống đang chạy ở chế độ ngoại tuyến (Offline Demo) đối với từ khóa \"%s\". Dưới đây là phân tích phân bố địa lý giả lập tại thị trường Việt Nam.", analysis.keyword()),
-                        List.of(
-                                new FrontendDtos.RegionContribution("Hà Nội", 40, "Cao"),
-                                new FrontendDtos.RegionContribution("TP. Hồ Chí Minh", 35, "Cao"),
-                                new FrontendDtos.RegionContribution("Đà Nẵng", 15, "Trung bình"),
-                                new FrontendDtos.RegionContribution("Các tỉnh khác", 10, "Thấp")
-                        ),
-                        List.of(
-                                String.format("Dữ liệu demo cho thấy Hà Nội và TP.HCM luôn chiếm tỉ lệ quan tâm cao nhất đối với từ khóa \"%s\".", analysis.keyword()),
-                                "Miền Trung (Đà Nẵng) ghi nhận lượng quan tâm ổn định và có tiềm năng phát triển phân phối.",
-                                "Lưu ý: Đây là dữ liệu giả lập. Vui lòng cấu hình API key hợp lệ và kết nối Internet để AI phân tích thời gian thực."
-                        )
-                )
+                ? new FrontendDtos.RegionalPotential("N/A", List.of(), List.of())
                 : response.regionalPotential();
 
         return new FrontendDtos.DeepInsightResponse(
@@ -2111,7 +2105,8 @@ public class FrontendService {
         );
     }
 
-    private SearchQueryEntity recordSearchActivity(String keyword, LocaleProfile localeProfile) {
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    public SearchQueryEntity recordSearchActivity(String keyword, LocaleProfile localeProfile) {
         UUID currentUserId = SecurityUtils.currentUserId();
         if (currentUserId == null) {
             return null;
@@ -2124,23 +2119,7 @@ public class FrontendService {
         String countryCode = localeProfile.countryCode();
         String languageCode = localeProfile.languageCode();
 
-        // Check xem record với cùng (user + keyword + country + language) đã tồn tại không
-        // → Tránh tạo duplicate records
-        List<SearchQueryEntity> existing = searchQueryRepository.findByUserAndKeywordAndCountryCodeAndLanguageCode(
-                user,
-                normalizedKeyword,
-                countryCode,
-                languageCode
-        );
-
-        if (!existing.isEmpty()) {
-            // Reuse existing record (không tạo mới) và cập nhật thời gian
-            SearchQueryEntity q = existing.get(0);
-            q.setCreatedAt(LocalDateTime.now());
-            return searchQueryRepository.save(q);
-        }
-
-        // Nếu không có → tạo mới
+        // Luôn luôn tạo một record hoạt động tìm kiếm mới
         return searchQueryRepository.save(SearchQueryEntity.builder()
                 .user(user)
                 .keyword(normalizedKeyword)

@@ -154,7 +154,7 @@ function buildSourceTrendRows(data, evidenceItems) {
 }
 
 function buildOverallRead(data, sourceRows, timelinePoints) {
-  const isOffline = data?.snapshotId === 'OFFLINE_DEMO'
+  const isOffline = data?.snapshotId === 'OFFLINE_DEMO' || data?.snapshotId === 'N/A'
   const keywords = data?.relatedKeywords ?? []
   const totalMentions = keywords.reduce((sum, item) => sum + (item.mentionCount || 0), 0)
   const totalViews = keywords.reduce((sum, item) => sum + (item.totalViews || 0), 0)

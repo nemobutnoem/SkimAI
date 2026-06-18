@@ -552,35 +552,7 @@ public class DefaultAiProvider implements AiProvider {
     }
 
     private List<LiveTrendSignal> fallbackLiveTrends(LinkedHashMap<String, List<String>> seeds) {
-        List<FallbackSeed> allFallbacks = List.of(
-            new FallbackSeed("Artificial Intelligence", "Generative AI tools", "positive", 180, 24),
-            new FallbackSeed("Green Tech", "Electric bikes", "positive", 140, 15),
-            new FallbackSeed("E-commerce", "TikTok Shop trends", "neutral", 210, 18),
-            new FallbackSeed("Food & Lifestyle", "Pho", "positive", 110, 8),
-            new FallbackSeed("Personal Finance", "Digital gold investment", "neutral", 95, 2),
-            new FallbackSeed("Health & Wellness", "Plant-based milk", "positive", 130, 12),
-            new FallbackSeed("Smart Home", "IoT security devices", "neutral", 115, 6),
-            new FallbackSeed("Travel & Tourism", "Glamping trends", "positive", 150, 21),
-            new FallbackSeed("Entertainment", "Short-form video editing", "positive", 175, 30),
-            new FallbackSeed("EdTech", "AI coding assistants", "positive", 160, 27)
-        );
-
-        long hourSeed = System.currentTimeMillis() / (1000L * 60L * 60L);
-        Random random = new Random(hourSeed);
-
-        List<FallbackSeed> selected = new ArrayList<>(allFallbacks);
-        java.util.Collections.shuffle(selected, random);
-        List<FallbackSeed> subList = selected.subList(0, 4);
-
-        List<LiveTrendSignal> list = new ArrayList<>();
-        for (FallbackSeed seed : subList) {
-            long score = seed.baseScore() + random.nextInt(30);
-            int change = seed.baseChange() + random.nextInt(10);
-            int sourceCount = 10 + random.nextInt(25);
-            list.add(new LiveTrendSignal(seed.market(), seed.query(), score, change, seed.sentiment(), sourceCount));
-        }
-
-        return list;
+        return List.of();
     }
 
     private record FallbackSeed(String market, String query, String sentiment, int baseScore, int baseChange) {}
@@ -719,60 +691,18 @@ public class DefaultAiProvider implements AiProvider {
                 new FrontendDtos.StatItem(topKeywords.isBlank() ? keyword : topKeywords, "Chủ đề phụ tiềm năng")
         );
 
-        List<FrontendDtos.CompetitorMapItem> fallbackCompetitors = List.of(
-                new FrontendDtos.CompetitorMapItem(
-                        keyword + " Channel",
-                        "https://www.youtube.com",
-                        "Mạnh",
-                        "850K subs",
-                        "3 video/tuần",
-                        "Chuyên hướng dẫn và cung cấp các giải pháp tối ưu hóa thực tế cho " + keyword + "."
-                ),
-                new FrontendDtos.CompetitorMapItem(
-                        keyword + " Hub",
-                        "https://www.google.com",
-                        "Trung bình",
-                        "120K followers",
-                        "1 video/tuần",
-                        "Review so sánh hiệu năng và đánh giá ưu nhược điểm các dòng sản phẩm liên quan."
-                ),
-                new FrontendDtos.CompetitorMapItem(
-                        keyword + " Lab",
-                        "https://www.github.com",
-                        "Mới nổi",
-                        "35K followers",
-                        "Hàng tuần",
-                        "Chia sẻ kinh nghiệm lập trình, tích hợp hệ sinh thái và tự động hóa nâng cao."
-                )
-        );
+        List<FrontendDtos.CompetitorMapItem> fallbackCompetitors = List.of();
 
         FrontendDtos.TargetPersona fallbackPersona = new FrontendDtos.TargetPersona(
-                "Nhóm người dùng quan tâm đến \"" + keyword + "\", bao gồm các cá nhân đam mê công nghệ giải pháp, doanh nghiệp vừa và nhỏ (SMEs) và các kỹ sư tích hợp hệ thống đang tìm kiếm giải pháp tối ưu hóa hiệu năng và chi phí.",
-                List.of(
-                        "Thiếu tài liệu hướng dẫn tiếng Việt chi tiết và các tình huống ứng dụng thực tế.",
-                        "Khó khăn trong việc tích hợp và đồng bộ hóa với hệ thống thiết bị sẵn có.",
-                        "Độ trễ tín hiệu và độ ổn định của giải pháp chưa đạt kỳ vọng khi vận hành quy mô lớn."
-                ),
-                List.of(
-                        "Tìm kiếm các bài viết hướng dẫn từng bước (Step-by-step) và video lập trình DIY.",
-                        "So sánh chi phí, hiệu năng và độ tương thích giữa các thương hiệu cùng phân khúc.",
-                        "Tìm kiếm phản hồi thực tế từ cộng đồng người dùng trước khi quyết định đầu tư."
-                )
+                "N/A",
+                List.of(),
+                List.of()
         );
 
         FrontendDtos.RegionalPotential fallbackRegionalPotential = new FrontendDtos.RegionalPotential(
-                String.format("Tại thị trường Việt Nam, từ khóa \"%s\" ghi nhận lượng quan tâm lớn nhất tại các đô thị trọng điểm nhờ mật độ dân cư cao và thói quen tiêu dùng hiện đại.", keyword),
-                List.of(
-                        new FrontendDtos.RegionContribution("Hà Nội", 40, "Cao"),
-                        new FrontendDtos.RegionContribution("TP. Hồ Chí Minh", 35, "Cao"),
-                        new FrontendDtos.RegionContribution("Đà Nẵng", 15, "Trung bình"),
-                        new FrontendDtos.RegionContribution("Các tỉnh khác", 10, "Thấp")
-                ),
-                List.of(
-                        String.format("Miền Bắc (đặc biệt là Hà Nội) thể hiện xu hướng tìm kiếm chủ động đối với \"%s\".", keyword),
-                        String.format("Khu vực TP. Hồ Chí Minh đóng góp tỷ lệ tương tác thương mại lớn nhất nhờ mức độ sẵn sàng thanh toán cao."),
-                        "Khuyến nghị ưu tiên ngân sách tiếp thị địa phương tại các thành phố lớn trước khi mở rộng diện rộng."
-                )
+                "N/A",
+                List.of(),
+                List.of()
         );
 
         return new DeepInsightBlueprint(
@@ -784,7 +714,7 @@ public class DefaultAiProvider implements AiProvider {
                 stats,
                 mediaSignals,
                 trendPoints.isEmpty()
-                        ? List.of(new FrontendDtos.TrendPoint(keyword, 52, "Tín hiệu cơ sở"))
+                        ? List.of(new FrontendDtos.TrendPoint(keyword, 0, "N/A"))
                         : trendPoints,
                 new FrontendDtos.SentimentBlock(
                         bars,

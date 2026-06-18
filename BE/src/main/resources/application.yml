@@ -2,12 +2,18 @@ spring:
   application:
     name: researchco-backend
   datasource:
-    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://aws-1-ap-southeast-1.pooler.supabase.com:6543/postgres?sslmode=require&preferQueryMode=simple&prepareThreshold=0}
-    username: ${SPRING_DATASOURCE_USERNAME:postgres.kbxulunixssiykelahpz}
-    password: ${SPRING_DATASOURCE_PASSWORD:Nguyenhoang@0712}
+    url: ${SPRING_DATASOURCE_URL:${DATABASE_URL:jdbc:postgresql://aws-1-ap-southeast-1.pooler.supabase.com:5432/postgres?sslmode=require&preferQueryMode=simple&prepareThreshold=0}}
+    username: ${SPRING_DATASOURCE_USERNAME:${DATABASE_USERNAME:postgres.kbxulunixssiykelahpz}}
+    password: ${SPRING_DATASOURCE_PASSWORD:${DATABASE_PASSWORD:Nguyenhoang@0712}}
+    hikari:
+      maximum-pool-size: 5
+      minimum-idle: 1
+      idle-timeout: 30000
+      max-lifetime: 60000
+      keepalive-time: 30000
   jpa:
     hibernate:
-      ddl-auto: update
+      ddl-auto: none
     defer-datasource-initialization: true
     properties:
       hibernate:
