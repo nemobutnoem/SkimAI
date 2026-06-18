@@ -53,7 +53,6 @@ public class SearchQueryEntity {
     @Column(length = 20)
     private String status;
 
-    @CreationTimestamp
-    @Column(name = "created_at", updatable = false)
+    @Column(name = "created_at")
     private LocalDateTime createdAt;
 }

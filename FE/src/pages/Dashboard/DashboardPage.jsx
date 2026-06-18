@@ -120,7 +120,7 @@ export function DashboardPage() {
                     <strong>{item.title}</strong>
                     <p>Được theo dõi trong workspace nghiên cứu thị trường của bạn</p>
                   </div>
-                  <time>{new Date(item.createdAt).toLocaleString()}</time>
+                  <time>{new Date(item.createdAt).toLocaleString('vi-VN')}</time>
                 </Link>
               ))
             ) : (

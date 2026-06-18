@@ -107,7 +107,7 @@ public class ReportService {
                 snapshot.getId().toString(),
                 report.getTitle(),
                 report.getStatus(),
-                report.getCreatedAt()
+                report.getCreatedAt() != null ? report.getCreatedAt().toString() + "Z" : null
         );
     }
 
@@ -131,7 +131,7 @@ public class ReportService {
                         r.getTitle(),
                         r.getStatus(),
                         r.getSearchQuery() != null ? r.getSearchQuery().getKeyword() : "",
-                        r.getCreatedAt()
+                        r.getCreatedAt() != null ? r.getCreatedAt().toString() + "Z" : null
                 ))
                 .toList();
     }
@@ -157,7 +157,7 @@ public class ReportService {
                 report.getStatus(),
                 report.getSearchQuery() != null ? report.getSearchQuery().getKeyword() : "",
                 deserialize(report.getReportContent()),
-                report.getCreatedAt()
+                report.getCreatedAt() != null ? report.getCreatedAt().toString() + "Z" : null
         );
     }
 }

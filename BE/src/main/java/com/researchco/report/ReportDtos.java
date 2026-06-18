@@ -19,7 +19,7 @@ public class ReportDtos {
             String snapshotId,
             String title,
             String status,
-            LocalDateTime createdAt
+            String createdAt
     ) {
     }
 
@@ -28,7 +28,7 @@ public class ReportDtos {
             String title,
             String status,
             String keyword,
-            LocalDateTime createdAt
+            String createdAt
     ) {
     }
 
@@ -38,7 +38,7 @@ public class ReportDtos {
             String status,
             String keyword,
             java.util.Map<String, Object> reportContent,
-            LocalDateTime createdAt
+            String createdAt
     ) {
     }
 }

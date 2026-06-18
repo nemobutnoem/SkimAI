@@ -181,7 +181,7 @@ public class FrontendService {
                         .map(query -> new FrontendDtos.RecentItem(
                                 query.getId().toString(),
                                 query.getKeyword(),
-                                query.getCreatedAt() != null ? query.getCreatedAt().toString() : LocalDateTime.now().toString()
+                                query.getCreatedAt() != null ? query.getCreatedAt().toString() + "Z" : LocalDateTime.now().toString() + "Z"
                         ))
                         .toList()
         );
@@ -2134,8 +2134,10 @@ public class FrontendService {
         );
 
         if (!existing.isEmpty()) {
-            // Reuse existing record (không tạo mới)
-            return existing.get(0);
+            // Reuse existing record (không tạo mới) và cập nhật thời gian
+            SearchQueryEntity q = existing.get(0);
+            q.setCreatedAt(LocalDateTime.now());
+            return searchQueryRepository.save(q);
         }
 
         // Nếu không có → tạo mới
@@ -2146,6 +2148,7 @@ public class FrontendService {
                 .languageCode(languageCode)
                 .timeRange("7d")
                 .status("COMPLETED")
+                .createdAt(LocalDateTime.now())
                 .build());
     }
 
