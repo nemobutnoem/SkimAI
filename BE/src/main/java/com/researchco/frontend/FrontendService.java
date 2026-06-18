@@ -400,6 +400,10 @@ public class FrontendService {
         if (query == null || query.getId() == null) {
             return;
         }
+        if (items.isEmpty()) {
+            log.info("Skipping saveSnapshot because the items list is empty (no data crawled) for keyword: {}", query.getKeyword());
+            return;
+        }
         boolean isOfflineMode = items.stream().anyMatch(item -> 
                 item.rawPayload() instanceof Map && Boolean.TRUE.equals(((Map<?,?>)item.rawPayload()).get("isFallback"))
         );

@@ -47,7 +47,7 @@ public class SerpApiNewsProvider implements SearchProvider {
     @Override
     public List<NormalizedSourceItem> search(String keyword, String countryCode, String languageCode, String timeRange) {
         if (apiKey == null || apiKey.isBlank()) {
-            return generateFallbackResults(keyword);
+            return new ArrayList<>();
         }
 
         try {
@@ -71,7 +71,7 @@ public class SerpApiNewsProvider implements SearchProvider {
 
             JsonNode root = getJson(uri);
             if (root == null || !root.path("news_results").isArray() || root.path("news_results").isEmpty()) {
-                return generateFallbackResults(keyword);
+                return new ArrayList<>();
             }
 
             List<NormalizedSourceItem> items = new ArrayList<>();
@@ -119,81 +119,8 @@ public class SerpApiNewsProvider implements SearchProvider {
             return items;
         } catch (Exception e) {
             log.warn("[SERPAPI_NEWS] Search failed for keyword=\"{}\": {}", keyword, e.getMessage());
-            return generateFallbackResults(keyword);
+            return new ArrayList<>();
         }
-    }
-
-    private List<NormalizedSourceItem> generateFallbackResults(String keyword) {
-        List<NormalizedSourceItem> items = new ArrayList<>();
-        String[] titles = {
-            "New developments and updates in " + keyword + " industry",
-            "Companies increase focus and strategy around " + keyword,
-            "New guidelines and regulatory frameworks proposed for " + keyword,
-            "How " + keyword + " is influencing community habits and daily routines",
-            "Startups in " + keyword + " space secure new funding and expansion"
-        };
-        String[] snippets = {
-            "A major industry consortium has unveiled new findings in the field of " + keyword + ", promising improvements in quality and operations.",
-            "Leading brands have committed resources to expand their " + keyword + " distribution channels and build customer trust.",
-            "Authorities have introduced a new framework aimed at ensuring quality control, safety, and standards in " + keyword + " products.",
-            "Recent reports show that " + keyword + " options are helping users improve their lifestyle, choices, and daily efficiency.",
-            "Venture activity in " + keyword + " sector has reached new levels, driven by strong consumer demand and growing adoption."
-        };
-        String[] sources = {
-            "Reuters",
-            "Bloomberg",
-            "The New York Times",
-            "Nature",
-            "Wall Street Journal"
-        };
-        String[] domains = {
-            "reuters.com",
-            "bloomberg.com",
-            "nytimes.com",
-            "nature.com",
-            "wsj.com"
-        };
-
-        for (int i = 0; i < titles.length; i++) {
-            int rank = i + 1;
-            long estViews = Math.max(800, 12000 / rank + (long)(Math.random() * 1500));
-            long estLikes = Math.max(40, estViews / 35 + (long)(Math.random() * 60));
-            long estComments = Math.max(8, estViews / 130 + (long)(Math.random() * 15));
-            double estEngagement = estViews > 0 ? (double)(estLikes + estComments) / estViews : 0.05;
-
-            LocalDateTime dt = LocalDateTime.now().minusDays(i);
-            String formattedDate = dt.format(java.time.format.DateTimeFormatter.ISO_LOCAL_DATE);
-            String formattedDateTime = dt.atZone(java.time.ZoneId.of("UTC")).format(java.time.format.DateTimeFormatter.ISO_OFFSET_DATE_TIME);
-
-            Map<String, Object> rawPayload = new LinkedHashMap<>();
-            rawPayload.put("provider", providerCode());
-            rawPayload.put("isFallback", true);
-            rawPayload.put("keyword", keyword);
-            rawPayload.put("position", rank);
-            rawPayload.put("date", formattedDate);
-            rawPayload.put("publishedAt", formattedDateTime);
-            rawPayload.put("thumbnail", "");
-            rawPayload.put("favicon", "");
-            rawPayload.put("viewCount", estViews);
-            rawPayload.put("likeCount", estLikes);
-            rawPayload.put("commentCount", estComments);
-            rawPayload.put("engagementRate", estEngagement);
-
-            items.add(new NormalizedSourceItem(
-                    providerCode(),
-                    "NEWS",
-                    "ARTICLE",
-                    titles[i],
-                    snippets[i],
-                    "https://www." + domains[i] + "/news/" + keyword.toLowerCase().replaceAll("[^a-zA-Z0-9]+", "-"),
-                    sources[i],
-                    sources[i],
-                    dt,
-                    inferSentiment(titles[i] + " " + snippets[i]),
-                    rawPayload
-            ));
-        }
-        return items;
     }
 
     private JsonNode getJson(URI uri) throws Exception {

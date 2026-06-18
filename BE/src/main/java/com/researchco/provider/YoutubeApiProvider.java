@@ -51,13 +51,13 @@ public class YoutubeApiProvider implements SearchProvider {
     @Override
     public List<NormalizedSourceItem> search(String keyword, String countryCode, String languageCode, String timeRange) {
         if (apiKey == null || apiKey.isBlank()) {
-            return generateFallbackResults(keyword);
+            return new ArrayList<>();
         }
 
         try {
             JsonNode items = searchItems(keyword, countryCode, languageCode, timeRange);
             if (items == null || !items.isArray() || items.isEmpty()) {
-                return generateFallbackResults(keyword);
+                return new ArrayList<>();
             }
 
             List<String> videoIds = new ArrayList<>();
@@ -138,114 +138,8 @@ public class YoutubeApiProvider implements SearchProvider {
             return results;
         } catch (Exception e) {
             log.warn("[YOUTUBE_API] Search failed for keyword=\"{}\": {}", keyword, e.getMessage());
-            return generateFallbackResults(keyword);
+            return new ArrayList<>();
         }
-    }
-
-    private List<NormalizedSourceItem> generateFallbackResults(String keyword) {
-        List<NormalizedSourceItem> results = new ArrayList<>();
-        String[] titles = {
-            "Understanding " + titleCase(keyword) + ": A Beginner's Guide",
-            "How to Get Started with " + titleCase(keyword) + " (Step-by-Step)",
-            titleCase(keyword) + ": Top Tips & Common Mistakes to Avoid",
-            "The Future of " + titleCase(keyword) + ": What You Need to Know",
-            "Is " + titleCase(keyword) + " Worth It? (Honest Review & Comparison)"
-        };
-        String[] descriptions = {
-            "A deep dive into " + keyword + " and how it works. We explain the core concepts and get you up to speed.",
-            "Learn how to set up, build, or implement " + keyword + " easily with this simple step-by-step video tutorial.",
-            "We share the best practices for " + keyword + " and point out the critical mistakes most beginners make.",
-            "Experts discuss the growth, future trends, and upcoming changes of " + keyword + " in the next few years.",
-            "We review the popular options for " + keyword + " and compare them to help you make the best choice."
-        };
-        String[] channels = {
-            "MKBHD",
-            "TechLead",
-            "freeCodeCamp.org",
-            "Lex Fridman",
-            "60 Minutes"
-        };
-        String[] videoIds = {
-            "UXJWm_SRauY",
-            "7JHUbC8sW2M",
-            "C9Rnt3FKaIY",
-            "iyVXw-SoUrY",
-            "yY-zV3f101A"
-        };
-        String[] channelIds = {
-            "UCmeU2DYiVy80wMBGZzEWnbw",
-            "UCwSozl89jl2zUDzQ4jGJD3g",
-            "UCBi2mrWuNuyYy4gbM6fU18Q",
-            "UCBi2mrWuNuyYy4gbM6fU18Q",
-            "UCy123456789abc"
-        };
-        long[] subscriberCounts = {
-            18600000L,
-            1400000L,
-            9600000L,
-            4140000L,
-            19600000L
-        };
-
-        for (int i = 0; i < titles.length; i++) {
-            int rank = i + 1;
-            long estViews = Math.max(2000, 25000 / rank + (long)(Math.random() * 3000));
-            long estLikes = Math.max(100, estViews / 45 + (long)(Math.random() * 100));
-            long estComments = Math.max(15, estViews / 160 + (long)(Math.random() * 30));
-            double estEngagement = estViews > 0 ? (double)(estLikes + estComments) / estViews : 0.05;
-
-            List<String> tags = List.of(keyword.toLowerCase(), channels[i].toLowerCase());
-            List<String> topics = List.of("Education", "Information");
-
-            String enrichedSnippet = descriptions[i] + " ; views=" + estViews + " ; likes=" + estLikes + " ; comments=" + estComments + 
-                " ; subscribers=" + subscriberCounts[i] + " ; duration=PT12M34S ; tags=" + String.join("|", tags);
-
-            Map<String, Object> rawPayload = new HashMap<>();
-            rawPayload.put("provider", providerCode());
-            rawPayload.put("isFallback", true);
-            rawPayload.put("videoId", videoIds[i]);
-            rawPayload.put("channelId", channelIds[i]);
-            rawPayload.put("channelTitle", channels[i]);
-            rawPayload.put("keyword", keyword);
-            rawPayload.put("timeRange", "6m");
-            rawPayload.put("thumbnail", "https://i.ytimg.com/vi/" + videoIds[i] + "/hqdefault.jpg");
-            rawPayload.put("duration", "PT12M34S");
-            rawPayload.put("tags", tags);
-            rawPayload.put("topicCategories", topics);
-            rawPayload.put("viewCount", estViews);
-            rawPayload.put("likeCount", estLikes);
-            rawPayload.put("commentCount", estComments);
-            rawPayload.put("subscriberCount", subscriberCounts[i]);
-            rawPayload.put("engagementRate", estEngagement);
-            rawPayload.put("commentIntensity", (double)estComments / estViews);
-
-            results.add(new NormalizedSourceItem(
-                    providerCode(),
-                    "YOUTUBE",
-                    "VIDEO",
-                    titles[i],
-                    enrichedSnippet,
-                    "https://www.youtube.com/watch?v=" + videoIds[i],
-                    channels[i],
-                    channels[i],
-                    LocalDateTime.now().minusDays(i),
-                    "NEUTRAL",
-                    rawPayload
-            ));
-        }
-        return results;
-    }
-
-    private String titleCase(String text) {
-        if (text == null || text.isBlank()) return "";
-        String[] words = text.split("\\s+");
-        StringBuilder sb = new StringBuilder();
-        for (String w : words) {
-            if (w.length() > 0) {
-                sb.append(Character.toUpperCase(w.charAt(0))).append(w.substring(1).toLowerCase()).append(" ");
-            }
-        }
-        return sb.toString().trim();
     }
 
     private JsonNode searchItems(String keyword, String countryCode, String languageCode, String timeRange) throws Exception {

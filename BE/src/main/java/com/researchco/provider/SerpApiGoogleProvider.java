@@ -47,7 +47,7 @@ public class SerpApiGoogleProvider implements SearchProvider {
     @Override
     public List<NormalizedSourceItem> search(String keyword, String countryCode, String languageCode, String timeRange) {
         if (apiKey == null || apiKey.isBlank()) {
-            return generateFallbackResults(keyword);
+            return new ArrayList<>();
         }
 
         try {
@@ -70,7 +70,7 @@ public class SerpApiGoogleProvider implements SearchProvider {
 
             JsonNode root = getJson(uri);
             if (root == null || !root.path("organic_results").isArray() || root.path("organic_results").isEmpty()) {
-                return generateFallbackResults(keyword);
+                return new ArrayList<>();
             }
 
             List<NormalizedSourceItem> items = new ArrayList<>();
@@ -104,96 +104,24 @@ public class SerpApiGoogleProvider implements SearchProvider {
                 rawPayload.put("engagementRate", estEngagement);
 
                 items.add(new NormalizedSourceItem(
-                        providerCode(),
-                        "GOOGLE",
-                        "WEB",
-                        title,
-                        snippet,
-                        link,
-                        inferSourceName(link, result),
-                        inferAuthorName(result),
-                        parsePublishedAt(result.path("date").asText("")),
-                        inferSentiment(title + " " + snippet),
-                        rawPayload
+                         providerCode(),
+                         "GOOGLE",
+                         "WEB",
+                         title,
+                         snippet,
+                         link,
+                         inferSourceName(link, result),
+                         inferAuthorName(result),
+                         parsePublishedAt(result.path("date").asText("")),
+                         inferSentiment(title + " " + snippet),
+                         rawPayload
                 ));
             }
             return items;
         } catch (Exception e) {
             log.warn("[SERPAPI_GOOGLE] Search failed for keyword=\"{}\": {}", keyword, e.getMessage());
-            return generateFallbackResults(keyword);
+            return new ArrayList<>();
         }
-    }
-
-    private List<NormalizedSourceItem> generateFallbackResults(String keyword) {
-        List<NormalizedSourceItem> items = new ArrayList<>();
-        String[] titles = {
-            "Bloomberg Business: Financial outlook on " + keyword + " industry",
-            "Latest trends and developments in " + keyword + " market",
-            "How " + keyword + " is shaping modern consumer behavior",
-            "The future of " + keyword + ": Challenges and opportunities",
-            "Why " + keyword + " continues to attract significant global interest"
-        };
-        String[] snippets = {
-            "Get complete analysis of " + keyword + " market capitalization, financial performance, and key economic drivers.",
-            "As we look ahead, " + keyword + " continues to evolve with changing demands. Here are the top trends and dynamics shaping this space.",
-            "Analysts look at how " + keyword + " affects modern habits, workflows, and consumer decision making in the current landscape.",
-            "While " + keyword + " offers excellent potential, it also faces unique challenges. Experts discuss the roadmap for sustainable development.",
-            "Investments and public interest in " + keyword + " are rising. Leaders share insights on why this represents a significant market shift."
-        };
-        String[] domains = {
-            "bloomberg.com",
-            "forbes.com",
-            "mckinsey.com",
-            "wired.com",
-            "techcrunch.com"
-        };
-        String[] sources = {
-            "Bloomberg",
-            "Forbes",
-            "McKinsey & Company",
-            "Wired",
-            "TechCrunch"
-        };
-
-        for (int i = 0; i < titles.length; i++) {
-            int rank = i + 1;
-            long estViews = Math.max(500, 8500 / rank + (long)(Math.random() * 1500));
-            long estLikes = Math.max(10, estViews / 40 + (long)(Math.random() * 50));
-            long estComments = Math.max(2, estViews / 150 + (long)(Math.random() * 15));
-            double estEngagement = estViews > 0 ? (double)(estLikes + estComments) / estViews : 0.05;
-
-            LocalDateTime dt = LocalDateTime.now().minusDays(i);
-            String formattedDate = dt.format(java.time.format.DateTimeFormatter.ISO_LOCAL_DATE);
-
-            Map<String, Object> rawPayload = new LinkedHashMap<>();
-            rawPayload.put("provider", providerCode());
-            rawPayload.put("isFallback", true);
-            rawPayload.put("keyword", keyword);
-            rawPayload.put("position", rank);
-            rawPayload.put("displayedLink", "https://www." + domains[i] + "/search?q=" + keyword);
-            rawPayload.put("cachedPageLink", "");
-            rawPayload.put("relatedPagesLink", "");
-            rawPayload.put("date", formattedDate);
-            rawPayload.put("viewCount", estViews);
-            rawPayload.put("likeCount", estLikes);
-            rawPayload.put("commentCount", estComments);
-            rawPayload.put("engagementRate", estEngagement);
-
-            items.add(new NormalizedSourceItem(
-                    providerCode(),
-                    "GOOGLE",
-                    "WEB",
-                    titles[i],
-                    snippets[i],
-                    "https://www." + domains[i] + "/article/" + keyword.toLowerCase().replaceAll("[^a-zA-Z0-9]+", "-"),
-                    sources[i],
-                    "SerpApi Google Fallback",
-                    dt,
-                    inferSentiment(titles[i] + " " + snippets[i]),
-                    rawPayload
-            ));
-        }
-        return items;
     }
 
     private JsonNode getJson(URI uri) throws Exception {
