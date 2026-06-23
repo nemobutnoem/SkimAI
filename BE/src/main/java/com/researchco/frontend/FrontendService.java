@@ -2225,8 +2225,7 @@ public class FrontendService {
         if (value == null || value.isBlank()) {
             return List.of();
         }
-        String normalized = Normalizer.normalize(value, Normalizer.Form.NFD)
-            .replaceAll("\\p{M}+", "")
+        String normalized = Normalizer.normalize(value, Normalizer.Form.NFC)
             .toLowerCase(Locale.ROOT);
         return List.of(normalized.split("\\s+")).stream()
                 .filter(token -> !token.startsWith("http"))
@@ -2303,9 +2302,10 @@ public class FrontendService {
             return false;
         }
         int vowels = 0;
+        String vowelChars = "aeiouyáàảãạăằắẳẵặâầấẩẫậéèẻẽẹêềếểễệíìỉĩịóòỏõọôồốổỗộơờớởỡợúùủũụưừứửữựýỳỷỹỵ";
         for (int i = 0; i < token.length(); i++) {
             char ch = token.charAt(i);
-            if ("aeiouy".indexOf(ch) >= 0) {
+            if (vowelChars.indexOf(ch) >= 0) {
                 vowels++;
             }
         }
