@@ -116,6 +116,13 @@ public class FrontendService {
             "tôi", "chúng", "ta", "bạn", "anh", "chị", "em", "họ", "nó", "cậu", "tớ", "mình"
     ));
 
+    private static final Set<String> FORBIDDEN_ENDINGS = new HashSet<>(List.of(
+            "bất", "bị", "bi", "bơi", "bởi", "boi", "và", "va", "là", "la", "của", "cua", "cho", "với", "voi", 
+            "để", "de", "đến", "den", "thì", "thi", "do", "từ", "tu", "ở", "o", "như", "nhu", "khi", 
+            "chưa", "chua", "đã", "da", "những", "nhung", "các", "cac", "một", "mot", "này", "nay", "kia", 
+            "sự", "su", "cuộc", "cuoc", "cái", "cai"
+    ));
+
     private final SearchQueryRepository searchQueryRepository;
     private final AnalysisSnapshotRepository analysisSnapshotRepository;
     private final SnapshotInsightRepository snapshotInsightRepository;
@@ -2246,6 +2253,10 @@ public class FrontendService {
         }
         String[] parts = phrase.trim().split("\\s+");
         if (parts.length < 2) {
+            return false;
+        }
+        String lastWord = parts[parts.length - 1];
+        if (FORBIDDEN_ENDINGS.contains(lastWord)) {
             return false;
         }
         int meaningfulParts = 0;
