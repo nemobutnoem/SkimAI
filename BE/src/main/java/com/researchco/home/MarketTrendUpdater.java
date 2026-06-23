@@ -94,16 +94,16 @@ public class MarketTrendUpdater {
     @Transactional
     public void saveFallbackTrends() {
         List<FallbackSeed> allFallbacks = List.of(
-            new FallbackSeed("Artificial Intelligence", "Generative AI tools", "positive", 180, 24),
-            new FallbackSeed("Green Tech", "Electric bikes", "positive", 140, 15),
-            new FallbackSeed("E-commerce", "TikTok Shop trends", "neutral", 210, 18),
-            new FallbackSeed("Food & Lifestyle", "Pho", "positive", 110, 8),
-            new FallbackSeed("Personal Finance", "Digital gold investment", "neutral", 95, 2),
-            new FallbackSeed("Health & Wellness", "Plant-based milk", "positive", 130, 12),
-            new FallbackSeed("Smart Home", "IoT security devices", "neutral", 115, 6),
-            new FallbackSeed("Travel & Tourism", "Glamping trends", "positive", 150, 21),
-            new FallbackSeed("Entertainment", "Short-form video editing", "positive", 175, 30),
-            new FallbackSeed("EdTech", "AI coding assistants", "positive", 160, 27)
+            new FallbackSeed("Công nghệ & AI", "Trợ lý AI doanh nghiệp", "positive", 180, 24),
+            new FallbackSeed("Xe điện & Di động", "Xe máy điện", "positive", 140, 15),
+            new FallbackSeed("Thương mại & Bán lẻ", "Xu hướng TikTok Shop", "neutral", 210, 18),
+            new FallbackSeed("F&B & Tiêu dùng", "Cà phê muối", "positive", 110, 8),
+            new FallbackSeed("Tài chính Cá nhân", "Tích lũy vàng kỹ thuật số", "neutral", 95, 2),
+            new FallbackSeed("Sức khỏe & Đời sống", "Sữa hạt dinh dưỡng", "positive", 130, 12),
+            new FallbackSeed("Nhà thông minh", "Thiết bị an ninh IoT", "neutral", 115, 6),
+            new FallbackSeed("Du lịch & Trải nghiệm", "Xu hướng Glamping", "positive", 150, 21),
+            new FallbackSeed("Giải trí & Truyền thông", "Video ngắn (TikTok/Shorts)", "positive", 175, 30),
+            new FallbackSeed("Giáo dục & Công nghệ", "AI hỗ trợ học tập", "positive", 160, 27)
         );
 
         long hourSeed = System.currentTimeMillis() / (1000L * 60L * 60L);

@@ -70,6 +70,6 @@ integration:
 
 home:
   live-trends:
-    seed-keywords: ${HOME_LIVE_TRENDS_SEEDS:Market Research=consumer demand|market signals|category growth;Mobility & Consumer=Electric bike|Urban mobility|EV commute;Commerce & Platforms=TikTok Shop trends|Social Commerce|Creator commerce;Food & Lifestyle=Pho|Vietnamese street food|Quick noodle recipes}
+    seed-keywords: ${HOME_LIVE_TRENDS_SEEDS:Công nghệ & AI=Trợ lý AI|AI sinh học|Chatbot doanh nghiệp;Xe điện & Di động=Xe máy điện|Xe điện thông minh|Trạm sạc xe điện;Thương mại & Bán lẻ=TikTok Shop trends|Mua trước trả sau|Livestream bán hàng;F&B & Tiêu dùng=Cà phê muối|Sữa hạt dinh dưỡng|Đồ ăn healthy}
     refresh-ms: ${HOME_LIVE_TRENDS_REFRESH_MS:3600000}
 

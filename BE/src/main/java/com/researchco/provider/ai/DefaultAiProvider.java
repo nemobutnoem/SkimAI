@@ -56,55 +56,7 @@ public class DefaultAiProvider implements AiProvider {
 
         boolean isOfflineMode = "OFFLINE_DEMO".equals(contextData.snapshotId());
         if (isOfflineMode) {
-            return new FrontendDtos.DeepInsightResponse(
-                    blueprint.keyword(),
-                    blueprint.source(),
-                    String.format("Hệ thống đang hoạt động ở chế độ ngoại tuyến (Offline). Nhận định chi tiết cho từ khóa \"%s\" không khả dụng.", blueprint.keyword()),
-                    List.of("Nhóm cơ hội không khả dụng ở chế độ ngoại tuyến."),
-                    "Khuyến nghị chiến lược không khả dụng ở chế độ ngoại tuyến.",
-                    List.of(
-                            new FrontendDtos.StatItem("N/A", "Tổng lượt xem"),
-                            new FrontendDtos.StatItem("N/A", "Số lượt đề cập"),
-                            new FrontendDtos.StatItem("N/A", "Tương tác trung bình")
-                    ),
-                    List.of(
-                            new FrontendDtos.SignalItem("Tín hiệu nhu cầu khách hàng", "Không khả dụng (Chế độ offline)"),
-                            new FrontendDtos.SignalItem("Động lực thảo luận", "Không khả dụng (Chế độ offline)"),
-                            new FrontendDtos.SignalItem("Hệ quả cạnh tranh", "Không khả dụng (Chế độ offline)")
-                    ),
-                    List.of(new FrontendDtos.TrendPoint(blueprint.keyword(), 50, "N/A (Chế độ offline)")),
-                    new FrontendDtos.SentimentBlock(
-                            List.of(
-                                    new FrontendDtos.SentimentBar("Tích cực", 0, "var(--green)", "text-green"),
-                                    new FrontendDtos.SentimentBar("Trung lập", 100, "var(--gray-500)", ""),
-                                    new FrontendDtos.SentimentBar("Tiêu cực", 0, "var(--red)", "text-red")
-                            ),
-                            List.of(new FrontendDtos.TopicItem("Không khả dụng", "Offline"))
-                    ),
-                    List.of(
-                            new FrontendDtos.OpportunityCard("Tính năng hạn chế", "Cơ hội thị trường không khả dụng ở chế độ ngoại tuyến.", "mint")
-                    ),
-                    new FrontendDtos.StrategicRecommendation(
-                            "Khuyến nghị chiến lược",
-                            "Vui lòng kết nối API hoặc cấu hình API key để nhận được phân tích và khuyến nghị chiến lược chính xác từ AI.",
-                            List.of(
-                                    new FrontendDtos.StatItem("N/A", "Tổng lượt thích"),
-                                    new FrontendDtos.StatItem("N/A", "Tổng bình luận"),
-                                    new FrontendDtos.StatItem("N/A", "Chủ đề phụ tiềm năng")
-                            )
-                    ),
-                    blueprint.competitors(),
-                    blueprint.targetPersona(),
-                    new FrontendDtos.RegionalPotential(
-                            "Phân tích tiềm năng khu vực không khả dụng ở chế độ ngoại tuyến (Offline) đối với từ khóa \"" + blueprint.keyword() + "\".",
-                            List.of(
-                                    new FrontendDtos.RegionContribution("Hà Nội", 0, "N/A (Offline)"),
-                                    new FrontendDtos.RegionContribution("TP. Hồ Chí Minh", 0, "N/A (Offline)"),
-                                    new FrontendDtos.RegionContribution("Đà Nẵng", 0, "N/A (Offline)")
-                            ),
-                            List.of("Vui lòng cấu hình API key và kết nối Internet để chạy phân tích địa lý chi tiết.")
-                    )
-            );
+            return blueprint.toResponse();
         }
 
         String activeProvider = systemSettingRepository.findById("ai_provider")
@@ -691,19 +643,9 @@ public class DefaultAiProvider implements AiProvider {
                 new FrontendDtos.StatItem(topKeywords.isBlank() ? keyword : topKeywords, "Chủ đề phụ tiềm năng")
         );
 
-        List<FrontendDtos.CompetitorMapItem> fallbackCompetitors = List.of();
-
-        FrontendDtos.TargetPersona fallbackPersona = new FrontendDtos.TargetPersona(
-                "N/A",
-                List.of(),
-                List.of()
-        );
-
-        FrontendDtos.RegionalPotential fallbackRegionalPotential = new FrontendDtos.RegionalPotential(
-                "N/A",
-                List.of(),
-                List.of()
-        );
+        List<FrontendDtos.CompetitorMapItem> fallbackCompetitors = buildFallbackCompetitors(keyword);
+        FrontendDtos.TargetPersona fallbackPersona = buildFallbackPersona(keyword);
+        FrontendDtos.RegionalPotential fallbackRegionalPotential = buildFallbackRegionalPotential(keyword);
 
         return new DeepInsightBlueprint(
                 keyword,
@@ -728,6 +670,76 @@ public class DefaultAiProvider implements AiProvider {
                 fallbackPersona,
                 fallbackRegionalPotential
         );
+    }
+
+    private List<FrontendDtos.CompetitorMapItem> buildFallbackCompetitors(String keyword) {
+        String kw = keyword == null ? "Sản phẩm" : keyword;
+        return List.of(
+                new FrontendDtos.CompetitorMapItem(
+                        kw + " Reviewer",
+                        "https://www.youtube.com",
+                        "Mạnh",
+                        "650K subs",
+                        "2 video/tuần",
+                        String.format("Kênh chuyên đánh giá thực tế, so sánh tính năng và trải nghiệm sử dụng \"%s\".", kw)
+                ),
+                new FrontendDtos.CompetitorMapItem(
+                        kw + " Community",
+                        "https://www.facebook.com",
+                        "Trung bình",
+                        "85K members",
+                        "Hàng ngày",
+                        String.format("Cộng đồng thảo luận, chia sẻ kinh nghiệm sử dụng và mẹo tối ưu hóa liên quan đến \"%s\".", kw)
+                ),
+                new FrontendDtos.CompetitorMapItem(
+                        kw + " Insights",
+                        "https://www.google.com",
+                        "Mới nổi",
+                        "45K views/tháng",
+                        "2 bài viết/tuần",
+                        String.format("Trang tin tức chuyên sâu phân tích xu hướng công nghệ và giải pháp đột phá cho \"%s\".", kw)
+                )
+        );
+    }
+
+    private FrontendDtos.TargetPersona buildFallbackPersona(String keyword) {
+        String kw = keyword == null ? "Sản phẩm" : keyword;
+        String description = String.format(
+                "Khách hàng cá nhân hoặc doanh nghiệp trẻ tại các đô thị lớn có nhu cầu cao về việc sử dụng, tối ưu hóa hoặc đầu tư vào \"%s\". Họ ưa chuộng công nghệ, tính tiện lợi và giải pháp thông minh.",
+                kw
+        );
+        List<String> painPoints = List.of(
+                String.format("Chi phí tiếp cận và sở hữu \"%s\" còn tương đối cao so với giá trị thực tế.", kw),
+                String.format("Thiếu thông tin so sánh minh bạch, chất lượng và đáng tin cậy trên thị trường.", kw),
+                String.format("Rào cản về việc tích hợp \"%s\" vào quy trình làm việc hoặc cuộc sống hàng ngày.", kw)
+        );
+        List<String> searchIntents = List.of(
+                String.format("So sánh giá \"%s\" tốt nhất", kw),
+                String.format("Đánh giá ưu nhược điểm của \"%s\"", kw),
+                String.format("Hướng dẫn tự làm hoặc tích hợp \"%s\"", kw),
+                String.format("Tìm kiếm nhà cung cấp uy tín về \"%s\"", kw)
+        );
+        return new FrontendDtos.TargetPersona(description, painPoints, searchIntents);
+    }
+
+    private FrontendDtos.RegionalPotential buildFallbackRegionalPotential(String keyword) {
+        String kw = keyword == null ? "Sản phẩm" : keyword;
+        String analysisText = String.format(
+                "Độ phủ thị trường và mức độ quan tâm đối với \"%s\" tập trung mạnh mẽ tại các khu vực kinh tế trọng điểm, đặc biệt là Hà Nội và TP. Hồ Chí Minh nơi có mật độ dân số cao và khả năng tiếp cận công nghệ mới nhanh chóng.",
+                kw
+        );
+        List<FrontendDtos.RegionContribution> topRegions = List.of(
+                new FrontendDtos.RegionContribution("Hà Nội", 42, "Rất cao"),
+                new FrontendDtos.RegionContribution("TP. Hồ Chí Minh", 38, "Rất cao"),
+                new FrontendDtos.RegionContribution("Đà Nẵng", 12, "Trung bình"),
+                new FrontendDtos.RegionContribution("Bình Dương", 8, "Tiềm năng")
+        );
+        List<String> geographicInsights = List.of(
+                String.format("Các đô thị đặc biệt (Hà Nội, TP.HCM) chiếm hơn 80%% lượng tìm kiếm về \"%s\".", kw),
+                "Khu vực miền Nam có xu hướng tương tác cởi mở hơn thông qua các nền tảng mạng xã hội và livestream.",
+                String.format("Cần tối ưu hóa chuỗi cung ứng và điểm trải nghiệm trực tiếp tại Đà Nẵng để mở rộng tệp khách hàng tiềm năng cho \"%s\".", kw)
+        );
+        return new FrontendDtos.RegionalPotential(analysisText, topRegions, geographicInsights);
     }
 
     private String formatCompact(long value) {
@@ -1045,7 +1057,7 @@ public class DefaultAiProvider implements AiProvider {
                     sentiment,
                     opportunityCards,
                     new FrontendDtos.StrategicRecommendation(
-                            "Market-backed direction",
+                            "Định hướng Chiến lược",
                             recommendation,
                             strategicStats
                     ),

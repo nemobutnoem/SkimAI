@@ -27,10 +27,10 @@ public class HomeService {
                     String keyword = trend.getKeyword() == null || trend.getKeyword().isBlank() ? market : trend.getKeyword();
                     return new HomeDtos.TrendItem(
                         "trend-" + market.toLowerCase(Locale.ROOT).replaceAll("[^a-z0-9]+", "-"),
-                        market,
+                        keyword,
                         formatChange(trend.getChangePct()),
                         trend.getSentiment(),
-                        formatSignalLabel(keyword),
+                        market,
                         trend.getSourceCount(),
                         formatUpdatedAt(trend.getUpdatedAt())
                     );
@@ -47,10 +47,10 @@ public class HomeService {
         }
 
         List<HomeDtos.TrendItem> fallback = List.of(
-            new HomeDtos.TrendItem("trend-market-research", "Market Research", "+34%", "positive", "Signals from public source coverage", 3, "Updated moments ago"),
-                new HomeDtos.TrendItem("trend-mobility-consumer", "Mobility & Consumer", "+21%", "positive", "Signals from Electric bike", 3, "Updated moments ago"),
-                new HomeDtos.TrendItem("trend-commerce-platforms", "Commerce & Platforms", "+18%", "neutral", "Signals from TikTok Shop trends", 3, "Updated moments ago"),
-                new HomeDtos.TrendItem("trend-food-lifestyle", "Food & Lifestyle", "-6%", "negative", "Signals from Pho", 2, "Updated moments ago")
+            new HomeDtos.TrendItem("trend-ai", "Trợ lý AI", "+34%", "positive", "Công nghệ & AI", 12, "Cập nhật vài phút trước"),
+            new HomeDtos.TrendItem("trend-ebike", "Xe máy điện", "+21%", "positive", "Xe điện & Di động", 8, "Cập nhật vài phút trước"),
+            new HomeDtos.TrendItem("trend-tiktok", "Xu hướng TikTok Shop", "+18%", "neutral", "Thương mại & Bán lẻ", 15, "Cập nhật vài phút trước"),
+            new HomeDtos.TrendItem("trend-coffee", "Cà phê muối", "+12%", "positive", "F&B & Tiêu dùng", 6, "Cập nhật vài phút trước")
         );
 
         if (trends.isEmpty()) {
@@ -79,19 +79,19 @@ public class HomeService {
             return market;
         }
         String normalized = keyword == null ? "" : keyword.toLowerCase(Locale.ROOT);
-        if (normalized.contains("ai") || normalized.contains("agent") || normalized.contains("automation")) {
-            return "AI & Automation";
+        if (normalized.contains("ai") || normalized.contains("agent") || normalized.contains("automation") || normalized.contains("trợ lý")) {
+            return "Công nghệ & AI";
         }
-        if (normalized.contains("bike") || normalized.contains("mobility") || normalized.contains("vehicle")) {
-            return "Mobility & Consumer";
+        if (normalized.contains("bike") || normalized.contains("mobility") || normalized.contains("vehicle") || normalized.contains("xe điện") || normalized.contains("xe máy")) {
+            return "Xe điện & Di động";
         }
-        if (normalized.contains("shop") || normalized.contains("commerce") || normalized.contains("retail")) {
-            return "Commerce & Platforms";
+        if (normalized.contains("shop") || normalized.contains("commerce") || normalized.contains("retail") || normalized.contains("thương mại") || normalized.contains("bán lẻ")) {
+            return "Thương mại & Bán lẻ";
         }
-        if (normalized.contains("pho") || normalized.contains("food") || normalized.contains("beverage")) {
-            return "Food & Lifestyle";
+        if (normalized.contains("pho") || normalized.contains("food") || normalized.contains("beverage") || normalized.contains("cà phê") || normalized.contains("ăn") || normalized.contains("uống")) {
+            return "F&B & Tiêu dùng";
         }
-        return "Emerging Market";
+        return "Thị trường Mới nổi";
     }
 
     private String formatUpdatedAt(LocalDateTime updatedAt) {
