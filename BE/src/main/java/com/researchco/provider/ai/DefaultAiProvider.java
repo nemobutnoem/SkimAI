@@ -724,23 +724,61 @@ public class DefaultAiProvider implements AiProvider {
 
     private FrontendDtos.RegionalPotential buildFallbackRegionalPotential(String keyword) {
         String kw = keyword == null ? "Sản phẩm" : keyword;
+        int hash = Math.abs(kw.hashCode());
+        
+        List<String> cities = List.of("Hà Nội", "TP. Hồ Chí Minh", "Đà Nẵng", "Bình Dương", "Đồng Nai", "Cần Thơ", "Hải Phòng", "Nha Trang", "Vũng Tàu");
+        
+        int c1Idx = hash % cities.size();
+        int c2Idx = (hash + 1) % cities.size();
+        int c3Idx = (hash + 2) % cities.size();
+        int c4Idx = (hash + 3) % cities.size();
+        
+        String city1 = cities.get(c1Idx);
+        String city2 = cities.get(c2Idx);
+        if (city2.equals(city1)) city2 = cities.get((c2Idx + 1) % cities.size());
+        
+        String city3 = cities.get(c3Idx);
+        while (city3.equals(city1) || city3.equals(city2)) {
+            c3Idx = (c3Idx + 1) % cities.size();
+            city3 = cities.get(c3Idx);
+        }
+        
+        String city4 = cities.get(c4Idx);
+        while (city4.equals(city1) || city4.equals(city2) || city4.equals(city3)) {
+            c4Idx = (c4Idx + 1) % cities.size();
+            city4 = cities.get(c4Idx);
+        }
+        
+        int p1 = 38 + (hash % 10); 
+        int p2 = 24 + ((hash / 3) % 10); 
+        int p3 = 12 + ((hash / 7) % 6);  
+        int p4 = 100 - p1 - p2 - p3;
+        if (p4 < 3) {
+            p4 = 6;
+            p1 -= 6;
+        }
+        
         String analysisText = String.format(
-                "Độ phủ thị trường và mức độ quan tâm đối với \"%s\" tập trung mạnh mẽ tại các khu vực kinh tế trọng điểm, đặc biệt là Hà Nội và TP. Hồ Chí Minh nơi có mật độ dân số cao và khả năng tiếp cận công nghệ mới nhanh chóng.",
-                kw
+                "Độ phủ thị trường và mức độ quan tâm đối với \"%s\" tập trung mạnh mẽ tại các khu vực kinh tế trọng điểm, đặc biệt là %s và %s nơi có mật độ dân số cao và khả năng tiếp cận nhanh chóng.",
+                kw, city1, city2
         );
+        
         List<FrontendDtos.RegionContribution> topRegions = List.of(
-                new FrontendDtos.RegionContribution("Hà Nội", 42, "Rất cao"),
-                new FrontendDtos.RegionContribution("TP. Hồ Chí Minh", 38, "Rất cao"),
-                new FrontendDtos.RegionContribution("Đà Nẵng", 12, "Trung bình"),
-                new FrontendDtos.RegionContribution("Bình Dương", 8, "Tiềm năng")
+                new FrontendDtos.RegionContribution(city1, p1, p1 >= 42 ? "Rất cao" : "Cao"),
+                new FrontendDtos.RegionContribution(city2, p2, "Cao"),
+                new FrontendDtos.RegionContribution(city3, p3, "Trung bình"),
+                new FrontendDtos.RegionContribution(city4, p4, p4 >= 10 ? "Tiềm năng" : "Thấp")
         );
+        
         List<String> geographicInsights = List.of(
-                String.format("Các đô thị đặc biệt (Hà Nội, TP.HCM) chiếm hơn 80%% lượng tìm kiếm về \"%s\".", kw),
-                "Khu vực miền Nam có xu hướng tương tác cởi mở hơn thông qua các nền tảng mạng xã hội và livestream.",
-                String.format("Cần tối ưu hóa chuỗi cung ứng và điểm trải nghiệm trực tiếp tại Đà Nẵng để mở rộng tệp khách hàng tiềm năng cho \"%s\".", kw)
+                String.format("Các đô thị trọng điểm (%s, %s) chiếm %d%% lượng tìm kiếm về \"%s\".", city1, city2, p1 + p2, kw),
+                String.format("Khu vực %s có xu hướng tương tác cởi mở hơn thông qua các nền tảng mạng xã hội và livestream.", city2.contains("Hồ Chí Minh") || city2.contains("Bình Dương") || city2.contains("Đồng Nai") || city2.contains("Cần Thơ") ? city2 : "TP. Hồ Chí Minh"),
+                String.format("Khuyến nghị phân bổ ngân sách tiếp thị địa phương tập trung tại %s để tối ưu chi phí quảng cáo cho \"%s\".", city1, kw)
         );
+        
         return new FrontendDtos.RegionalPotential(analysisText, topRegions, geographicInsights);
     }
+
 
     private String formatCompact(long value) {
         if (value >= 1_000_000) {
