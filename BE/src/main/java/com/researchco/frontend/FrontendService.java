@@ -2254,7 +2254,7 @@ public class FrontendService {
                 meaningfulParts++;
             }
         }
-        return meaningfulParts >= 2 && phrase.length() >= 8;
+        return meaningfulParts >= 2 && phrase.length() >= 5;
     }
 
     private boolean isNoiseToken(String token, Set<String> stopWords) {
