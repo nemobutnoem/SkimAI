@@ -2161,6 +2161,12 @@ public class FrontendService {
             return keywordCache.get(clean);
         }
 
+        String[] words = clean.split("\\s+");
+        if (words.length <= 3 && !clean.matches(".*(cách|cach|làm sao|lam sao|hướng dẫn|huong dan|mua|bán|ban|giá|gia|review|so sánh|so sanh|tốt nhất|tot nhat|ở đâu|o dau).*")) {
+            keywordCache.put(clean, clean);
+            return clean;
+        }
+
         if (SecurityUtils.currentUserId() == null) {
             keywordCache.put(clean, clean);
             return clean;

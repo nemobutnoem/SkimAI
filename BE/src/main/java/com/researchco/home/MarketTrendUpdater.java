@@ -32,6 +32,9 @@ public class MarketTrendUpdater {
 
     @EventListener(ApplicationReadyEvent.class)
     public void warmUp() {
+        if (marketTrendRepository.count() > 0) {
+            return;
+        }
         refresh();
     }
 
