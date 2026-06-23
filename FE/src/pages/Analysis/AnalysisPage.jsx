@@ -303,7 +303,7 @@ function buildOpportunityRead(data, overall, sourceRows) {
     const hasIntent = intentRegex.test(k.keyword);
     
     // 5. Geographic/place name penalty (0.1x to prevent generic locations from being chosen as market opportunities)
-    const geoRegex = /^(quang ngai|quảng ngãi|ha noi|hà nội|hồ chí minh|ho chi minh|tphcm|hcm|đà nẵng|da nang|hải phòng|hai phong|cần thơ|can tho|nha trang|đà lạt|da lat|nhật bản|nhat ban|trung quốc|trung quoc|hàn quốc|han quoc|việt nam|viet nam|thái lan|thai lan|singapore|wikipedia)$/i;
+    const geoRegex = /^(quang ngai|quảng ngãi|ha noi|hà nội|hồ chí minh|ho chi minh|tphcm|hcm|đà nẵng|da nang|hải phòng|hai phong|cần thơ|can tho|nha trang|đà lạt|da lat|nhật bản|nhat ban|trung quốc|trung quoc|hàn quốc|han quoc|việt nam|viet nam|thái lan|thai lan|singapore|wikipedia|binh duong|bình dương|dong nai|đồng nai|vung tau|vũng tàu|phu quoc|phú quốc|sapa|ha long|hạ long)$/i;
     const isGeo = geoRegex.test(k.keyword.trim());
     
     let multiplier = 1.0;
@@ -312,7 +312,7 @@ function buildOpportunityRead(data, overall, sourceRows) {
     // 6. Generic/noise word penalty (0.01x to prevent helper/conjunction phrases like "đuoc theo" from being chosen)
     const noiseRegex = /^(đuoc|duoc|được|đươc|đuợc|theo|bởi|boi|như|nhu|cho|với|voi|này|nay|của|cua|trên|tren|dưới|duoi|trong|ngoài|ngoai|cùng|cung|cũng|để|de|đến|den|đi|di|lại|lai|về|ve|thì|thi|cách|cach|ngày|ngay|tuần|tuan|tháng|thang|năm|nam|người|nguoi|nhà|nha|nước|nuoc|việt|viet|nam|tin|tức|mới|moi|và|va|là|la|các|cac|những|nhung|một|mot|hai|ba|bốn|bon|năm|nam|sáu|sau|bảy|bay|tám|tam|chín|chin|mười|muoi|trước|truoc|sau|sau|khi|khi|chưa|chua|đã|da|rồi|roi|qua|qua|quá|qua|nhiều|nhieu|ít|it|hơn|hon|nhất|nhat|rất|rat|cực|cuc|đều|deu|cứ|cu|ra|vào|vao|lên|len|xuống|xuong|đây|day|kia|do|đó|nọ|no|thế|the|nào|nao|sao|gì|gi|đâu|dau|ai|chi|chỉ|cơ|co|hội|hoi|bằng|bang|chứng|chung)$/i;
     const words = k.keyword.toLowerCase().split(/\s+/);
-    const isAllNoise = words.every(w => noiseRegex.test(w) || w.length < 3);
+    const isAllNoise = words.every(w => noiseRegex.test(w) || w.length < 2);
 
     if (isGeo || isAllNoise) multiplier = 0.01;
     

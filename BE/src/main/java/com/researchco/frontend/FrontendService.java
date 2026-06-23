@@ -976,7 +976,7 @@ public class FrontendService {
 
         Map<String, long[]> candidateStats = phraseStats.isEmpty() ? tokenStats : phraseStats;
         List<FrontendDtos.KeywordMetric> keywordMetrics = candidateStats.entrySet().stream()
-                .filter(entry -> entry.getKey().length() >= 4)
+                .filter(entry -> entry.getKey().length() >= 2)
                 .filter(entry -> !stopWords.contains(entry.getKey()))
                 .filter(entry -> isTokenMetricMeaningful(entry.getValue()))
                 .sorted((a, b) -> Long.compare(scoreKeywordStats(b.getValue()), scoreKeywordStats(a.getValue())))
@@ -1977,7 +1977,7 @@ public class FrontendService {
 
         Map<String, long[]> candidateStats = phraseStats.isEmpty() ? tokenStats : phraseStats;
         List<FrontendDtos.KeywordMetric> relatedKeywords = isOfflineMode ? List.of() : candidateStats.entrySet().stream()
-                .filter(entry -> entry.getKey().length() >= 4)
+                .filter(entry -> entry.getKey().length() >= 2)
                 .filter(entry -> !stopWords.contains(entry.getKey()))
                 .filter(entry -> !isPermutationOfSearchKeyword(entry.getKey(), keywordLower))
                 .filter(entry -> isTokenMetricMeaningful(entry.getValue()))
@@ -2254,7 +2254,7 @@ public class FrontendService {
                 meaningfulParts++;
             }
         }
-        return meaningfulParts >= 2 && phrase.length() >= 5;
+        return meaningfulParts >= 2 && phrase.length() >= 3;
     }
 
     private boolean isNoiseToken(String token, Set<String> stopWords) {
