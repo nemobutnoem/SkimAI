@@ -73,6 +73,49 @@ public class FrontendService {
 
     private static final Logger log = LoggerFactory.getLogger(FrontendService.class);
 
+    private static final Set<String> STOP_WORDS = new HashSet<>(List.of(
+            "about", "after", "agent", "with", "from", "this", "that", "have", "your",
+            "what", "when", "where", "which", "into", "they", "them", "more", "than", "then",
+            "youtube", "video", "market", "analysis", "trend", "trends", "news",
+            "comments", "duration", "topics", "search", "result", "views", "likes",
+            "subscribers", "tags", "best", "review", "2024", "2025", "2026", "2027", "2028",
+            "check", "watching", "thanks", "thank", "shorts", "short", "official",
+            "breaking", "update", "today", "channel", "subscribe", "watch",
+            "latest", "videos", "vlog", "clip", "clips", "swimming", "babys", "baby", "shark", "koifis",
+            "do", "does", "did", "done", "doing",
+            "is", "are", "was", "were", "been", "being", "be",
+            "can", "could", "will", "would", "should", "shall", "must", "may", "might",
+            "has", "had", "having",
+            "use", "uses", "used", "using", "useful",
+            "make", "makes", "made", "making",
+            "get", "gets", "got", "getting",
+            "take", "takes", "took", "taking",
+            "go", "goes", "went", "going",
+            "find", "finds", "found", "finding",
+            "want", "wants", "wanted", "wanting",
+            "know", "knows", "known", "knowing",
+            "think", "thinks", "thought", "thinking",
+            "see", "sees", "saw", "seen", "seeing",
+            "look", "looks", "looked", "looking",
+            "show", "shows", "showed", "showing",
+            "work", "works", "worked", "working",
+            "give", "gives", "given", "giving",
+            "tell", "tells", "told", "telling",
+            "say", "says", "said", "saying",
+            "call", "calls", "called", "calling",
+            "come", "comes", "came", "coming",
+            "also", "even", "only", "just", "like", "much", "many", "some", "any", "none", "not", "how", "why", "here", "there",
+            "lam", "làm", "duoc", "được", "co", "có", "khong", "không", "nhu", "như", 
+            "mot", "một", "hai", "ba", "bon", "nam", "năm", "sau", "sáu", "bay", "bảy", "tam", "tám", "chin", "chín", "muoi", "mười",
+            "nay", "này", "kia", "do", "đó", "tren", "trên", "duoi", "dưới", "trong", "ngoai", "ngoài",
+            "va", "và", "la", "là", "cua", "của", "cho", "voi", "với", "cac", "các", "nhung", "những", "cung", "cũng",
+            "de", "để", "ra", "vào", "den", "đến", "di", "đi", "lai", "lại", "ve", "về", "thi", "thì", "dan", "danh", "tinh", "long", "thanh", "thng",
+            "theo", "đuoc", "đươc", "đuợc", "bởi", "boi", "ngày", "ngay", "tuần", "tuan", "tháng", "thang", "người", "nguoi", "nhà", "nha",
+            "chia", "sẻ", "câu", "chuyện", "nhạc", "thiếu", "nhi", "quảng", "ngãi", "hà", "nội", "hồ", "chí", "minh", "đà", "nẵng", "hải", "phòng", "cần", "thơ", "nha", "trang", "đà", "lạt", "việt", "nam",
+            "kênh", "tập", "full", "hd", "bản", "đẹp", "vietsub", "lồng", "tiếng", "thuyết", "minh", "mới", "nhất", "hot",
+            "tôi", "chúng", "ta", "bạn", "anh", "chị", "em", "họ", "nó", "cậu", "tớ", "mình"
+    ));
+
     private final SearchQueryRepository searchQueryRepository;
     private final AnalysisSnapshotRepository analysisSnapshotRepository;
     private final SnapshotInsightRepository snapshotInsightRepository;
@@ -873,45 +916,7 @@ public class FrontendService {
 
         Map<String, long[]> tokenStats = new HashMap<>();
         Map<String, long[]> phraseStats = new HashMap<>();
-        Set<String> stopWords = new HashSet<>(List.of(
-            "about", "after", "agent", "with", "from", "this", "that", "have", "your",
-            "what", "when", "where", "which", "into", "they", "them", "more", "than", "then",
-            "youtube", "video", "market", "analysis", "trend", "trends", "news",
-            "comments", "duration", "topics", "search", "result", "views", "likes",
-            "subscribers", "tags", "best", "review", "2024", "2025", "2026",
-            "check", "watching", "thanks", "thank", "shorts", "short", "official",
-            "breaking", "update", "today", "channel", "subscribe", "watch",
-            "latest", "videos", "vlog", "clip", "clips",
-            "do", "does", "did", "done", "doing",
-            "is", "are", "was", "were", "been", "being", "be",
-            "can", "could", "will", "would", "should", "shall", "must", "may", "might",
-            "has", "had", "having",
-            "use", "uses", "used", "using", "useful",
-            "make", "makes", "made", "making",
-            "get", "gets", "got", "getting",
-            "take", "takes", "took", "taking",
-            "go", "goes", "went", "going",
-            "find", "finds", "found", "finding",
-            "want", "wants", "wanted", "wanting",
-            "know", "knows", "known", "knowing",
-            "think", "thinks", "thought", "thinking",
-            "see", "sees", "saw", "seen", "seeing",
-            "look", "looks", "looked", "looking",
-            "show", "shows", "showed", "showing",
-            "work", "works", "worked", "working",
-            "give", "gives", "given", "giving",
-            "tell", "tells", "told", "telling",
-            "say", "says", "said", "saying",
-            "call", "calls", "called", "calling",
-            "come", "comes", "came", "coming",
-            "also", "even", "only", "just", "like", "much", "many", "some", "any", "none", "not", "how", "why", "here", "there",
-            "lam", "làm", "duoc", "được", "co", "có", "khong", "không", "nhu", "như", 
-            "mot", "một", "hai", "ba", "bon", "nam", "năm", "sau", "sáu", "bay", "bảy", "tam", "tám", "chin", "chín", "muoi", "mười",
-            "nay", "này", "kia", "do", "đó", "tren", "trên", "duoi", "dưới", "trong", "ngoai", "ngoài",
-            "va", "và", "la", "là", "cua", "của", "cho", "voi", "với", "cac", "các", "nhung", "những", "cung", "cũng",
-            "de", "để", "ra", "vào", "den", "đến", "di", "đi", "lai", "lại", "ve", "về", "thi", "thì", "dan", "danh", "tinh", "long", "thanh", "thng",
-            "theo", "đuoc", "đươc", "đuợc", "bởi", "boi", "ngày", "ngay", "tuần", "tuan", "tháng", "thang", "người", "nguoi", "nhà", "nha"
-        ));
+        Set<String> stopWords = STOP_WORDS;
 
         for (SourceItemEntity item : filtered) {
             long itemViews = 0L;
@@ -1921,45 +1926,7 @@ public class FrontendService {
         // 4 — Keyword Opportunity (build phrases first)
         Map<String, long[]> phraseStats = new HashMap<>();
         Map<String, long[]> tokenStats = new HashMap<>();
-        Set<String> stopWords = new HashSet<>(List.of(
-            "about", "after", "agent", "with", "from", "this", "that", "have", "your",
-            "what", "when", "where", "which", "into", "they", "them", "more", "than", "then",
-            "youtube", "video", "market", "analysis", "trend", "trends", "news",
-            "comments", "duration", "topics", "search", "result", "views", "likes",
-            "subscribers", "tags", "best", "review", "2024", "2025", "2026",
-            "check", "watching", "thanks", "thank", "shorts", "short", "official",
-            "breaking", "update", "today", "channel", "subscribe", "watch",
-            "latest", "videos", "vlog", "clip", "clips",
-            "do", "does", "did", "done", "doing",
-            "is", "are", "was", "were", "been", "being", "be",
-            "can", "could", "will", "would", "should", "shall", "must", "may", "might",
-            "has", "had", "having",
-            "use", "uses", "used", "using", "useful",
-            "make", "makes", "made", "making",
-            "get", "gets", "got", "getting",
-            "take", "takes", "took", "taking",
-            "go", "goes", "went", "going",
-            "find", "finds", "found", "finding",
-            "want", "wants", "wanted", "wanting",
-            "know", "knows", "known", "knowing",
-            "think", "thinks", "thought", "thinking",
-            "see", "sees", "saw", "seen", "seeing",
-            "look", "looks", "looked", "looking",
-            "show", "shows", "showed", "showing",
-            "work", "works", "worked", "working",
-            "give", "gives", "given", "giving",
-            "tell", "tells", "told", "telling",
-            "say", "says", "said", "saying",
-            "call", "calls", "called", "calling",
-            "come", "comes", "came", "coming",
-            "also", "even", "only", "just", "like", "much", "many", "some", "any", "none", "not", "how", "why", "here", "there",
-            "lam", "làm", "duoc", "được", "co", "có", "khong", "không", "nhu", "như", 
-            "mot", "một", "hai", "ba", "bon", "nam", "năm", "sau", "sáu", "bay", "bảy", "tam", "tám", "chin", "chín", "muoi", "mười",
-            "nay", "này", "kia", "do", "đó", "tren", "trên", "duoi", "dưới", "trong", "ngoai", "ngoài",
-            "va", "và", "la", "là", "cua", "của", "cho", "voi", "với", "cac", "các", "nhung", "những", "cung", "cũng",
-            "de", "để", "ra", "vào", "den", "đến", "di", "đi", "lai", "lại", "ve", "về", "thi", "thì", "dan", "danh", "tinh", "long", "thanh", "thng",
-            "theo", "đuoc", "đươc", "đuợc", "bởi", "boi", "ngày", "ngay", "tuần", "tuan", "tháng", "thang", "người", "nguoi", "nhà", "nha"
-        ));
+        Set<String> stopWords = STOP_WORDS;
         for (NormalizedSourceItem item : items) {
             long itemViews = 0L;
             long itemLikes = 0L;
@@ -2231,7 +2198,7 @@ public class FrontendService {
                 .filter(token -> !token.startsWith("http"))
             .map(token -> token.replaceAll("[^\\p{L}\\p{N}]", ""))
                 .filter(token -> !token.isBlank())
-                .filter(token -> token.length() >= 4)
+                .filter(token -> token.length() >= 2)
                 .filter(this::hasEnoughVowels)
                 .toList();
     }
@@ -2309,7 +2276,7 @@ public class FrontendService {
                 vowels++;
             }
         }
-        return vowels >= 2;
+        return vowels >= 1;
     }
 
     private boolean isTokenMetricMeaningful(long[] stats) {
