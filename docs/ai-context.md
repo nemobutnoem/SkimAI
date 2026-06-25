@@ -1,216 +1,300 @@
-# SkimAI / ResearchCo — AI Context (để vibe code nhanh)
+# AISKIM — AI Context (bản đồ dự án để vibe code nhanh)
 
-Tài liệu này là “bản đồ dự án” cho những lần code tiếp theo: công nghệ đang dùng, ý tưởng sản phẩm, kiến trúc FE/BE, mock switch, và danh sách routes/endpoints đang có trong code.
+Tài liệu này là "bản đồ dự án" cho những lần code tiếp theo: công nghệ đang dùng, ý tưởng sản phẩm, kiến trúc FE/BE, và danh sách routes/endpoints đang có trong code.
 
 ---
 
-## 1) Ý tưởng dự án (Product idea)
+## 1) Ý tưởng dự án
 
-SkimAI là web app **market intelligence / research assistant**.
+AISKIM là web app **market intelligence / research assistant**.
 
 Người dùng nhập **keyword**, hệ thống sẽ:
-- thu thập tín hiệu từ nhiều nguồn (Google/News qua SerpApi, YouTube Data API)
-- normalize về format chung
-- tổng hợp thành **market snapshot** (insights, keywords, timeline…)
-- cho phép tạo **deep insight** từ dữ liệu và **report**
-- có các màn admin (users/revenue/reports)
+- Thu thập tín hiệu từ nhiều nguồn (Google/News qua SerpApi, YouTube Data API)
+- Normalize về format chung
+- Tổng hợp thành **market snapshot** (insights, keywords, timeline…)
+- Cho phép tạo **deep insight** từ dữ liệu và **report**
+- Có các màn admin (users/revenue/reports/feedbacks/settings)
 
-Mục tiêu MVP: chạy end‑to‑end ổn định (fetch → normalize → analysis UI), kiến trúc đủ mở để thêm provider / endpoint mới.
+Mục tiêu: app market research chuyên nghiệp, thu hút người dùng Việt Nam, UI thân thiện và trustworthy.
 
 ---
 
-## 2) Tech stack (đúng theo repo hiện tại)
+## 2) Tech stack
 
-### Frontend (SkimAI/FE)
+### Frontend (FE/)
 - React `19.x`
-- Vite `8.x`
+- Vite `8.x` (dev server port 5173, `host: true` để test qua network)
 - React Router `7.x`
-- Fetch API + 1 lớp wrapper ở `src/services/appApi.js`
-- Mock API tổng hợp ở `src/services/mockApi.js` (bật/tắt qua env)
+- Fetch API + wrapper tại `src/services/appApi.js`
+- CSS thuần (không dùng Tailwind/MUI) — design tokens tại `src/styles/global.css`
 
-### Backend (SkimAI/BE)
-- Java `17`
+### Backend (BE/)
+- Java `21`
 - Spring Boot `3.3.3`
 - Spring Web, Validation, Spring Data JPA, Spring Security
 - JWT (`io.jsonwebtoken:jjwt`)
-- PostgreSQL driver (runtime)
-- Maven build
+- PostgreSQL (Supabase, port 6543, connection pooler)
+- Maven build — chạy qua `run.ps1`
 
 ### Integrations
-- SerpApi (Google + News)
-- YouTube Data API (search → videos.list → channels.list)
-- Gemini (Generative Language API) cho deep insight & “live trends” (optional: không có key thì hiển thị trạng thái thiếu dữ liệu thay vì bịa insight)
-- Stripe (checkout/confirm) (optional: không có key thì endpoint sẽ fallback/giảm chức năng tuỳ service)
+- **SerpApi** — Google Search + Google News (key: `SERPAPI_API_KEY`)
+- **YouTube Data API** — search → videos.list → channels.list (key: `YOUTUBE_API_KEY`)
+- **Gemini** — deep insight & live trends (key: `GEMINI_API_KEY` + `GEMINI_MODEL`)
+- **Google OAuth** — đăng nhập bằng Google (key: `GOOGLE_CLIENT_ID`)
+- **Stripe** — checkout (key: `STRIPE_SECRET_KEY`, optional)
+- **VietQR / Bank transfer** — thanh toán QR nội địa
 
 ---
 
 ## 3) Kiến trúc tổng quan
 
-FE (React/Vite) → BE (Spring Boot REST) → PostgreSQL
+```
+FE (React/Vite :5173) → [Vite proxy /api] → BE (Spring Boot :8080) → PostgreSQL (Supabase)
+```
 
 Nguyên tắc:
-- FE chỉ gọi **DTO chuẩn** từ BE, không phụ thuộc raw payload của provider.
-- BE dùng **provider pattern** để mở rộng nguồn dữ liệu.
-- Auth dùng JWT (FE lưu session vào localStorage).
+- FE chỉ gọi **DTO chuẩn** từ BE qua `appApi.js`, không gọi fetch trực tiếp ở page
+- BE dùng **provider pattern** để mở rộng nguồn dữ liệu
+- Auth dùng JWT (FE lưu session vào localStorage key `skimai_auth`)
+- Không có mock API — chỉ dùng real backend
 
 ---
 
-## 4) Frontend structure & routes
+## 4) Frontend — cấu trúc file
 
-### Pages / routes
-Router nằm ở `FE/src/routes/AppRouter.jsx`.
-
-Public:
-- `/` (Home) — nếu user là admin thì redirect sang `/admin/dashboard`
-- `/pricing`
-
-Shared (guest hoặc logged-in đều vào được):
-- `/analysis`
-- `/deep-insight`
-
-Private (cần login):
-- `/dashboard`
-- `/account`
-
-Admin (cần role `admin`):
-- `/admin/dashboard`
-- `/admin/reports`
-- `/admin/users`
-- `/admin/revenue`
-- `/admin/settings`
-
-### Auth model trên FE
-- Session được lưu ở localStorage key: `skimai_auth`
-- `AuthProvider` coi authenticated khi có đủ `user` và `token`.
-- API wrapper auto gắn header `Authorization: Bearer <token>` nếu có token.
+```
+FE/src/
+├── App.jsx                        # Entry — chỉ render AppRouter
+├── main.jsx                       # Root — AuthProvider > ToastProvider > App
+├── routes/
+│   ├── AppRouter.jsx              # Route definitions (Public/Shared/Private/Admin)
+│   └── PrivateRoute.jsx           # Guard — redirect về /login nếu chưa auth
+├── layouts/
+│   ├── MainLayout.jsx             # Navbar + PageTransition + Outlet (private pages)
+│   ├── PublicLayout.jsx           # Navbar + PageTransition + Outlet (public pages)
+│   └── SharedLayout.jsx           # Navbar + PageTransition + Outlet (shared pages)
+├── context/
+│   ├── AuthContext.jsx            # useAuth() — user, token, login, logout
+│   └── ToastContext.jsx           # useToast() — toast.success/error/info/warn
+├── components/
+│   ├── Button.jsx                 # Reusable button
+│   ├── Card.jsx                   # Reusable card container
+│   ├── Navbar.jsx                 # App header + mobile hamburger menu
+│   ├── Skeleton.jsx               # DashboardSkeleton, AnalysisSkeleton
+│   ├── PageTransition.jsx         # Fade-in animation + scroll-to-top on route change
+│   ├── Effects.jsx                # AnimatedNumber, TypewriterText
+│   └── AdminSectionNav.jsx        # Admin section navigation
+├── pages/
+│   ├── Login/LoginPage.jsx        # Google OAuth login + trust strip
+│   ├── Home/HomePage.jsx          # Trang chủ public
+│   ├── Dashboard/DashboardPage.jsx # Workspace — skeleton + onboarding banner
+│   ├── Analysis/AnalysisPage.jsx   # Trang phân tích chính — streaming SSE
+│   ├── DeepInsight/DeepInsightPage.jsx
+│   ├── Pricing/PricingPage.jsx    # Redesign — trust bar, FAQ, toggle cycle
+│   ├── Account/AccountPage.jsx
+│   ├── Support/SupportPage.jsx
+│   ├── NotFound/NotFoundPage.jsx
+│   └── Admin*/                    # AdminDashboard, Reports, Users, Revenue, Feedbacks, Settings
+├── services/
+│   └── appApi.js                  # Tất cả API calls — không gọi fetch trực tiếp ở page
+├── hooks/
+│   └── useAuth.js                 # Shortcut hook cho AuthContext
+├── constants/
+│   └── routes.js                  # ROUTES object — tất cả path constants
+└── styles/
+    └── global.css                 # Toàn bộ CSS — design tokens + component styles
+```
 
 ---
 
-## 5) Mock-data architecture (để dev nhanh)
+## 5) Frontend — routes
 
-Điểm vào duy nhất là `FE/src/services/appApi.js`:
-- Nếu `VITE_USE_MOCK_API=true` ⇒ dùng `mockApi` (từ `src/services/mockApi.js`).
-- Nếu `VITE_USE_MOCK_API=false` ⇒ dùng real backend qua `fetch`.
-
-Lưu ý quan trọng:
-- `VITE_API_URL` phải là **base đã có `/api`** (vì code gọi `request('/auth/login')` và sẽ nối thẳng vào base).
-	- Ví dụ đúng: `http://localhost:8080/api` hoặc `https://<host>/api`
+| Path | Layout | Auth | Component |
+|---|---|---|---|
+| `/` | PublicLayout | Guest | HomePage |
+| `/pricing` | PublicLayout | Guest | PricingPage |
+| `/analysis` | SharedLayout | Guest/User | AnalysisPage |
+| `/deep-insight` | SharedLayout | Guest/User | DeepInsightPage |
+| `/support` | SharedLayout | Guest/User | SupportPage |
+| `/login` | — | Guest | LoginPage |
+| `/dashboard` | MainLayout | Private | DashboardPage |
+| `/account` | MainLayout | Private | AccountPage |
+| `/admin/dashboard` | MainLayout | Admin | AdminDashboardPage |
+| `/admin/reports` | MainLayout | Admin | AdminReportsPage |
+| `/admin/users` | MainLayout | Admin | AdminUsersPage |
+| `/admin/revenue` | MainLayout | Admin | AdminRevenuePage |
+| `/admin/feedbacks` | MainLayout | Admin | AdminFeedbacksPage |
+| `/admin/settings` | MainLayout | Admin | AdminSettingsPage |
 
 ---
 
-## 6) Backend endpoints hiện có (controllers)
+## 6) Backend — package structure
+
+```
+com.researchco/
+├── ResearchcoBackendApplication.java
+├── auth/           # AuthController, AuthService, AuthDtos
+├── frontend/       # FrontendController, FrontendService, FrontendDtos, StreamingAnalysisService
+├── search/         # SearchController, SearchService, SearchDtos, entities, repositories
+├── snapshot/       # SnapshotController, SnapshotService, SnapshotDtos, entities
+├── report/         # ReportController, ReportService, ReportDtos, entities
+├── admin/          # AdminController, AdminService, AdminDtos, SystemSetting entities
+├── home/           # HomeController, HomeService, HomeDtos, MarketTrend entities
+├── provider/       # SearchProvider interface, ProviderOrchestrator, NormalizedSourceItem
+│   ├── SerpApiGoogleProvider.java
+│   ├── SerpApiNewsProvider.java
+│   ├── YoutubeApiProvider.java
+│   └── ai/         # AiProvider interface, DefaultAiProvider
+├── user/           # UserEntity, UserRepository
+├── subscription/   # UserSubscriptionEntity, UserSubscriptionRepository
+├── payment/        # PaymentTransactionEntity, PaymentTransactionRepository
+├── sales/          # SalesLeadEntity, SalesLeadRepository
+├── plan/           # PlanEntity, PlanRepository
+├── feedback/       # SupportFeedbackController, SupportFeedbackEntity
+├── usage/          # AiUsageEntity, AiUsageRepository
+├── security/       # JwtAuthFilter, JwtTokenService, SecurityUtils, CustomUserDetailsService
+├── config/         # SecurityConfig, DotEnvPostProcessor, EnvironmentLoader
+└── common/         # GlobalExceptionHandler, AppException, BaseEntity, DemoDataInitializer
+```
+
+---
+
+## 7) Backend — API endpoints
 
 ### Auth
 - `POST /api/auth/register`
 - `POST /api/auth/login`
 
-### Home
-- `GET /api/home/trends`
-
-### Frontend API (phục vụ UI screens)
+### Frontend API
 - `GET /api/dashboard`
 - `GET /api/account/overview`
 - `PUT /api/account/notifications`
-
-- `GET /api/analysis?keyword=...`
-- `GET /api/analysis/project?keyword=...`
-- `GET /api/analysis/alerts?keyword=...`
-- `GET /api/analysis/competitor?keyword=...`
-- `GET /api/analysis/evidence?keyword=...`
-- `GET /api/analysis/compare?keyword=...`
-- `GET /api/analysis/timeline?keyword=...`
-
+- `GET /api/analysis?keyword=`
+- `GET /api/analysis/stream?keyword=` (SSE streaming)
+- `GET /api/analysis/evidence?keyword=`
+- `GET /api/analysis/timeline?keyword=`
+- `GET /api/analysis/export?keyword=`
 - `POST /api/deep-insight`
-
+- `GET /api/pricing`
+- `POST /api/pricing/checkout`
+- `POST /api/pricing/confirm`
+- `POST /api/pricing/contact-sales`
 - `GET /api/experts`
 - `POST /api/experts/questions`
 
-- `GET /api/pricing`
-- `POST /api/pricing/checkout`
-- `POST /api/pricing/contact-sales`
-- `POST /api/pricing/confirm`
-
-### Search / snapshots / reports
+### Search / Snapshots / Reports
 - `POST /api/search`
-- `GET /api/search/{id}/sources`
 - `GET /api/search/history`
-
 - `GET /api/snapshots/{id}`
+- `POST /api/reports`
+- `GET /api/reports`
 
-- `POST /api/reports` (tạo report)
+### Home
+- `GET /api/home/trends`
 
 ### Admin
 - `GET /api/admin/dashboard`
-- `GET /api/admin/reports?status=all|...`
-- `POST /api/admin/reports/{reportId}/moderate`
-- `GET /api/admin/users?q=&type=&status=`
+- `GET /api/admin/reports`
+- `POST /api/admin/reports/{id}/moderate`
+- `GET /api/admin/users`
 - `GET /api/admin/revenue`
+- `GET /api/admin/feedbacks`
+- `GET /api/admin/settings`
+- `PUT /api/admin/settings`
 
-Ghi chú: `SecurityConfig` hiện đang `permitAll` cho khá nhiều `/api/*` routes (FE vẫn tự chặn bằng `PrivateRoute`). Nếu muốn “đúng bài” (backend enforce auth/role), cần tightening rules sau.
+### Support
+- `POST /api/support/feedback`
 
 ---
 
-## 7) Provider pattern (SearchProvider)
+## 8) Provider pattern
 
 Interface: `com.researchco.provider.SearchProvider`
-- `providerCode()`
-- `search(keyword, countryCode, languageCode, timeRange)`
+```java
+String providerCode()
+List<NormalizedSourceItem> search(keyword, countryCode, languageCode, timeRange)
+```
 
-Output normalize: `NormalizedSourceItem` (providerCode/platform/contentType/title/snippet/url/sourceName/authorName/publishedAt/sentiment/rawPayload).
+`NormalizedSourceItem` fields: `providerCode`, `platform`, `contentType`, `title`, `snippet`, `url`, `sourceName`, `authorName`, `publishedAt`, `sentiment`, `rawPayload`
 
-Orchestrator: `ProviderOrchestrator.aggregate(activeProviderCodes, ...)`.
+`ProviderOrchestrator.aggregate(activeProviderCodes, ...)` — chạy parallel, catch exception per provider.
 
-Providers đã có trong code:
-- SerpApi Google
-- SerpApi News
-- YouTube API (enrich thêm view/like/comment/subscriber + duration/tags/topicCategories vào `rawPayload`)
+Providers đã implement:
+- `SERPAPI_GOOGLE` — Google organic results, fallback về empty list nếu lỗi (không mock)
+- `SERPAPI_NEWS` — Google News results, fallback về empty list nếu lỗi
+- `YOUTUBE` — search + videos.list + channels.list, enrich rawPayload
 
----
-
-## 8) Biến môi trường (env vars)
-
-### FE (.env)
-- `VITE_USE_MOCK_API` = `true|false`
-- `VITE_API_URL` = `http://localhost:8080/api` (hoặc URL production có `/api`)
-
-### BE (Render/Local env)
-- DB (chọn 1 trong 2 cách):
-	- Cách A (theo placeholder trong `application.yml`): `DATABASE_URL`, `DATABASE_USERNAME`, `DATABASE_PASSWORD`
-	- Cách B (chuẩn Spring Boot, hay dùng trên Render): `SPRING_DATASOURCE_URL`, `SPRING_DATASOURCE_USERNAME`, `SPRING_DATASOURCE_PASSWORD`
-
-- `JWT_SECRET`
-- `JWT_EXPIRATION_MS` (optional)
-
-- `SERPAPI_API_KEY` (optional nhưng cần để lấy Google/News)
-- `YOUTUBE_API_KEY` (optional)
-- `GEMINI_API_KEY` + `GEMINI_MODEL` (optional; thiếu key thì deep insight/trends hiển thị trạng thái thiếu dữ liệu)
-- `STRIPE_SECRET_KEY` (optional)
+Provider active/inactive được quản lý qua bảng `search_providers` trong DB.
 
 ---
 
-## 9) Dev workflow (quick start)
+## 9) Biến môi trường
 
-### Run FE
-- `cd SkimAI/FE`
-- `npm install`
-- `npm run dev`
+### FE (`FE/.env`)
+```
+VITE_GOOGLE_CLIENT_ID=<google_oauth_client_id>
+```
 
-### Run BE
-- `cd SkimAI/BE`
-- set env vars (ít nhất DB + JWT_SECRET)
-- `mvn spring-boot:run`
+### BE (`BE/.env`)
+```
+# Database (Supabase)
+SUPABASE_DB_HOST=
+SUPABASE_DB_PORT=6543
+SUPABASE_DB_NAME=postgres
+SUPABASE_DB_USERNAME=postgres.<project_ref>
+SUPABASE_DB_PASSWORD=
+
+# Auth
+JWT_SECRET=
+JWT_EXPIRATION_MS=86400000
+
+# Google OAuth
+GOOGLE_CLIENT_ID=   (auto-loaded từ FE/.env nếu không set)
+
+# Search providers
+SERPAPI_API_KEY=
+YOUTUBE_API_KEY=
+
+# AI
+GEMINI_API_KEY=
+GEMINI_MODEL=gemini-1.5-flash
+
+# Payment (optional)
+STRIPE_SECRET_KEY=
+```
 
 ---
 
-## 10) “How to vibe code” (nguyên tắc khi sửa nhanh)
+## 10) Run locally
 
-Khi thêm/sửa 1 feature, ưu tiên theo thứ tự:
-1) FE page gọi `appApi.<method>()` (không gọi `fetch` trực tiếp ở page)
-2) Nếu là mock flow: thêm vào `src/services/mock/*` rồi export qua `mockApi`
-3) Nếu là backend flow: thêm endpoint ở BE controller/service + DTOs rõ ràng
-4) Provider: luôn normalize về `NormalizedSourceItem` (không leak raw)
+### Frontend
+```powershell
+cd FE
+npm install
+npm run dev
+# → http://localhost:5173 (local)
+# → http://<LAN_IP>:5173 (network, host: true đã bật)
+```
 
-Nếu cần “thêm API mới”, hãy bắt đầu bằng việc:
-- cập nhật `appApi.js` (1 method mới)
-- tạo controller method ở BE (GET/POST) và DTO request/response
-- (tuỳ) mock version tương ứng để FE dev không bị block.
+### Backend
+```powershell
+cd BE
+.\run.ps1     # load .env rồi chạy mvn spring-boot:run
+# → http://localhost:8080
+```
+
+Khi thay đổi code BE, cần chạy `mvn clean compile` trước nếu Maven không tự detect:
+```powershell
+cd BE; mvn clean compile -DskipTests; .\run.ps1
+```
+
+---
+
+## 11) Nguyên tắc khi thêm feature
+
+1. FE page gọi `appApi.<method>()` — không gọi `fetch` trực tiếp ở page
+2. Backend: thêm endpoint ở `FrontendController` + `FrontendService` + DTOs
+3. Provider: luôn normalize về `NormalizedSourceItem` — không leak raw payload lên FE
+4. CSS: dùng CSS variables từ `:root` trong `global.css` — không hardcode màu
+5. Toast: dùng `useToast()` thay vì `alert()` hoặc inline notice state
+6. Loading: dùng `DashboardSkeleton` / `AnalysisSkeleton` thay vì spinner đơn giản
