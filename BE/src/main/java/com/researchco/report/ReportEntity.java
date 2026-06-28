@@ -54,7 +54,6 @@ public class ReportEntity {
     @Column(nullable = false, length = 500)
     private String title;
 
-    @JdbcTypeCode(SqlTypes.JSON)
     @Column(name = "report_content", columnDefinition = "TEXT")
     private String reportContent;
 

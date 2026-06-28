@@ -247,8 +247,14 @@ public class FrontendService {
     public FrontendDtos.AccountOverviewResponse getAccountOverview() {
         UserEntity user = preferredUser();
         Optional<UserSubscriptionEntity> subscription = userSubscriptionRepository.findFirstByUserAndStatusOrderByStartDateDesc(user, "ACTIVE");
+        
+        LocalDateTime promoEnd = LocalDateTime.of(2026, 7, 6, 23, 59, 59);
+        boolean isPromoActive = LocalDateTime.now().isBefore(promoEnd);
+
         PlanEntity plan;
-        if (user.getRole() != null && user.getRole().equalsIgnoreCase("ADMIN")) {
+        if (isPromoActive) {
+            plan = planRepository.findByName("ENTERPRISE").orElse(null);
+        } else if (user.getRole() != null && user.getRole().equalsIgnoreCase("ADMIN")) {
             plan = planRepository.findByName("ENTERPRISE").orElse(null);
         } else {
             plan = subscription.map(UserSubscriptionEntity::getPlan).orElseGet(() ->
@@ -270,7 +276,10 @@ public class FrontendService {
         UserSubscriptionEntity currentSubscription = subscription.orElse(null);
         String renewsAt;
         String billingCycle;
-        if (user.getRole() != null && user.getRole().equalsIgnoreCase("ADMIN")) {
+        if (isPromoActive) {
+            renewsAt = "Thử nghiệm (Đến 06/07/2026)";
+            billingCycle = "promo";
+        } else if (user.getRole() != null && user.getRole().equalsIgnoreCase("ADMIN")) {
             renewsAt = "Vô hạn";
             billingCycle = "lifetime";
         } else {
@@ -330,9 +339,14 @@ public class FrontendService {
 
     @Transactional
     public FrontendDtos.AnalysisResponse getAnalysis(String keyword) {
+        return getAnalysis(keyword, SecurityUtils.currentUserId());
+    }
+
+    @Transactional
+    public FrontendDtos.AnalysisResponse getAnalysis(String keyword, UUID userId) {
         String normalizedKeyword = getNormalizedTopic(keyword);
         LocaleProfile localeProfile = resolveLocaleProfile(normalizedKeyword);
-        SearchQueryEntity trackedQuery = self.recordSearchActivity(normalizedKeyword, localeProfile);
+        SearchQueryEntity trackedQuery = self.recordSearchActivity(normalizedKeyword, localeProfile, userId);
         
         // 1. TÌM SNAPSHOT FRESH TỪ BẤT KỲ USER NÀO (SHARE ACROSS USERS ĐỂ TIẾT KIỆM TOKEN)
         LocalDateTime oneHourAgo = LocalDateTime.now().minusHours(1);
@@ -347,7 +361,7 @@ public class FrontendService {
         }
         
         // 2. Nếu không có snapshot fresh → fetch dữ liệu mới (live data)
-        List<NormalizedSourceItem> liveItems = fetchLiveSources(normalizedKeyword);
+        List<NormalizedSourceItem> liveItems = fetchLiveSources(normalizedKeyword, userId);
         if (!liveItems.isEmpty()) {
             FrontendDtos.AnalysisResponse response = buildLiveAnalysis(trackedQuery, normalizedKeyword, liveItems);
             saveSnapshot(trackedQuery, liveItems, response.relatedKeywords());
@@ -1909,6 +1923,10 @@ public class FrontendService {
     }
 
     private List<NormalizedSourceItem> fetchLiveSources(String keyword) {
+        return fetchLiveSources(keyword, SecurityUtils.currentUserId());
+    }
+
+    private List<NormalizedSourceItem> fetchLiveSources(String keyword, UUID userId) {
         LocaleProfile localeProfile = resolveLocaleProfile(keyword);
         List<SearchProviderEntity> activeProviders = searchProviderRepository.findByIsActiveTrue();
         Set<String> activeCodes = activeProviders.stream()
@@ -1921,7 +1939,7 @@ public class FrontendService {
         }
 
         String timeRange;
-        if (SecurityUtils.currentUserId() == null) {
+        if (userId == null) {
             timeRange = "12m";
             log.debug("Anonymous search: bypassed AI timeRange inference, using default: {}", timeRange);
         } else {
@@ -2191,11 +2209,15 @@ public class FrontendService {
 
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     public SearchQueryEntity recordSearchActivity(String keyword, LocaleProfile localeProfile) {
-        UUID currentUserId = SecurityUtils.currentUserId();
-        if (currentUserId == null) {
+        return recordSearchActivity(keyword, localeProfile, SecurityUtils.currentUserId());
+    }
+
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    public SearchQueryEntity recordSearchActivity(String keyword, LocaleProfile localeProfile, UUID userId) {
+        if (userId == null) {
             return null;
         }
-        UserEntity user = userRepository.findById(currentUserId).orElse(null);
+        UserEntity user = userRepository.findById(userId).orElse(null);
         if (user == null) {
             return null;
         }
@@ -2529,6 +2551,10 @@ public class FrontendService {
     }
 
     private void enforceDeepInsightQuota(UserEntity user, UserSubscriptionEntity subscription) {
+        LocalDateTime promoEnd = LocalDateTime.of(2026, 7, 6, 23, 59, 59);
+        if (LocalDateTime.now().isBefore(promoEnd)) {
+            return;
+        }
         if (user.getRole() != null && user.getRole().equalsIgnoreCase("ADMIN")) {
             return;
         }
@@ -2919,7 +2945,10 @@ public class FrontendService {
             UserEntity user = preferredUser();
 
             // Enforce export limit per plan
-            if (user.getRole() == null || !user.getRole().equalsIgnoreCase("ADMIN")) {
+            LocalDateTime promoEnd = LocalDateTime.of(2026, 7, 6, 23, 59, 59);
+            boolean isPromoActive = LocalDateTime.now().isBefore(promoEnd);
+
+            if (!isPromoActive && (user.getRole() == null || !user.getRole().equalsIgnoreCase("ADMIN"))) {
                 UserSubscriptionEntity exportSub = userSubscriptionRepository
                         .findFirstByUserAndStatusOrderByStartDateDesc(user, "ACTIVE").orElse(null);
                 PlanEntity exportPlan = exportSub != null ? exportSub.getPlan()

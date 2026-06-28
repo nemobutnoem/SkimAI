@@ -56,8 +56,7 @@ public class StreamingAnalysisService {
         this.objectMapper = objectMapper;
     }
 
-    @Transactional
-    public void streamAnalysis(String keyword, SseEmitter emitter) {
+    public void streamAnalysis(String keyword, java.util.UUID userId, SseEmitter emitter) {
         try {
             String normalizedKeyword = frontendService.getNormalizedTopic(keyword);
             // Stage 1: Send basic query info immediately
@@ -136,7 +135,7 @@ public class StreamingAnalysisService {
                 // No snapshot or snapshot is stale → Fetch live data via streaming instead of waiting for traditional fetch
                 sendEvent(emitter, "progress", Map.of("message", "Đang lấy dữ liệu thị trường trực tiếp...", "stage", "2.5/5"));
                 
-                FrontendDtos.AnalysisResponse response = frontendService.getAnalysis(normalizedKeyword);
+                FrontendDtos.AnalysisResponse response = frontendService.getAnalysis(normalizedKeyword, userId);
                 
                 sendEvent(emitter, "keywords", Map.of(
                         "keywords", response.relatedKeywords(),

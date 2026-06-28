@@ -22,11 +22,16 @@ public class FrontendController {
 
     private final FrontendService frontendService;
     private final StreamingAnalysisService streamingAnalysisService;
+    private final org.springframework.core.task.AsyncTaskExecutor taskExecutor;
     private final java.util.concurrent.ConcurrentHashMap<String, Object> keywordLocks = new java.util.concurrent.ConcurrentHashMap<>();
 
-    public FrontendController(FrontendService frontendService, StreamingAnalysisService streamingAnalysisService) {
+    public FrontendController(
+            FrontendService frontendService,
+            StreamingAnalysisService streamingAnalysisService,
+            org.springframework.core.task.AsyncTaskExecutor taskExecutor) {
         this.frontendService = frontendService;
         this.streamingAnalysisService = streamingAnalysisService;
+        this.taskExecutor = taskExecutor;
     }
 
     private Object getLock(String keyword) {
@@ -63,12 +68,13 @@ public class FrontendController {
 
     @GetMapping("/analysis/stream")
     public SseEmitter getAnalysisStream(@RequestParam(name = "keyword", defaultValue = "") @Size(max = 255) String keyword) {
+        java.util.UUID userId = com.researchco.security.SecurityUtils.currentUserId();
         SseEmitter emitter = new SseEmitter(300000L); // 5 min timeout
-        new Thread(() -> {
+        taskExecutor.execute(() -> {
             synchronized (getLock(keyword)) {
-                streamingAnalysisService.streamAnalysis(keyword, emitter);
+                streamingAnalysisService.streamAnalysis(keyword, userId, emitter);
             }
-        }).start();
+        });
         return emitter;
     }
 
