@@ -138,6 +138,40 @@ public class DefaultAiProvider implements AiProvider {
                 Return only valid JSON with this exact structure:
                 {
                   "marketInsight": "Một đoạn phân tích sâu sắc từ 4-5 câu tiếng Việt tổng hợp các tín hiệu mạnh mẽ nhất từ dữ liệu nguồn, phân tích rõ lý do nhu cầu tăng/giảm...",
+                  "marketOverview": {
+                    "industrySize": "Quy mô ngành ước tính hoặc tốc độ tăng trưởng bằng tiếng Việt (ví dụ: Quy mô thị trường nội địa khoảng 7.2 tỷ USD, tăng trưởng 12%%)",
+                    "keyCharacteristics": [
+                      "Đặc điểm cốt lõi 1 của ngành (ví dụ: Phụ thuộc vào nguồn nguyên liệu nhập khẩu)",
+                      "Đặc điểm cốt lõi 2 của ngành...",
+                      "Đặc điểm cốt lõi 3 của ngành..."
+                    ]
+                  },
+                  "consumerBehaviour": {
+                    "purchasingCriteria": [
+                      { "criterion": "Tên tiêu chí (ví dụ: Giá cả)", "importance": "Cao hoặc Trung bình hoặc Thấp", "description": "Lý giải chi tiết về tiêu chí quyết định này..." }
+                    ],
+                    "marketSegmentation": [
+                      { "segmentName": "Tên phân khúc đề xuất (ví dụ: Phân khúc trung cấp)", "targetAudience": "Đối tượng mục tiêu chính là ai", "strategy": "Chiến lược tiếp cận đề xuất" }
+                    ]
+                  },
+                  "swot": {
+                    "strengths": [
+                      "Điểm mạnh 1 cho một startup/SMB khi tham gia vào ngành (ví dụ: Sự linh hoạt sản xuất)",
+                      "Điểm mạnh 2..."
+                    ],
+                    "weaknesses": [
+                      "Điểm yếu 1 cho một startup/SMB (ví dụ: Thiếu hụt vốn đầu tư ban đầu)",
+                      "Điểm yếu 2..."
+                    ],
+                    "opportunities": [
+                      "Cơ hội thị trường/vĩ mô 1 (ví dụ: Trỗi dậy của e-commerce)",
+                      "Cơ hội vĩ mô 2..."
+                    ],
+                    "threats": [
+                      "Thách thức/rủi ro vĩ mô 1 (ví dụ: Biến động chi phí nguyên vật liệu)",
+                      "Thách thức vĩ mô 2..."
+                    ]
+                  },
                   "opportunities": [
                     "Cơ hội thị trường cụ thể 1 bằng tiếng Việt (ví dụ: phát triển nội dung ngách, ý tưởng sản phẩm...)",
                     "Cơ hội thị trường cụ thể 2 bằng tiếng Việt...",
@@ -214,7 +248,11 @@ public class DefaultAiProvider implements AiProvider {
                       "Insight cụ thể 1 về nhu cầu theo vùng miền tại Việt Nam bằng tiếng Việt...",
                       "Insight cụ thể 2 về phân phối hoặc tối ưu quảng cáo địa phương bằng tiếng Việt..."
                     ]
-                  }
+                  },
+                  "references": [
+                    "Tên nguồn tham khảo 1 định dạng APA 7th dựa trên dữ liệu thật ở trên (ví dụ: FiinGroup. (2025). Báo cáo bán lẻ. https://...)",
+                    "Tên nguồn tham khảo 2 định dạng APA 7th..."
+                  ]
                 }
                 """,
                 contextData.keyword(),
@@ -378,6 +416,65 @@ public class DefaultAiProvider implements AiProvider {
                     geographicInsights
             );
 
+            JsonNode overviewNode = jsonResult.path("marketOverview");
+            String sizeStr = overviewNode.path("industrySize").asText(blueprint.marketOverview().industrySize());
+            final List<String> characteristics = new ArrayList<>();
+            overviewNode.path("keyCharacteristics").forEach(node -> characteristics.add(node.asText()));
+            if (characteristics.isEmpty()) {
+                characteristics.addAll(blueprint.marketOverview().keyCharacteristics());
+            }
+            FrontendDtos.MarketOverview marketOverview = new FrontendDtos.MarketOverview(sizeStr, characteristics);
+
+            JsonNode consumerNode = jsonResult.path("consumerBehaviour");
+            final List<FrontendDtos.PurchasingCriterion> criteria = new ArrayList<>();
+            consumerNode.path("purchasingCriteria").forEach(node -> criteria.add(new FrontendDtos.PurchasingCriterion(
+                    node.path("criterion").asText(),
+                    node.path("importance").asText("Trung bình"),
+                    node.path("description").asText("")
+            )));
+            if (criteria.isEmpty()) {
+                criteria.addAll(blueprint.consumerBehaviour().purchasingCriteria());
+            }
+            final List<FrontendDtos.MarketSegmentationItem> segments = new ArrayList<>();
+            consumerNode.path("marketSegmentation").forEach(node -> segments.add(new FrontendDtos.MarketSegmentationItem(
+                    node.path("segmentName").asText(),
+                    node.path("targetAudience").asText(""),
+                    node.path("strategy").asText("")
+            )));
+            if (segments.isEmpty()) {
+                segments.addAll(blueprint.consumerBehaviour().marketSegmentation());
+            }
+            FrontendDtos.ConsumerBehaviour consumerBehaviour = new FrontendDtos.ConsumerBehaviour(criteria, segments);
+
+            JsonNode swotNode = jsonResult.path("swot");
+            final List<String> strengths = new ArrayList<>();
+            swotNode.path("strengths").forEach(node -> strengths.add(node.asText()));
+            if (strengths.isEmpty()) {
+                strengths.addAll(blueprint.swot().strengths());
+            }
+            final List<String> weaknesses = new ArrayList<>();
+            swotNode.path("weaknesses").forEach(node -> weaknesses.add(node.asText()));
+            if (weaknesses.isEmpty()) {
+                weaknesses.addAll(blueprint.swot().weaknesses());
+            }
+            final List<String> opportunitiesSwot = new ArrayList<>();
+            swotNode.path("opportunities").forEach(node -> opportunitiesSwot.add(node.asText()));
+            if (opportunitiesSwot.isEmpty()) {
+                opportunitiesSwot.addAll(blueprint.swot().opportunities());
+            }
+            final List<String> threats = new ArrayList<>();
+            swotNode.path("threats").forEach(node -> threats.add(node.asText()));
+            if (threats.isEmpty()) {
+                threats.addAll(blueprint.swot().threats());
+            }
+            FrontendDtos.SwotMatrix swot = new FrontendDtos.SwotMatrix(strengths, weaknesses, opportunitiesSwot, threats);
+
+            final List<String> references = new ArrayList<>();
+            jsonResult.path("references").forEach(node -> references.add(node.asText()));
+            if (references.isEmpty()) {
+                references.addAll(blueprint.references());
+            }
+
             return new FrontendDtos.DeepInsightResponse(
                     contextData.keyword(),
                     source,
@@ -396,7 +493,11 @@ public class DefaultAiProvider implements AiProvider {
                     ),
                     competitors,
                     targetPersona,
-                    regionalPotential
+                    regionalPotential,
+                    marketOverview,
+                    consumerBehaviour,
+                    swot,
+                    references
             );
 
         } catch (Exception e) {
@@ -668,16 +769,35 @@ public class DefaultAiProvider implements AiProvider {
                 strategicStats,
                 fallbackCompetitors,
                 fallbackPersona,
-                fallbackRegionalPotential
+                fallbackRegionalPotential,
+                new FrontendDtos.MarketOverview(
+                        "Chưa có dữ liệu quy mô",
+                        List.of("Cần chạy phân tích nguồn dữ liệu trực tuyến để xác định đặc điểm ngành.")
+                ),
+                new FrontendDtos.ConsumerBehaviour(
+                        List.of(new FrontendDtos.PurchasingCriterion("Giá cả/Chất lượng", "Cao", "Người tiêu dùng ưu tiên sự cân bằng giữa giá thành và chất lượng.")),
+                        List.of(new FrontendDtos.MarketSegmentationItem("Đại chúng", "Khách hàng phổ thông", "Tiếp cận qua các kênh TMĐT phổ biến"))
+                ),
+                new FrontendDtos.SwotMatrix(
+                        List.of("Linh hoạt trong sản xuất nhỏ", "Deep connection với khách hàng"),
+                        List.of("Thương hiệu mới chưa được biết tới rộng rãi"),
+                        List.of("Chuyển dịch mua sắm mạnh mẽ lên social commerce"),
+                        List.of("Cạnh tranh khốc liệt về giá từ các nguồn giá rẻ")
+                ),
+                List.of(
+                        "FiinGroup. (2025). Vietnam Retail Report.",
+                        "VITAS. (2025). Báo cáo Hiệp hội Dệt may Việt Nam."
+                )
         );
     }
 
     private List<FrontendDtos.CompetitorMapItem> buildFallbackCompetitors(String keyword) {
         String kw = keyword == null ? "Sản phẩm" : keyword;
+        String encodedKw = java.net.URLEncoder.encode(kw, java.nio.charset.StandardCharsets.UTF_8);
         return List.of(
                 new FrontendDtos.CompetitorMapItem(
                         kw + " Reviewer",
-                        "https://www.youtube.com",
+                        "https://www.youtube.com/results?search_query=" + encodedKw,
                         "Mạnh",
                         "650K subs",
                         "2 video/tuần",
@@ -685,7 +805,7 @@ public class DefaultAiProvider implements AiProvider {
                 ),
                 new FrontendDtos.CompetitorMapItem(
                         kw + " Community",
-                        "https://www.facebook.com",
+                        "https://www.facebook.com/search/top?q=" + encodedKw,
                         "Trung bình",
                         "85K members",
                         "Hàng ngày",
@@ -693,7 +813,7 @@ public class DefaultAiProvider implements AiProvider {
                 ),
                 new FrontendDtos.CompetitorMapItem(
                         kw + " Insights",
-                        "https://www.google.com",
+                        "https://www.google.com/search?q=" + encodedKw,
                         "Mới nổi",
                         "45K views/tháng",
                         "2 bài viết/tuần",
@@ -1080,7 +1200,11 @@ public class DefaultAiProvider implements AiProvider {
             List<FrontendDtos.StatItem> strategicStats,
             List<FrontendDtos.CompetitorMapItem> competitors,
             FrontendDtos.TargetPersona targetPersona,
-            FrontendDtos.RegionalPotential regionalPotential
+            FrontendDtos.RegionalPotential regionalPotential,
+            FrontendDtos.MarketOverview marketOverview,
+            FrontendDtos.ConsumerBehaviour consumerBehaviour,
+            FrontendDtos.SwotMatrix swot,
+            List<String> references
     ) {
         FrontendDtos.DeepInsightResponse toResponse() {
             return new FrontendDtos.DeepInsightResponse(
@@ -1101,7 +1225,11 @@ public class DefaultAiProvider implements AiProvider {
                     ),
                     competitors,
                     targetPersona,
-                    regionalPotential
+                    regionalPotential,
+                    marketOverview,
+                    consumerBehaviour,
+                    swot,
+                    references
             );
         }
     }

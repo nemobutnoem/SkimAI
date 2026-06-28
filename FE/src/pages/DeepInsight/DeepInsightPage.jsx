@@ -253,12 +253,73 @@ export function DeepInsightPage() {
           return;
       }
 
+      // Market Overview & Characteristics
+      let overviewHtml = '';
+      if (data?.marketOverview) {
+        overviewHtml = `
+          <h2>2. Quy Mô & Đặc Điểm Ngành</h2>
+          <div class="section-box">
+            <p><strong>Ước tính quy mô / Động lượng tăng trưởng:</strong> ${data.marketOverview.industrySize || 'N/A'}</p>
+            <h3>Đặc điểm cốt lõi của ngành:</h3>
+            <ul>
+              ${(data.marketOverview.keyCharacteristics || []).map(c => `<li>${c}</li>`).join('')}
+            </ul>
+          </div>
+        `;
+      }
+
+      // SWOT Matrix
+      let swotHtml = '';
+      if (data?.swot) {
+        swotHtml = `
+          <h2>3. Ma Trận SWOT Ngành (Startup/SMB)</h2>
+          <table style="width: 100%; border-collapse: collapse; margin-top: 15px; margin-bottom: 25px; border: 2px solid #3182ce;">
+            <thead>
+              <tr style="background-color: #3182ce; color: #ffffff;">
+                <th style="width: 50%; padding: 12px; border: 1px solid #3182ce; font-weight: bold; text-align: left; font-size: 11pt;">STRENGTHS (ĐIỂM MẠNH)</th>
+                <th style="width: 50%; padding: 12px; border: 1px solid #3182ce; font-weight: bold; text-align: left; font-size: 11pt;">WEAKNESSES (ĐIỂM YẾU)</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td style="padding: 12px; border: 1px solid #cbd5e0; background-color: #e6f4ea; color: #137333; vertical-align: top; font-size: 10.5pt;">
+                  <ul>
+                    ${(data.swot.strengths || []).map(s => `<li>${s}</li>`).join('')}
+                  </ul>
+                </td>
+                <td style="padding: 12px; border: 1px solid #cbd5e0; background-color: #fce8e6; color: #c5221f; vertical-align: top; font-size: 10.5pt;">
+                  <ul>
+                    ${(data.swot.weaknesses || []).map(w => `<li>${w}</li>`).join('')}
+                  </ul>
+                </td>
+              </tr>
+              <tr style="background-color: #3182ce; color: #ffffff;">
+                <th style="padding: 12px; border: 1px solid #3182ce; font-weight: bold; text-align: left; font-size: 11pt;">OPPORTUNITIES (CƠ HỘI)</th>
+                <th style="padding: 12px; border: 1px solid #3182ce; font-weight: bold; text-align: left; font-size: 11pt;">THREATS (THÁCH THỨC)</th>
+              </tr>
+              <tr>
+                <td style="padding: 12px; border: 1px solid #cbd5e0; background-color: #e8f0fe; color: #1a73e8; vertical-align: top; font-size: 10.5pt;">
+                  <ul>
+                    ${(data.swot.opportunities || []).map(o => `<li>${o}</li>`).join('')}
+                  </ul>
+                </td>
+                <td style="padding: 12px; border: 1px solid #cbd5e0; background-color: #fef7e0; color: #b06000; vertical-align: top; font-size: 10.5pt;">
+                  <ul>
+                    ${(data.swot.threats || []).map(t => `<li>${t}</li>`).join('')}
+                  </ul>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        `;
+      }
+
       // Target Persona section in HTML
       let personaHtml = '';
       if (data?.targetPersona) {
         const persona = data.targetPersona;
         personaHtml = `
-          <h2>5. Chân Dung Khách Hàng (Target Persona)</h2>
+          <h2>7. Chân Dung Khách Hàng (Target Persona)</h2>
           <div class="section-box">
             <p><strong>Mô tả chung:</strong> ${persona.description || 'Chưa có thông tin mô tả.'}</p>
             <h3>Vấn đề & Nỗi đau lớn nhất (Painpoints)</h3>
@@ -273,11 +334,48 @@ export function DeepInsightPage() {
         `;
       }
 
+      // Consumer Behaviour section in HTML
+      let consumerBehaviourHtml = '';
+      if (data?.consumerBehaviour) {
+        const cb = data.consumerBehaviour;
+        consumerBehaviourHtml = `
+          <h2>8. Phân Khúc Thị Trường & Tiêu Chí Mua Sắm</h2>
+          <div class="section-box">
+            <h3>Phân khúc thị trường đề xuất</h3>
+            <table style="width: 100%; border-collapse: collapse; margin-top: 10px; margin-bottom: 20px; border: 1px solid #cbd5e0;">
+              <thead>
+                <tr style="background-color: #edf2f7;">
+                  <th style="border: 1px solid #cbd5e0; padding: 8px; text-align: left; font-weight: 600;">Tên phân khúc</th>
+                  <th style="border: 1px solid #cbd5e0; padding: 8px; text-align: left; font-weight: 600;">Đối tượng mục tiêu</th>
+                  <th style="border: 1px solid #cbd5e0; padding: 8px; text-align: left; font-weight: 600;">Chiến lược đề xuất</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${(cb.marketSegmentation || []).map(s => `
+                  <tr>
+                    <td style="border: 1px solid #cbd5e0; padding: 8px;"><strong>${s.segmentName}</strong></td>
+                    <td style="border: 1px solid #cbd5e0; padding: 8px;">${s.targetAudience}</td>
+                    <td style="border: 1px solid #cbd5e0; padding: 8px;">${s.strategy}</td>
+                  </tr>
+                `).join('')}
+              </tbody>
+            </table>
+
+            <h3>Tiêu chí quyết định mua sắm cốt lõi</h3>
+            <ul>
+              ${(cb.purchasingCriteria || []).map(c => `
+                <li><strong>${c.criterion}</strong> [Mức độ quan trọng: ${c.importance}] - ${c.description}</li>
+              `).join('')}
+            </ul>
+          </div>
+        `;
+      }
+
       // Competitor Map section in HTML
       let competitorsHtml = '';
       if (data?.competitors && data.competitors.length > 0) {
         competitorsHtml = `
-          <h2>6. Bản Đồ Đối Thủ Cạnh Tranh (Competitor Map)</h2>
+          <h2>9. Bản Đồ Đối Thủ Cạnh Tranh (Competitor Map)</h2>
           ${data.competitors.map((c, idx) => `
             <div class="section-box" style="margin-bottom: 15px;">
               <h3>${idx + 1}. ${c.name}</h3>
@@ -296,7 +394,7 @@ export function DeepInsightPage() {
       if (data?.regionalPotential) {
         const regional = data.regionalPotential;
         regionalPotentialHtml = `
-          <h2>7. Tiềm Năng Khu Vực (Regional Potential)</h2>
+          <h2>10. Tiềm Năng Khu Vực (Regional Potential)</h2>
           <div class="section-box">
             <p><strong>Nhận xét địa lý:</strong> ${regional.analysisText || 'Chưa có thông tin phân tích.'}</p>
             <h3>Bảng phân bố nhu cầu theo tỉnh thành</h3>
@@ -321,6 +419,21 @@ export function DeepInsightPage() {
             <h3>Nhận định địa lý & Phân phối tiếp thị</h3>
             <ul>
               ${(regional.geographicInsights || []).map(g => `<li>${g}</li>`).join('')}
+            </ul>
+          </div>
+        `;
+      }
+
+      // References section in HTML
+      let referencesHtml = '';
+      if (data?.references && data.references.length > 0) {
+        referencesHtml = `
+          <h2>11. Tài Liệu Tham Khảo (References - APA 7th)</h2>
+          <div class="section-box" style="background-color: #ffffff; border-left: 4px solid #718096; padding: 15px;">
+            <ul style="list-style-type: none; padding-left: 0; margin-left: 0;">
+              ${data.references.map(r => `
+                <li style="margin-bottom: 12px; padding-left: 18px; text-indent: -18px; font-size: 10pt; color: #4a5568;">${r}</li>
+              `).join('')}
             </ul>
           </div>
         `;
@@ -419,24 +532,30 @@ export function DeepInsightPage() {
     <p>${signalSummary}</p>
   </div>
 
-  <h2>2. Chủ Đề Thảo Luận Chính</h2>
+  ${overviewHtml}
+  ${swotHtml}
+
+  <h2>4. Chủ Đề Thảo Luận Chính</h2>
   <ul>
     ${discussionTopics.map(t => `<li><strong>${t.name}</strong>: ${t.change}</li>`).join('')}
   </ul>
 
-  <h2>3. Cơ Hội Thị Trường Đề Xuất (Opportunities)</h2>
+  <h2>5. Cơ Hội Thị Trường Đề Xuất (Opportunities)</h2>
   <ul>
     ${opportunityCards.map(opp => `<li><strong>${opp.title}</strong>: ${opp.desc}</li>`).join('')}
   </ul>
 
-  <h2>4. Khuyến Nghị Chiến Lược (Strategic Recommendation)</h2>
+  <h2>6. Khuyến Nghị Chiến Lược (Strategic Recommendation)</h2>
   <div class="section-box">
     <h3>${strategicRecommendation.title}</h3>
     <p>${strategicRecommendation.desc}</p>
   </div>
 
   ${personaHtml}
+  ${consumerBehaviourHtml}
   ${competitorsHtml}
+  ${regionalPotentialHtml}
+  ${referencesHtml}
 
   <div style="margin-top: 50px; text-align: center; font-size: 9pt; color: #a0aec0; border-top: 1px solid #e2e8f0; padding-top: 15px;">
     Báo cáo được tạo tự động bởi hệ thống SkimAI — Trợ lý Nghiên Cứu Thị Trường Thông Minh
@@ -463,7 +582,7 @@ export function DeepInsightPage() {
 
   return (
     <div className="di-shell page-wrap">
-      {/* Styles for premium skeleton loading pulse */}
+      {/* Styles for premium skeleton loading pulse and SWOT / Market Analysis layout */}
       <style>{`
         @keyframes pulse {
           0%, 100% { opacity: 1; }
@@ -471,6 +590,166 @@ export function DeepInsightPage() {
         }
         .skeleton-pulse {
           animation: pulse 1.5s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+        }
+        .swot-grid {
+          display: grid;
+          grid-template-columns: 1fr 1fr;
+          gap: 16px;
+          margin-top: 16px;
+        }
+        @media (max-width: 768px) {
+          .swot-grid {
+            grid-template-columns: 1fr;
+          }
+        }
+        .swot-cell {
+          padding: 16px 20px;
+          border-radius: 10px;
+          border-left: 5px solid;
+          background: var(--white);
+          box-shadow: var(--shadow-sm);
+        }
+        .swot-strengths {
+          background-color: #e6f4ea;
+          border-color: var(--green);
+          color: #137333;
+        }
+        .swot-weaknesses {
+          background-color: #fce8e6;
+          border-color: var(--red);
+          color: #c5221f;
+        }
+        .swot-opportunities {
+          background-color: #e8f0fe;
+          border-color: var(--blue);
+          color: #1a73e8;
+        }
+        .swot-threats {
+          background-color: #fef7e0;
+          border-color: var(--orange);
+          color: #b06000;
+        }
+        .swot-cell h5 {
+          margin: 0 0 10px 0;
+          font-size: 15px;
+          font-weight: 700;
+          text-transform: uppercase;
+          letter-spacing: 0.05em;
+          color: inherit;
+        }
+        .swot-list {
+          margin: 0;
+          padding-left: 18px;
+          font-size: 13.5px;
+          line-height: 1.6;
+        }
+        .swot-list li {
+          margin-bottom: 6px;
+        }
+        .ref-list {
+          list-style: none;
+          padding: 0;
+          margin: 15px 0 0 0;
+        }
+        .ref-item {
+          font-size: 13px;
+          line-height: 1.6;
+          color: var(--text-secondary);
+          margin-bottom: 12px;
+          padding-left: 18px;
+          text-indent: -18px;
+          border-bottom: 1px dashed var(--border-color);
+          padding-bottom: 8px;
+        }
+        .ref-item:last-child {
+          border-bottom: none;
+          padding-bottom: 0;
+        }
+        .char-list {
+          list-style: none;
+          padding: 0;
+          margin: 15px 0 0 0;
+        }
+        .char-item {
+          display: flex;
+          align-items: flex-start;
+          gap: 8px;
+          font-size: 13.5px;
+          line-height: 1.5;
+          color: var(--text-secondary);
+          margin-bottom: 8px;
+        }
+        .char-bullet {
+          color: var(--primary);
+          font-weight: bold;
+        }
+        .criteria-grid {
+          display: flex;
+          flex-direction: column;
+          gap: 12px;
+          margin-top: 15px;
+        }
+        .criteria-item {
+          padding: 12px 16px;
+          background: #f8fafc;
+          border: 1px solid #e2e8f0;
+          border-radius: 8px;
+        }
+        .criteria-header {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          margin-bottom: 6px;
+        }
+        .criteria-name {
+          font-weight: 600;
+          color: var(--text-primary);
+          font-size: 13.5px;
+        }
+        .criteria-badge {
+          font-size: 10px;
+          font-weight: 600;
+          padding: 2px 8px;
+          border-radius: 12px;
+        }
+        .criteria-badge-high {
+          background-color: #fce8e6;
+          color: var(--red);
+        }
+        .criteria-badge-medium {
+          background-color: #fef7e0;
+          color: var(--orange);
+        }
+        .criteria-badge-low {
+          background-color: #e2e8f0;
+          color: var(--text-secondary);
+        }
+        .criteria-desc {
+          font-size: 12.5px;
+          color: var(--text-secondary);
+          line-height: 1.5;
+          margin: 0;
+        }
+        .seg-table {
+          width: 100%;
+          border-collapse: collapse;
+          margin-top: 15px;
+          font-size: 13px;
+        }
+        .seg-table th, .seg-table td {
+          border: 1px solid #cbd5e0;
+          padding: 10px 12px;
+          text-align: left;
+          vertical-align: top;
+        }
+        .seg-table th {
+          background-color: #edf2f7;
+          color: var(--text-primary);
+          font-weight: 600;
+        }
+        .seg-table td {
+          color: var(--text-secondary);
+          line-height: 1.5;
         }
       `}</style>
 
@@ -609,6 +888,76 @@ export function DeepInsightPage() {
                           </div>
                         </div>
                       ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Market Overview & Characteristics */}
+              <div className="di-section-card">
+                <div className="di-section-title">🏢 Quy mô & Đặc điểm ngành</div>
+                {loading && !data ? (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginTop: '15px' }}>
+                    <div className="skeleton-pulse" style={{ height: '20px', width: '80%', background: 'var(--gray-200)', borderRadius: '4px' }} />
+                    <div className="skeleton-pulse" style={{ height: '14px', width: '90%', background: 'var(--gray-100)', borderRadius: '4px' }} />
+                    <div className="skeleton-pulse" style={{ height: '14px', width: '85%', background: 'var(--gray-100)', borderRadius: '4px' }} />
+                  </div>
+                ) : (
+                  <div style={{ marginTop: '15px' }}>
+                    <p style={{ fontSize: '14px', lineHeight: '1.6', color: 'var(--gray-800)', margin: '0 0 12px 0' }}>
+                      <strong>Ước tính quy mô / Động lượng tăng trưởng:</strong> {data?.marketOverview?.industrySize || 'Chưa có thông tin'}
+                    </p>
+                    <h5 style={{ margin: '15px 0 8px 0', fontSize: '13.5px', color: 'var(--text-primary)', fontWeight: '600' }}>Đặc điểm cốt lõi của ngành:</h5>
+                    <ul className="char-list">
+                      {data?.marketOverview?.keyCharacteristics?.length ? (
+                        data.marketOverview.keyCharacteristics.map((char, idx) => (
+                          <li key={idx} className="char-item">
+                            <span className="char-bullet">•</span>
+                            <span>{char}</span>
+                          </li>
+                        ))
+                      ) : (
+                        <p className="hint">Chưa có thông tin đặc điểm ngành.</p>
+                      )}
+                    </ul>
+                  </div>
+                )}
+              </div>
+
+              {/* SWOT Matrix */}
+              <div className="di-section-card">
+                <div className="di-section-title">📊 Ma trận SWOT (Cho Startup/SMB tham chiếu)</div>
+                {loading && !data ? (
+                  <div className="swot-grid">
+                    {[1, 2, 3, 4].map(idx => (
+                      <div className="skeleton-pulse" key={idx} style={{ height: '120px', background: 'var(--gray-100)', borderRadius: '10px' }} />
+                    ))}
+                  </div>
+                ) : (
+                  <div className="swot-grid">
+                    <div className="swot-cell swot-strengths">
+                      <h5>Strengths (Điểm mạnh)</h5>
+                      <ul className="swot-list">
+                        {data?.swot?.strengths?.map((item, idx) => <li key={idx}>{item}</li>)}
+                      </ul>
+                    </div>
+                    <div className="swot-cell swot-weaknesses">
+                      <h5>Weaknesses (Điểm yếu)</h5>
+                      <ul className="swot-list">
+                        {data?.swot?.weaknesses?.map((item, idx) => <li key={idx}>{item}</li>)}
+                      </ul>
+                    </div>
+                    <div className="swot-cell swot-opportunities">
+                      <h5>Opportunities (Cơ hội)</h5>
+                      <ul className="swot-list">
+                        {data?.swot?.opportunities?.map((item, idx) => <li key={idx}>{item}</li>)}
+                      </ul>
+                    </div>
+                    <div className="swot-cell swot-threats">
+                      <h5>Threats (Thách thức)</h5>
+                      <ul className="swot-list">
+                        {data?.swot?.threats?.map((item, idx) => <li key={idx}>{item}</li>)}
+                      </ul>
                     </div>
                   </div>
                 )}
@@ -765,6 +1114,21 @@ export function DeepInsightPage() {
                   </>
                 )}
               </div>
+
+              {/* References Section */}
+              {data?.references?.length > 0 && (
+                <div className="di-section-card" style={{ borderLeft: '4px solid var(--text-muted)' }}>
+                  <div className="di-section-title">📚 Tài liệu tham khảo (References - APA 7th)</div>
+                  <p className="hint">Danh sách các tài liệu và báo cáo tham khảo được AI sử dụng để lập nhận định.</p>
+                  <ul className="ref-list">
+                    {data.references.map((ref, idx) => (
+                      <li key={idx} className="ref-item">
+                        {ref}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
             </>
           )}
 
@@ -786,6 +1150,10 @@ export function DeepInsightPage() {
                     <h4>🔍 Hành vi & Ý định tìm kiếm (Search Intent)</h4>
                     <div className="skeleton-pulse" style={{ height: '14px', width: '80%', margin: '6px 0', background: 'var(--gray-100)', borderRadius: '4px' }} />
                     <div className="skeleton-pulse" style={{ height: '14px', width: '65%', margin: '6px 0', background: 'var(--gray-100)', borderRadius: '4px' }} />
+                  </div>
+                  <div className="di-persona-column-card" style={{ gridColumn: '1 / -1' }}>
+                    <h4>📊 Phân khúc & Tiêu chí mua sắm (Đang phân tích...)</h4>
+                    <div className="skeleton-pulse" style={{ height: '80px', width: '100%', background: 'var(--gray-100)', borderRadius: '8px', marginTop: '10px' }} />
                   </div>
                 </>
               ) : (
@@ -822,6 +1190,64 @@ export function DeepInsightPage() {
                       ) : (
                         <p className="hint">Chưa có dữ liệu ý định tìm kiếm cụ thể.</p>
                       )}
+                    </div>
+                  </div>
+
+                  {/* Market Segmentation & Criteria */}
+                  <div className="di-persona-column-card" style={{ gridColumn: '1 / -1' }}>
+                    <h4 style={{ color: 'var(--primary)' }}>📊 Phân khúc thị trường & Tiêu chí quyết định</h4>
+                    
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px', marginTop: '15px' }} className="swot-grid">
+                      <div>
+                        <h5 style={{ margin: '0 0 10px 0', fontSize: '14px', color: 'var(--text-primary)', fontWeight: '600' }}>Phân khúc tiêu dùng đề xuất:</h5>
+                        <table className="seg-table">
+                          <thead>
+                            <tr>
+                              <th>Phân khúc</th>
+                              <th>Đối tượng chính</th>
+                              <th>Chiến lược</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {data?.consumerBehaviour?.marketSegmentation?.length ? (
+                              data.consumerBehaviour.marketSegmentation.map((seg, idx) => (
+                                <tr key={idx}>
+                                  <td><strong>{seg.segmentName}</strong></td>
+                                  <td>{seg.targetAudience}</td>
+                                  <td>{seg.strategy}</td>
+                                </tr>
+                              ))
+                            ) : (
+                              <tr>
+                                <td colSpan="3" className="hint">Chưa có phân khúc mẫu.</td>
+                              </tr>
+                            )}
+                          </tbody>
+                        </table>
+                      </div>
+
+                      <div>
+                        <h5 style={{ margin: '0 0 10px 0', fontSize: '14px', color: 'var(--text-primary)', fontWeight: '600' }}>Tiêu chí quyết định mua sắm:</h5>
+                        <div className="criteria-grid">
+                          {data?.consumerBehaviour?.purchasingCriteria?.length ? (
+                            data.consumerBehaviour.purchasingCriteria.map((crit, idx) => {
+                              const importance = crit.importance || 'Trung bình';
+                              const badgeCls = importance === 'Cao' ? 'criteria-badge-high' : importance === 'Trung bình' ? 'criteria-badge-medium' : 'criteria-badge-low';
+                              return (
+                                <div key={idx} className="criteria-item">
+                                  <div className="criteria-header">
+                                    <span className="criteria-name">{crit.criterion}</span>
+                                    <span className={`criteria-badge ${badgeCls}`}>{importance}</span>
+                                  </div>
+                                  <p className="criteria-desc">{crit.description}</p>
+                                </div>
+                              );
+                            })
+                          ) : (
+                            <p className="hint">Chưa có tiêu chí mua sắm cụ thể.</p>
+                          )}
+                        </div>
+                      </div>
                     </div>
                   </div>
                 </>

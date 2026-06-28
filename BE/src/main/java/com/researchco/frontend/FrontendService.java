@@ -618,7 +618,22 @@ public class FrontendService {
                             "Không khả dụng do chất lượng tín hiệu quá thấp.",
                             List.of(),
                             List.of()
-                    )
+                    ),
+                    new FrontendDtos.MarketOverview(
+                            "Không khả dụng",
+                            List.of("Chất lượng tín hiệu quá thấp để phân tích quy mô.")
+                    ),
+                    new FrontendDtos.ConsumerBehaviour(
+                            List.of(),
+                            List.of()
+                    ),
+                    new FrontendDtos.SwotMatrix(
+                            List.of(),
+                            List.of(),
+                            List.of(),
+                            List.of()
+                    ),
+                    List.of()
             );
         }
 
@@ -679,26 +694,28 @@ public class FrontendService {
                 if (response.competitors() == null || response.targetPersona() == null || response.regionalPotential() == null) {
                     List<FrontendDtos.CompetitorMapItem> competitors = response.competitors();
                     if (competitors == null) {
+                        String rawKw = response.keyword() == null ? "Sản phẩm" : response.keyword();
+                        String encodedKw = java.net.URLEncoder.encode(rawKw, java.nio.charset.StandardCharsets.UTF_8);
                         competitors = List.of(
                                 new FrontendDtos.CompetitorMapItem(
-                                        response.keyword() + " Channel",
-                                        "https://www.youtube.com",
+                                        rawKw + " Channel",
+                                        "https://www.youtube.com/results?search_query=" + encodedKw,
                                         "Mạnh",
                                         "850K subs",
                                         "3 video/tuần",
-                                        "Chuyên hướng dẫn và cung cấp các giải pháp tối ưu hóa thực tế cho " + response.keyword() + "."
+                                        "Chuyên hướng dẫn và cung cấp các giải pháp tối ưu hóa thực tế cho " + rawKw + "."
                                 ),
                                 new FrontendDtos.CompetitorMapItem(
-                                        response.keyword() + " Hub",
-                                        "https://www.google.com",
+                                        rawKw + " Hub",
+                                        "https://www.google.com/search?q=" + encodedKw,
                                         "Trung bình",
                                         "120K followers",
                                         "1 video/tuần",
                                         "Review so sánh hiệu năng và đánh giá ưu nhược điểm các dòng sản phẩm liên quan."
                                 ),
                                 new FrontendDtos.CompetitorMapItem(
-                                        response.keyword() + " Lab",
-                                        "https://www.github.com",
+                                        rawKw + " Lab",
+                                        "https://github.com/search?q=" + encodedKw,
                                         "Mới nổi",
                                         "35K followers",
                                         "Hàng tuần",
@@ -739,6 +756,36 @@ public class FrontendService {
                                 )
                         );
                     }
+                    FrontendDtos.MarketOverview marketOverview = response.marketOverview();
+                    if (marketOverview == null) {
+                        marketOverview = new FrontendDtos.MarketOverview(
+                                "Chưa có số liệu",
+                                List.of("Cần phân tích sâu trực tuyến để cập nhật đặc điểm ngành.")
+                        );
+                    }
+                    FrontendDtos.ConsumerBehaviour consumerBehaviour = response.consumerBehaviour();
+                    if (consumerBehaviour == null) {
+                        consumerBehaviour = new FrontendDtos.ConsumerBehaviour(
+                                List.of(new FrontendDtos.PurchasingCriterion("Giá cả/Chất lượng", "Cao", "Người tiêu dùng ưu tiên sự cân bằng giữa giá thành và chất lượng.")),
+                                List.of(new FrontendDtos.MarketSegmentationItem("Đại chúng", "Khách hàng phổ thông", "Tiếp cận qua các sàn TMĐT"))
+                        );
+                    }
+                    FrontendDtos.SwotMatrix swot = response.swot();
+                    if (swot == null) {
+                        swot = new FrontendDtos.SwotMatrix(
+                                List.of("Linh hoạt trong quy mô nhỏ"),
+                                List.of("Chưa có nhiều thương hiệu nhận diện"),
+                                List.of("TMĐT và Social commerce phát triển"),
+                                List.of("Cạnh tranh khốc liệt từ đối thủ giá rẻ")
+                        );
+                    }
+                    List<String> references = response.references();
+                    if (references == null) {
+                        references = List.of(
+                                "FiinGroup. (2025). Vietnam Retail Report.",
+                                "VITAS. (2025). Báo cáo Hiệp hội Dệt may Việt Nam."
+                        );
+                    }
                     response = new FrontendDtos.DeepInsightResponse(
                             response.keyword(),
                             response.source(),
@@ -753,7 +800,11 @@ public class FrontendService {
                             response.strategicRecommendation(),
                             competitors,
                             targetPersona,
-                            regionalPotential
+                            regionalPotential,
+                            marketOverview,
+                            consumerBehaviour,
+                            swot,
+                            references
                     );
                     
                     try {
@@ -872,6 +923,37 @@ public class FrontendService {
                 ? new FrontendDtos.RegionalPotential("N/A", List.of(), List.of())
                 : response.regionalPotential();
 
+        FrontendDtos.MarketOverview marketOverview = response.marketOverview();
+        if (marketOverview == null) {
+            marketOverview = new FrontendDtos.MarketOverview(
+                    "Chưa có số liệu",
+                    List.of("Cần phân tích sâu trực tuyến để cập nhật đặc điểm ngành.")
+            );
+        }
+        FrontendDtos.ConsumerBehaviour consumerBehaviour = response.consumerBehaviour();
+        if (consumerBehaviour == null) {
+            consumerBehaviour = new FrontendDtos.ConsumerBehaviour(
+                    List.of(new FrontendDtos.PurchasingCriterion("Giá cả/Chất lượng", "Cao", "Người tiêu dùng ưu tiên sự cân bằng giữa giá thành và chất lượng.")),
+                    List.of(new FrontendDtos.MarketSegmentationItem("Đại chúng", "Khách hàng phổ thông", "Tiếp cận qua các sàn TMĐT"))
+            );
+        }
+        FrontendDtos.SwotMatrix swot = response.swot();
+        if (swot == null) {
+            swot = new FrontendDtos.SwotMatrix(
+                    List.of("Linh hoạt trong quy mô nhỏ"),
+                    List.of("Chưa có nhiều thương hiệu nhận diện"),
+                    List.of("TMĐT và Social commerce phát triển"),
+                    List.of("Cạnh tranh khốc liệt từ đối thủ giá rẻ")
+            );
+        }
+        List<String> references = response.references();
+        if (references == null) {
+            references = List.of(
+                    "FiinGroup. (2025). Vietnam Retail Report.",
+                    "VITAS. (2025). Báo cáo Hiệp hội Dệt may Việt Nam."
+            );
+        }
+
         return new FrontendDtos.DeepInsightResponse(
                 response.keyword(),
                 response.source(),
@@ -886,7 +968,11 @@ public class FrontendService {
                 response.strategicRecommendation(),
                 competitors,
                 response.targetPersona(),
-                dynamicRegionalPotential
+                dynamicRegionalPotential,
+                marketOverview,
+                consumerBehaviour,
+                swot,
+                references
         );
     }
 
@@ -3110,26 +3196,28 @@ public class FrontendService {
 
         // If we found fewer than 2 real competitors, generate default fallback list
         if (competitors.size() < 2) {
+            String rawKw = keyword == null ? "Sản phẩm" : keyword;
+            String encodedKw = java.net.URLEncoder.encode(rawKw, java.nio.charset.StandardCharsets.UTF_8);
             competitors = List.of(
                     new FrontendDtos.CompetitorMapItem(
-                            keyword + " Channel",
-                            "https://www.youtube.com",
+                            rawKw + " Channel",
+                            "https://www.youtube.com/results?search_query=" + encodedKw,
                             "Mạnh",
                             "850K subs",
                             "3 video/tuần",
-                            "Chuyên hướng dẫn và cung cấp các giải pháp tối ưu hóa thực tế cho " + keyword + "."
+                            "Chuyên hướng dẫn và cung cấp các giải pháp tối ưu hóa thực tế cho " + rawKw + "."
                     ),
                     new FrontendDtos.CompetitorMapItem(
-                            keyword + " Hub",
-                            "https://www.google.com",
+                            rawKw + " Hub",
+                            "https://www.google.com/search?q=" + encodedKw,
                             "Trung bình",
                             "120K followers",
                             "1 video/tuần",
                             "Review so sánh hiệu năng và đánh giá ưu nhược điểm các dòng sản phẩm liên quan."
                     ),
                     new FrontendDtos.CompetitorMapItem(
-                            keyword + " Lab",
-                            "https://www.github.com",
+                            rawKw + " Lab",
+                            "https://github.com/search?q=" + encodedKw,
                             "Mới nổi",
                             "35K followers",
                             "Hàng tuần",
