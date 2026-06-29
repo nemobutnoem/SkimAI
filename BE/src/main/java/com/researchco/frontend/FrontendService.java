@@ -1453,12 +1453,35 @@ public class FrontendService {
     }
 
     public List<FrontendDtos.TimeSeriesPoint> getAnalysisTimeline(String keyword) {
-        FrontendDtos.AnalysisResponse analysis = getAnalysis(keyword);
-        List<FrontendDtos.KeywordMetric> metrics = analysis.relatedKeywords();
+        String normalizedKeyword = getNormalizedTopic(keyword);
+        
+        Optional<SearchQueryEntity> queryOpt = searchQueryRepository
+                .findFirstByKeywordIgnoreCaseOrderByCreatedAtDesc(normalizedKeyword);
+                
+        List<FrontendDtos.KeywordMetric> metrics = List.of();
+        
+        if (queryOpt.isPresent()) {
+            com.researchco.snapshot.AnalysisSnapshotEntity snapshot = analysisSnapshotRepository
+                    .findBySearchQueryId(queryOpt.get().getId()).orElse(null);
+            if (snapshot != null) {
+                metrics = snapshotKeywordRepository.findBySnapshotId(snapshot.getId()).stream()
+                        .sorted(Comparator.comparing(com.researchco.snapshot.SnapshotKeywordEntity::getMentionCount).reversed())
+                        .limit(6)
+                        .map(sk -> {
+                            int hash = Math.abs(sk.getKeyword().hashCode());
+                            double engagement = sk.getAvgEngagement() != null ? sk.getAvgEngagement() : (0.05 + (hash % 100) / 1000.0);
+                            long views = sk.getTotalViews() != null ? sk.getTotalViews() : (sk.getMentionCount() * 1500L + (hash % 5000));
+                            long comments = sk.getTotalComments() != null ? sk.getTotalComments() : (views / 50);
+                            return new FrontendDtos.KeywordMetric(sk.getKeyword(), sk.getMentionCount(), views, comments, 0L, engagement);
+                        })
+                        .toList();
+            }
+        }
+        
         long totalViews = metrics.stream().mapToLong(FrontendDtos.KeywordMetric::totalViews).sum();
         long totalMentions = metrics.stream().mapToLong(FrontendDtos.KeywordMetric::mentionCount).sum();
         long baseline = Math.max(2_000L, totalViews + (totalMentions * 800L));
-        int hash = Math.abs((analysis.keyword() == null ? "market" : analysis.keyword()).hashCode());
+        int hash = Math.abs((keyword == null ? "market" : keyword).hashCode());
 
         double[] ramps = new double[]{0.55, 0.68, 0.79, 0.91, 1.0};
         String[] labels = new String[]{"Tuần -4", "Tuần -3", "Tuần -2", "Tuần -1", "Hiện tại"};
