@@ -1,4 +1,4 @@
-﻿:root {
+:root {
   /* Brand palette — v2 dark navy + teal */
   --primary: #0D9488;
   --primary-dark: #0F172A;
@@ -4657,6 +4657,11 @@ code {
   border-radius: var(--radius-xl);
   overflow: hidden;
   box-shadow: var(--shadow-sm);
+}
+
+.dash-recent-list-container {
+  max-height: 350px;
+  overflow-y: auto;
 }
 
 .dash-recent-header {

@@ -149,50 +149,52 @@ export function DashboardPage() {
       {/* Recent searches */}
       <div className="dash-recent-card">
         <div className="dash-recent-header">Tìm kiếm gần đây</div>
-        {recent.length > 0 ? (
-          recent.map((r, i) => {
-            const kw = r.keyword ?? r.title ?? r.query ?? ''
-            return (
-              <div key={r.id ?? i} className="dash-recent-row">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--text-muted)" strokeWidth="2" strokeLinecap="round">
-                  <circle cx="11" cy="11" r="7" /><path d="m21 21-4.3-4.3" />
-                </svg>
-                <span className="dash-recent-kw">{kw}</span>
-                <span
-                  className="dash-status-badge"
-                  style={{
-                    background: r.status === 'DONE' ? 'var(--accent-bg)' : 'var(--orange-light)',
-                    color: r.status === 'DONE' ? 'var(--accent)' : 'var(--orange)',
-                  }}
-                >
-                  {r.status === 'DONE' ? 'Hoàn thành' : (r.status ?? 'Xong')}
-                </span>
-                <span className="dash-recent-age">{timeAgo(r.createdAt ?? r.timestamp)}</span>
-                <button
-                  className="dash-recent-btn"
-                  onClick={() => navigate(`${ROUTES.ANALYSIS}?keyword=${encodeURIComponent(kw)}`)}
-                >
-                  Xem lại
-                </button>
+        <div className="dash-recent-list-container">
+          {recent.length > 0 ? (
+            recent.map((r, i) => {
+              const kw = r.keyword ?? r.title ?? r.query ?? ''
+              return (
+                <div key={r.id ?? i} className="dash-recent-row">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--text-muted)" strokeWidth="2" strokeLinecap="round">
+                    <circle cx="11" cy="11" r="7" /><path d="m21 21-4.3-4.3" />
+                  </svg>
+                  <span className="dash-recent-kw">{kw}</span>
+                  <span
+                    className="dash-status-badge"
+                    style={{
+                      background: r.status === 'DONE' ? 'var(--accent-bg)' : 'var(--orange-light)',
+                      color: r.status === 'DONE' ? 'var(--accent)' : 'var(--orange)',
+                    }}
+                  >
+                    {r.status === 'DONE' ? 'Hoàn thành' : (r.status ?? 'Xong')}
+                  </span>
+                  <span className="dash-recent-age">{timeAgo(r.createdAt ?? r.timestamp)}</span>
+                  <button
+                    className="dash-recent-btn"
+                    onClick={() => navigate(`${ROUTES.ANALYSIS}?keyword=${encodeURIComponent(kw)}`)}
+                  >
+                    Xem lại
+                  </button>
+                </div>
+              )
+            })
+          ) : (
+            <div style={{ padding: '32px 20px', textAlign: 'center' }}>
+              <div style={{ fontSize: 32, marginBottom: 8 }}>🔍</div>
+              <div style={{ fontWeight: 600, marginBottom: 4, color: 'var(--text-primary)' }}>Chưa có tìm kiếm nào</div>
+              <div style={{ fontSize: 13, color: 'var(--text-muted)', marginBottom: 16 }}>
+                Nhập từ khóa ở trên để bắt đầu nghiên cứu thị trường.
               </div>
-            )
-          })
-        ) : (
-          <div style={{ padding: '32px 20px', textAlign: 'center' }}>
-            <div style={{ fontSize: 32, marginBottom: 8 }}>🔍</div>
-            <div style={{ fontWeight: 600, marginBottom: 4, color: 'var(--text-primary)' }}>Chưa có tìm kiếm nào</div>
-            <div style={{ fontSize: 13, color: 'var(--text-muted)', marginBottom: 16 }}>
-              Nhập từ khóa ở trên để bắt đầu nghiên cứu thị trường.
+              <button
+                className="btn btn-primary"
+                style={{ fontSize: 13 }}
+                onClick={() => searchRef.current?.focus()}
+              >
+                Bắt đầu ngay →
+              </button>
             </div>
-            <button
-              className="btn btn-primary"
-              style={{ fontSize: 13 }}
-              onClick={() => searchRef.current?.focus()}
-            >
-              Bắt đầu ngay →
-            </button>
-          </div>
-        )}
+          )}
+        </div>
       </div>
 
     </div>
