@@ -52,11 +52,7 @@ export function AccountPage() {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
 
-      {/* Page header */}
-      <div style={{ marginBottom: 4 }}>
-        <div style={{ fontSize: 20, fontWeight: 800, letterSpacing: '-0.03em' }}>Tài khoản</div>
-        <div style={{ fontSize: 12.5, color: 'var(--text-muted)', marginTop: 2 }}>Quản lý thông tin cá nhân và gói dịch vụ</div>
-      </div>
+
 
       {/* Profile + Plan row */}
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
