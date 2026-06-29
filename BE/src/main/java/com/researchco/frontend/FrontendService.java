@@ -263,7 +263,7 @@ public class FrontendService {
         }
 
         long queryCount = searchQueryRepository.countByUser(user);
-        long reportCount = reportRepository.countByUserIdAndStatusIgnoreCase(user.getId(), "EXPORTED");
+        long reportCount = reportRepository.countByUserId(user.getId());
         List<FrontendDtos.InvoiceItem> invoices = paymentTransactionRepository.findByUserOrderByCreatedAtDesc(user).stream()
                 .limit(3)
                 .map(tx -> new FrontendDtos.InvoiceItem(
@@ -2885,7 +2885,7 @@ public class FrontendService {
             return "pending";
         }
         return switch (status.toUpperCase(Locale.ROOT)) {
-            case "PAID" -> "paid";
+            case "PAID", "SUCCESS", "COMPLETED" -> "paid";
             case "PENDING" -> "pending";
             case "CANCELLED" -> "failed";
             default -> status.toLowerCase(Locale.ROOT);
