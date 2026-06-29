@@ -247,8 +247,14 @@ public class FrontendService {
     public FrontendDtos.AccountOverviewResponse getAccountOverview() {
         UserEntity user = preferredUser();
         Optional<UserSubscriptionEntity> subscription = userSubscriptionRepository.findFirstByUserAndStatusOrderByStartDateDesc(user, "ACTIVE");
+        
+        LocalDateTime promoEnd = LocalDateTime.of(2026, 7, 6, 23, 59, 59);
+        boolean isPromoActive = LocalDateTime.now().isBefore(promoEnd);
+
         PlanEntity plan;
-        if (user.getRole() != null && user.getRole().equalsIgnoreCase("ADMIN")) {
+        if (isPromoActive) {
+            plan = planRepository.findByName("ENTERPRISE").orElse(null);
+        } else if (user.getRole() != null && user.getRole().equalsIgnoreCase("ADMIN")) {
             plan = planRepository.findByName("ENTERPRISE").orElse(null);
         } else {
             plan = subscription.map(UserSubscriptionEntity::getPlan).orElseGet(() ->
@@ -270,7 +276,10 @@ public class FrontendService {
         UserSubscriptionEntity currentSubscription = subscription.orElse(null);
         String renewsAt;
         String billingCycle;
-        if (user.getRole() != null && user.getRole().equalsIgnoreCase("ADMIN")) {
+        if (isPromoActive) {
+            renewsAt = "Thử nghiệm (Đến 06/07/2026)";
+            billingCycle = "promo";
+        } else if (user.getRole() != null && user.getRole().equalsIgnoreCase("ADMIN")) {
             renewsAt = "Vô hạn";
             billingCycle = "lifetime";
         } else {
@@ -330,9 +339,14 @@ public class FrontendService {
 
     @Transactional
     public FrontendDtos.AnalysisResponse getAnalysis(String keyword) {
+        return getAnalysis(keyword, SecurityUtils.currentUserId());
+    }
+
+    @Transactional
+    public FrontendDtos.AnalysisResponse getAnalysis(String keyword, UUID userId) {
         String normalizedKeyword = getNormalizedTopic(keyword);
         LocaleProfile localeProfile = resolveLocaleProfile(normalizedKeyword);
-        SearchQueryEntity trackedQuery = self.recordSearchActivity(normalizedKeyword, localeProfile);
+        SearchQueryEntity trackedQuery = self.recordSearchActivity(normalizedKeyword, localeProfile, userId);
         
         // 1. TÌM SNAPSHOT FRESH TỪ BẤT KỲ USER NÀO (SHARE ACROSS USERS ĐỂ TIẾT KIỆM TOKEN)
         LocalDateTime oneHourAgo = LocalDateTime.now().minusHours(1);
@@ -347,7 +361,7 @@ public class FrontendService {
         }
         
         // 2. Nếu không có snapshot fresh → fetch dữ liệu mới (live data)
-        List<NormalizedSourceItem> liveItems = fetchLiveSources(normalizedKeyword);
+        List<NormalizedSourceItem> liveItems = fetchLiveSources(normalizedKeyword, userId);
         if (!liveItems.isEmpty()) {
             FrontendDtos.AnalysisResponse response = buildLiveAnalysis(trackedQuery, normalizedKeyword, liveItems);
             saveSnapshot(trackedQuery, liveItems, response.relatedKeywords());
@@ -618,7 +632,22 @@ public class FrontendService {
                             "Không khả dụng do chất lượng tín hiệu quá thấp.",
                             List.of(),
                             List.of()
-                    )
+                    ),
+                    new FrontendDtos.MarketOverview(
+                            "Không khả dụng",
+                            List.of("Chất lượng tín hiệu quá thấp để phân tích quy mô.")
+                    ),
+                    new FrontendDtos.ConsumerBehaviour(
+                            List.of(),
+                            List.of()
+                    ),
+                    new FrontendDtos.SwotMatrix(
+                            List.of(),
+                            List.of(),
+                            List.of(),
+                            List.of()
+                    ),
+                    List.of()
             );
         }
 
@@ -679,26 +708,28 @@ public class FrontendService {
                 if (response.competitors() == null || response.targetPersona() == null || response.regionalPotential() == null) {
                     List<FrontendDtos.CompetitorMapItem> competitors = response.competitors();
                     if (competitors == null) {
+                        String rawKw = response.keyword() == null ? "Sản phẩm" : response.keyword();
+                        String encodedKw = java.net.URLEncoder.encode(rawKw, java.nio.charset.StandardCharsets.UTF_8);
                         competitors = List.of(
                                 new FrontendDtos.CompetitorMapItem(
-                                        response.keyword() + " Channel",
-                                        "https://www.youtube.com",
+                                        rawKw + " Channel",
+                                        "https://www.youtube.com/results?search_query=" + encodedKw,
                                         "Mạnh",
                                         "850K subs",
                                         "3 video/tuần",
-                                        "Chuyên hướng dẫn và cung cấp các giải pháp tối ưu hóa thực tế cho " + response.keyword() + "."
+                                        "Chuyên hướng dẫn và cung cấp các giải pháp tối ưu hóa thực tế cho " + rawKw + "."
                                 ),
                                 new FrontendDtos.CompetitorMapItem(
-                                        response.keyword() + " Hub",
-                                        "https://www.google.com",
+                                        rawKw + " Hub",
+                                        "https://www.google.com/search?q=" + encodedKw,
                                         "Trung bình",
                                         "120K followers",
                                         "1 video/tuần",
                                         "Review so sánh hiệu năng và đánh giá ưu nhược điểm các dòng sản phẩm liên quan."
                                 ),
                                 new FrontendDtos.CompetitorMapItem(
-                                        response.keyword() + " Lab",
-                                        "https://www.github.com",
+                                        rawKw + " Lab",
+                                        "https://github.com/search?q=" + encodedKw,
                                         "Mới nổi",
                                         "35K followers",
                                         "Hàng tuần",
@@ -739,6 +770,36 @@ public class FrontendService {
                                 )
                         );
                     }
+                    FrontendDtos.MarketOverview marketOverview = response.marketOverview();
+                    if (marketOverview == null) {
+                        marketOverview = new FrontendDtos.MarketOverview(
+                                "Chưa có số liệu",
+                                List.of("Cần phân tích sâu trực tuyến để cập nhật đặc điểm ngành.")
+                        );
+                    }
+                    FrontendDtos.ConsumerBehaviour consumerBehaviour = response.consumerBehaviour();
+                    if (consumerBehaviour == null) {
+                        consumerBehaviour = new FrontendDtos.ConsumerBehaviour(
+                                List.of(new FrontendDtos.PurchasingCriterion("Giá cả/Chất lượng", "Cao", "Người tiêu dùng ưu tiên sự cân bằng giữa giá thành và chất lượng.")),
+                                List.of(new FrontendDtos.MarketSegmentationItem("Đại chúng", "Khách hàng phổ thông", "Tiếp cận qua các sàn TMĐT"))
+                        );
+                    }
+                    FrontendDtos.SwotMatrix swot = response.swot();
+                    if (swot == null) {
+                        swot = new FrontendDtos.SwotMatrix(
+                                List.of("Linh hoạt trong quy mô nhỏ"),
+                                List.of("Chưa có nhiều thương hiệu nhận diện"),
+                                List.of("TMĐT và Social commerce phát triển"),
+                                List.of("Cạnh tranh khốc liệt từ đối thủ giá rẻ")
+                        );
+                    }
+                    List<String> references = response.references();
+                    if (references == null) {
+                        references = List.of(
+                                "FiinGroup. (2025). Vietnam Retail Report.",
+                                "VITAS. (2025). Báo cáo Hiệp hội Dệt may Việt Nam."
+                        );
+                    }
                     response = new FrontendDtos.DeepInsightResponse(
                             response.keyword(),
                             response.source(),
@@ -753,7 +814,11 @@ public class FrontendService {
                             response.strategicRecommendation(),
                             competitors,
                             targetPersona,
-                            regionalPotential
+                            regionalPotential,
+                            marketOverview,
+                            consumerBehaviour,
+                            swot,
+                            references
                     );
                     
                     try {
@@ -872,6 +937,37 @@ public class FrontendService {
                 ? new FrontendDtos.RegionalPotential("N/A", List.of(), List.of())
                 : response.regionalPotential();
 
+        FrontendDtos.MarketOverview marketOverview = response.marketOverview();
+        if (marketOverview == null) {
+            marketOverview = new FrontendDtos.MarketOverview(
+                    "Chưa có số liệu",
+                    List.of("Cần phân tích sâu trực tuyến để cập nhật đặc điểm ngành.")
+            );
+        }
+        FrontendDtos.ConsumerBehaviour consumerBehaviour = response.consumerBehaviour();
+        if (consumerBehaviour == null) {
+            consumerBehaviour = new FrontendDtos.ConsumerBehaviour(
+                    List.of(new FrontendDtos.PurchasingCriterion("Giá cả/Chất lượng", "Cao", "Người tiêu dùng ưu tiên sự cân bằng giữa giá thành và chất lượng.")),
+                    List.of(new FrontendDtos.MarketSegmentationItem("Đại chúng", "Khách hàng phổ thông", "Tiếp cận qua các sàn TMĐT"))
+            );
+        }
+        FrontendDtos.SwotMatrix swot = response.swot();
+        if (swot == null) {
+            swot = new FrontendDtos.SwotMatrix(
+                    List.of("Linh hoạt trong quy mô nhỏ"),
+                    List.of("Chưa có nhiều thương hiệu nhận diện"),
+                    List.of("TMĐT và Social commerce phát triển"),
+                    List.of("Cạnh tranh khốc liệt từ đối thủ giá rẻ")
+            );
+        }
+        List<String> references = response.references();
+        if (references == null) {
+            references = List.of(
+                    "FiinGroup. (2025). Vietnam Retail Report.",
+                    "VITAS. (2025). Báo cáo Hiệp hội Dệt may Việt Nam."
+            );
+        }
+
         return new FrontendDtos.DeepInsightResponse(
                 response.keyword(),
                 response.source(),
@@ -886,7 +982,11 @@ public class FrontendService {
                 response.strategicRecommendation(),
                 competitors,
                 response.targetPersona(),
-                dynamicRegionalPotential
+                dynamicRegionalPotential,
+                marketOverview,
+                consumerBehaviour,
+                swot,
+                references
         );
     }
 
@@ -1823,6 +1923,10 @@ public class FrontendService {
     }
 
     private List<NormalizedSourceItem> fetchLiveSources(String keyword) {
+        return fetchLiveSources(keyword, SecurityUtils.currentUserId());
+    }
+
+    private List<NormalizedSourceItem> fetchLiveSources(String keyword, UUID userId) {
         LocaleProfile localeProfile = resolveLocaleProfile(keyword);
         List<SearchProviderEntity> activeProviders = searchProviderRepository.findByIsActiveTrue();
         Set<String> activeCodes = activeProviders.stream()
@@ -1835,7 +1939,7 @@ public class FrontendService {
         }
 
         String timeRange;
-        if (SecurityUtils.currentUserId() == null) {
+        if (userId == null) {
             timeRange = "12m";
             log.debug("Anonymous search: bypassed AI timeRange inference, using default: {}", timeRange);
         } else {
@@ -2105,11 +2209,15 @@ public class FrontendService {
 
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     public SearchQueryEntity recordSearchActivity(String keyword, LocaleProfile localeProfile) {
-        UUID currentUserId = SecurityUtils.currentUserId();
-        if (currentUserId == null) {
+        return recordSearchActivity(keyword, localeProfile, SecurityUtils.currentUserId());
+    }
+
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    public SearchQueryEntity recordSearchActivity(String keyword, LocaleProfile localeProfile, UUID userId) {
+        if (userId == null) {
             return null;
         }
-        UserEntity user = userRepository.findById(currentUserId).orElse(null);
+        UserEntity user = userRepository.findById(userId).orElse(null);
         if (user == null) {
             return null;
         }
@@ -2443,6 +2551,10 @@ public class FrontendService {
     }
 
     private void enforceDeepInsightQuota(UserEntity user, UserSubscriptionEntity subscription) {
+        LocalDateTime promoEnd = LocalDateTime.of(2026, 7, 6, 23, 59, 59);
+        if (LocalDateTime.now().isBefore(promoEnd)) {
+            return;
+        }
         if (user.getRole() != null && user.getRole().equalsIgnoreCase("ADMIN")) {
             return;
         }
@@ -2833,7 +2945,10 @@ public class FrontendService {
             UserEntity user = preferredUser();
 
             // Enforce export limit per plan
-            if (user.getRole() == null || !user.getRole().equalsIgnoreCase("ADMIN")) {
+            LocalDateTime promoEnd = LocalDateTime.of(2026, 7, 6, 23, 59, 59);
+            boolean isPromoActive = LocalDateTime.now().isBefore(promoEnd);
+
+            if (!isPromoActive && (user.getRole() == null || !user.getRole().equalsIgnoreCase("ADMIN"))) {
                 UserSubscriptionEntity exportSub = userSubscriptionRepository
                         .findFirstByUserAndStatusOrderByStartDateDesc(user, "ACTIVE").orElse(null);
                 PlanEntity exportPlan = exportSub != null ? exportSub.getPlan()
@@ -3110,26 +3225,28 @@ public class FrontendService {
 
         // If we found fewer than 2 real competitors, generate default fallback list
         if (competitors.size() < 2) {
+            String rawKw = keyword == null ? "Sản phẩm" : keyword;
+            String encodedKw = java.net.URLEncoder.encode(rawKw, java.nio.charset.StandardCharsets.UTF_8);
             competitors = List.of(
                     new FrontendDtos.CompetitorMapItem(
-                            keyword + " Channel",
-                            "https://www.youtube.com",
+                            rawKw + " Channel",
+                            "https://www.youtube.com/results?search_query=" + encodedKw,
                             "Mạnh",
                             "850K subs",
                             "3 video/tuần",
-                            "Chuyên hướng dẫn và cung cấp các giải pháp tối ưu hóa thực tế cho " + keyword + "."
+                            "Chuyên hướng dẫn và cung cấp các giải pháp tối ưu hóa thực tế cho " + rawKw + "."
                     ),
                     new FrontendDtos.CompetitorMapItem(
-                            keyword + " Hub",
-                            "https://www.google.com",
+                            rawKw + " Hub",
+                            "https://www.google.com/search?q=" + encodedKw,
                             "Trung bình",
                             "120K followers",
                             "1 video/tuần",
                             "Review so sánh hiệu năng và đánh giá ưu nhược điểm các dòng sản phẩm liên quan."
                     ),
                     new FrontendDtos.CompetitorMapItem(
-                            keyword + " Lab",
-                            "https://www.github.com",
+                            rawKw + " Lab",
+                            "https://github.com/search?q=" + encodedKw,
                             "Mới nổi",
                             "35K followers",
                             "Hàng tuần",

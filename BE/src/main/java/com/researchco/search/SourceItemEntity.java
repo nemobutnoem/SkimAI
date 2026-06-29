@@ -71,7 +71,6 @@ public class SourceItemEntity {
     @Column(name = "sentiment_label", length = 20)
     private String sentimentLabel;
 
-    @JdbcTypeCode(SqlTypes.JSON)
     @Column(name = "raw_payload")
     private String rawPayload;
 

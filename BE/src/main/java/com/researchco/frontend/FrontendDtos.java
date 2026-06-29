@@ -205,6 +205,35 @@ public class FrontendDtos {
             List<String> geographicInsights
     ) {}
 
+    public record MarketOverview(
+            String industrySize,
+            List<String> keyCharacteristics
+    ) {}
+
+    public record PurchasingCriterion(
+            String criterion,
+            String importance,
+            String description
+    ) {}
+
+    public record MarketSegmentationItem(
+            String segmentName,
+            String targetAudience,
+            String strategy
+    ) {}
+
+    public record ConsumerBehaviour(
+            List<PurchasingCriterion> purchasingCriteria,
+            List<MarketSegmentationItem> marketSegmentation
+    ) {}
+
+    public record SwotMatrix(
+            List<String> strengths,
+            List<String> weaknesses,
+            List<String> opportunities,
+            List<String> threats
+    ) {}
+
     public record DeepInsightResponse(
             String keyword,
             String source,
@@ -219,7 +248,11 @@ public class FrontendDtos {
             StrategicRecommendation strategicRecommendation,
             List<CompetitorMapItem> competitors,
             TargetPersona targetPersona,
-            RegionalPotential regionalPotential
+            RegionalPotential regionalPotential,
+            MarketOverview marketOverview,
+            ConsumerBehaviour consumerBehaviour,
+            SwotMatrix swot,
+            List<String> references
     ) {
     }
 
