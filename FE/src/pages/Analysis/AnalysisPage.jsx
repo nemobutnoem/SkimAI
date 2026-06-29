@@ -939,50 +939,77 @@ export function AnalysisPage() {
 
   if (!keyword) {
     return (
-      <div className="analysis-shell page-wrap">
-        <section className="analysis-suite-hero card">
-          <div>
-            <p className="dashboard-kicker">Bộ công cụ phân tích</p>
-            <h1>Bắt đầu phân tích thị trường</h1>
-            <p className="hint">
-              Nhập một từ khóa để hệ thống tổng hợp insight thị trường theo đúng prompt: xu hướng, đánh giá tổng thể, tiềm năng và kênh tiếp cận.
-            </p>
-            <div className="analysis-module-strip">
-              <span className="analysis-module-chip">Xu hướng nguồn</span>
-              <span className="analysis-module-chip">Độ quan tâm tổng thể</span>
-              <span className="analysis-module-chip">Kênh tiếp cận</span>
-            </div>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+        {/* Page header */}
+        <div>
+          <div style={{ fontSize: 20, fontWeight: 800, letterSpacing: '-0.03em' }}>Phân tích</div>
+          <div style={{ fontSize: 12.5, color: 'var(--text-muted)', marginTop: 2 }}>Nhập từ khóa để tổng hợp insight thị trường</div>
+        </div>
+
+        {/* Main search card */}
+        <div style={{ background: 'var(--dark)', borderRadius: 'var(--radius-xl)', padding: '28px 30px' }}>
+          <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '.08em', textTransform: 'uppercase', color: 'rgba(255,255,255,.45)', marginBottom: 10 }}>
+            Nhập từ khóa nghiên cứu
           </div>
-
-          <div className="analysis-suite-meta">
-            <div className="analysis-suite-meta-label">Từ khóa theo dõi</div>
-            <strong>Chưa chọn</strong>
-            <span>Tìm kiếm để bắt đầu phân tích</span>
-          </div>
-        </section>
-
-        <section className="card dashboard-empty-state analysis-empty-state">
-          <h2>Bắt đầu nghiên cứu bằng một từ khóa</h2>
-          <p>Trang sẽ chỉ đưa ra nhận định dựa trên dữ liệu thu thập được. Nếu thiếu dữ liệu, hệ thống sẽ ghi rõ mục không thể đánh giá.</p>
-
-          <div className="input-row analysis-empty-input">
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, background: 'rgba(255,255,255,.09)', border: '1px solid rgba(255,255,255,.14)', borderRadius: 'var(--radius-md)', padding: '6px 6px 6px 16px' }}>
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,.5)" strokeWidth="2" strokeLinecap="round">
+              <circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/>
+            </svg>
             <input
               ref={searchInputRef}
               value={draftKeyword}
               onChange={(e) => setDraftKeyword(e.target.value)}
-              placeholder="Thử tìm: phở, xe máy điện, AI agent... (bấm / để focus)"
-            />
-            <Button
-              onClick={() => {
-                const nextKeyword = draftKeyword.trim()
-                if (!nextKeyword) return
-                navigate(`${ROUTES.ANALYSIS}?keyword=${encodeURIComponent(nextKeyword)}`)
+              autoComplete="off"
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  const kw = draftKeyword.trim()
+                  if (kw) navigate(`${ROUTES.ANALYSIS}?keyword=${encodeURIComponent(kw)}`)
+                }
               }}
+              placeholder='phở, xe máy điện, AI agent... (bấm / để focus)'
+              style={{ flex: 1, border: 'none', outline: 'none', font: 'inherit', fontSize: 14, color: '#fff', background: 'transparent', padding: '8px 0' }}
+            />
+            <button
+              onClick={() => {
+                const kw = draftKeyword.trim()
+                if (kw) navigate(`${ROUTES.ANALYSIS}?keyword=${encodeURIComponent(kw)}`)
+              }}
+              style={{ padding: '10px 24px', background: '#fff', color: 'var(--dark)', border: 'none', borderRadius: 8, font: 'inherit', fontSize: 13.5, fontWeight: 700, cursor: 'pointer' }}
             >
-              Bắt đầu phân tích
-            </Button>
+              Phân tích →
+            </button>
           </div>
-        </section>
+          <div style={{ display: 'flex', gap: 8, marginTop: 12, flexWrap: 'wrap' }}>
+            {['xe máy điện', 'skincare nội địa', 'TikTok Shop', 'F&B 2025'].map(kw => (
+              <button
+                key={kw}
+                onClick={() => { setDraftKeyword(kw); searchInputRef.current?.focus() }}
+                style={{ border: '1px solid rgba(255,255,255,.18)', background: 'rgba(255,255,255,.07)', cursor: 'pointer', font: 'inherit', fontSize: 12, color: 'rgba(255,255,255,.75)', padding: '4px 12px', borderRadius: 99 }}
+              >
+                {kw}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Info card */}
+        <div style={{ background: 'var(--sur)', border: '1px solid var(--border-color)', borderRadius: 'var(--radius-xl)', padding: '20px 24px', boxShadow: 'var(--shadow-sm)' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
+            <div style={{ width: 8, height: 8, borderRadius: '50%', background: 'var(--accent)' }} />
+            <span style={{ fontWeight: 700, fontSize: 14 }}>Tư khóa theo dõi</span>
+            <span style={{ marginLeft: 'auto', fontSize: 12.5, color: 'var(--text-muted)' }}>Chưa chọn</span>
+          </div>
+          <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+            {['Xu hướng nguồn', 'Độ quan tâm tổng thể', 'Kênh tiếp cận'].map(label => (
+              <span key={label} style={{ fontSize: 12, fontWeight: 600, padding: '5px 12px', borderRadius: 99, background: 'var(--accent-bg)', color: 'var(--accent)' }}>
+                {label}
+              </span>
+            ))}
+          </div>
+          <p style={{ fontSize: 13, color: 'var(--text-muted)', marginTop: 12, marginBottom: 0 }}>
+            Trang sẽ chỉ đưa ra nhận định dựa trên dữ liệu thu thập được. Nếu thiếu dữ liệu, hệ thống sẽ ghi rõ mục không thể đánh giá.
+          </p>
+        </div>
       </div>
     )
   }
@@ -1060,14 +1087,23 @@ export function AnalysisPage() {
         }
       `}</style>
       <section className="analysis-suite-hero card">
-        <div>
-          <p className="dashboard-kicker">Phân tích dữ liệu thị trường</p>
-          <h1>Phân tích thị trường theo từ khóa</h1>
-          <p className="hint">
-            Dựa hoàn toàn trên dữ liệu về "{keyword}", không thêm kiến thức bên ngoài và không vẽ dữ liệu.
-          </p>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ fontSize: 10.5, fontWeight: 700, letterSpacing: '.09em', textTransform: 'uppercase', color: 'rgba(255,255,255,.4)', marginBottom: 8 }}>
+            Phân tích thị trường
+          </div>
+          <h1 style={{ margin: 0, fontSize: 'clamp(18px,2vw,22px)', fontWeight: 800, color: '#fff', letterSpacing: '-0.02em' }}>
+            {keyword}
+          </h1>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 8 }}>
+            <span style={{ fontSize: 11.5, fontWeight: 600, background: researchGuard?.canProceed === false ? 'rgba(239,68,68,.2)' : 'rgba(13,148,136,.25)', color: researchGuard?.canProceed === false ? '#FCA5A5' : '#5EEAD4', padding: '3px 10px', borderRadius: 99 }}>
+              {researchGuard?.canProceed === false ? '⚠ Hạn chế' : '✓ Đủ dữ liệu'}
+            </span>
+            <span style={{ fontSize: 12, color: 'rgba(255,255,255,.45)' }}>
+              {loading ? 'Đang phân tích...' : 'Vừa cập nhật'}
+            </span>
+          </div>
           <div className="analysis-module-strip">
-            <span className="analysis-module-chip">Tổng quan xu hướng</span>
+            <span className="analysis-module-chip">Xu hướng</span>
             <span className="analysis-module-chip">Đánh giá tổng thể</span>
             <span className="analysis-module-chip">Tiềm năng</span>
             <span className="analysis-module-chip">Kênh đề xuất</span>
@@ -1075,37 +1111,38 @@ export function AnalysisPage() {
         </div>
 
         <div className="analysis-suite-meta">
-          <div className="analysis-suite-meta-label">Từ khóa theo dõi</div>
-          <strong>{keyword}</strong>
-          <span>{loading ? 'Đang phân tích...' : 'Vừa cập nhật'}</span>
+          {[
+            { label: 'Độ phủ nguồn', value: `${data?.dataQuality?.evidenceCoveragePct ?? 0}%` },
+            { label: 'Nguồn dữ liệu', value: `${(data?.dataSources ?? []).length}` },
+          ].map(s => (
+            <div key={s.label} className="analysis-meta-stat">
+              <div className="analysis-suite-meta-label">{s.label}</div>
+              <strong>{s.value}</strong>
+            </div>
+          ))}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+            {canRunDeepInsight ? (
+              <Link to={`${ROUTES.DEEP_INSIGHT}?keyword=${encodeURIComponent(keyword)}`}
+                style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 14px', background: 'var(--accent)', color: '#fff', borderRadius: 'var(--radius-md)', textDecoration: 'none', fontSize: 12.5, fontWeight: 700 }}>
+                <span>AI</span> Phân tích chuyên sâu
+              </Link>
+            ) : (
+              <button disabled style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 14px', background: 'rgba(255,255,255,.1)', color: 'rgba(255,255,255,.4)', borderRadius: 'var(--radius-md)', border: 'none', fontSize: 12.5, fontWeight: 700, cursor: 'not-allowed' }}
+                title={researchGuard?.message || 'Tối ưu từ khóa để mở khóa phân tích chuyên sâu'}>
+                <span>AI</span> Phân tích chuyên sâu
+              </button>
+            )}
+            <div style={{ display: 'flex', gap: 6 }}>
+              <Button variant="secondary" className="btn-sm" onClick={handleExport} disabled={isExporting || loading} style={{ flex: 1 }}>
+                {isExporting ? 'Đang xuất...' : 'Xuất báo cáo'}
+              </Button>
+              <Button onClick={load} disabled={loading} className="btn-sm" style={{ flex: 1 }}>
+                {loading ? '...' : 'Làm mới'}
+              </Button>
+            </div>
+          </div>
         </div>
       </section>
-
-      <div className="analysis-header-row">
-        <div>
-          <h2>Kết quả phân tích</h2>
-          <p className="hint">Tối đa hóa insight ngắn gọn, có bằng chứng nguồn và trạng thái thiếu dữ liệu.</p>
-        </div>
-        <div className="header-actions">
-          {canRunDeepInsight ? (
-            <Link to={`${ROUTES.DEEP_INSIGHT}?keyword=${encodeURIComponent(keyword)}`} className="btn btn-primary btn-sm">
-              <span className="ask-more-icon" style={{ marginRight: '6px' }}>AI</span>
-              <span>Phân tích chuyên sâu</span>
-            </Link>
-          ) : (
-            <button type="button" className="btn btn-primary btn-sm ask-more-cta-disabled" disabled title={researchGuard?.message || 'Tối ưu từ khóa để mở khóa phân tích chuyên sâu'}>
-              <span className="ask-more-icon" style={{ marginRight: '6px' }}>AI</span>
-              <span>Phân tích chuyên sâu</span>
-            </button>
-          )}
-          <Button variant="secondary" className="btn-sm" onClick={handleExport} disabled={isExporting || loading}>
-            {isExporting ? 'Đang xuất...' : 'Xuất báo cáo'}
-          </Button>
-          <Button onClick={load} disabled={loading} className="btn-sm">
-            {loading ? 'Đang phân tích...' : 'Cập nhật dữ liệu'}
-          </Button>
-        </div>
-      </div>
 
       {loading && streamProgress > 0 && (
         <div className="streaming-progress-bar" style={{

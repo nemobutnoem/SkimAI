@@ -6,18 +6,19 @@ export function AdminUsersPage() {
   const [filters, setFilters] = useState({ q: '', type: 'all', status: 'all' })
   const [users, setUsers] = useState([])
   const [loading, setLoading] = useState(false)
-  const [metrics, setMetrics] = useState(null)
-
-  useEffect(() => {
-    appApi.getAdminUsersMetrics().then(setMetrics)
-  }, [])
 
   useEffect(() => {
     setLoading(true)
     appApi.getAdminUsers(filters)
       .then(setUsers)
+      .catch(() => {})
       .finally(() => setLoading(false))
   }, [filters])
+
+  const total = users.length
+  const active = users.filter(u => u.status === 'active').length
+  const paid = users.filter(u => u.type && u.type.toUpperCase() !== 'FREE').length
+  const suspended = users.filter(u => u.status === 'suspended').length
 
   return (
     <div className="stack page-wrap">
@@ -29,8 +30,13 @@ export function AdminUsersPage() {
       </div>
 
       <div className="grid grid-4">
-        {(metrics?.metrics ?? []).map((item) => (
-          <Card key={item.label} title={item.label === 'Total users' ? 'Tổng người dùng' : item.label === 'Premium users' ? 'Tài khoản Premium' : item.label === 'Active users' ? 'Đang hoạt động' : item.label === 'Churn rate' ? 'Tỷ lệ rời bỏ' : item.label}>
+        {[
+          { label: 'Tổng người dùng', value: total },
+          { label: 'Đang hoạt động', value: active },
+          { label: 'Tài khoản trả phí', value: paid },
+          { label: 'Bị khóa', value: suspended },
+        ].map((item) => (
+          <Card key={item.label} title={item.label}>
             <div className="kpi">{item.value}</div>
           </Card>
         ))}

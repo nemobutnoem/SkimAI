@@ -1,0 +1,900 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<style>
+  *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:'Inter',-apple-system,BlinkMacSystemFont,sans-serif;-webkit-font-smoothing:antialiased}
+  :root{
+    --sb:#0F172A;--sb2:#1E293B;--sb3:#334155;
+    --accent:#0D9488;--ad:#0F766E;--abg:#F0FDFA;--a20:#CCFBEF;
+    --bg:#F8F9FA;--sur:#fff;--sur2:#FAFAFA;
+    --bd:#E5E7EB;--bd2:#F3F4F6;
+    --t1:#111827;--t2:#374151;--t3:#6B7280;--t4:#9CA3AF;--t5:#E5E7EB;
+    --green:#059669;--gbg:#D1FAE5;
+    --red:#DC2626;--rbg:#FEE2E2;
+    --amber:#D97706;--ambg:#FEF3C7;
+    --blue:#2563EB;--bbg:#DBEAFE;
+    --purple:#7C3AED;--pbg:#EDE9FE;
+    --r:8px;--rm:12px;--rl:16px;
+    --sh:0 1px 3px rgba(0,0,0,.06),0 4px 14px rgba(0,0,0,.07);
+    --sh-sm:0 1px 2px rgba(0,0,0,.05),0 2px 6px rgba(0,0,0,.05);
+  }
+  @keyframes fadeIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
+  @keyframes rotateSlow{to{transform:rotate(360deg)}}
+  @keyframes pulseG{0%{box-shadow:0 0 0 0 rgba(13,148,136,.45)}70%{box-shadow:0 0 0 7px transparent}100%{box-shadow:0 0 0 0 transparent}}
+  @keyframes blink{0%,100%{opacity:.3}50%{opacity:1}}
+  #app ::-webkit-scrollbar{width:6px}
+  #app ::-webkit-scrollbar-thumb{background:var(--bd);border-radius:99px}
+</style>
+</helmet>
+
+<div id="app" style="height:100vh;width:100%;display:flex;background:var(--bg);color:var(--t1);font-size:14px;line-height:1.5;overflow:hidden">
+
+<!-- SIDEBAR -->
+<aside style="width:232px;flex-shrink:0;background:var(--sb);display:flex;flex-direction:column;padding:0 0 20px">
+  <div style="display:flex;align-items:center;gap:9px;padding:22px 18px 20px">
+    <div style="width:30px;height:30px;background:var(--accent);border-radius:7px;display:flex;align-items:center;justify-content:center">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12h3l2-9 4 18 3-11 2 5 2-3h4"></path></svg>
+    </div>
+    <span style="font-weight:800;font-size:16px;letter-spacing:-.03em;color:#fff">AISKIM</span>
+  </div>
+
+  <!-- Search in sidebar -->
+  <div style="padding:0 12px 14px">
+    <div style="display:flex;align-items:center;gap:8px;background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.1);border-radius:var(--r);padding:8px 12px">
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,.4)" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"></circle><path d="m21 21-4.3-4.3"></path></svg>
+      <input value="{{ searchInput }}" onInput="{{ onSearchInput }}" onKeyDown="{{ onSearchKey }}" placeholder="Tìm kiếm từ khóa…" style="flex:1;border:none;outline:none;font:inherit;font-size:13px;color:#fff;background:transparent">
+    </div>
+  </div>
+
+  <nav style="flex:1;overflow-y:auto;padding:0 10px;display:flex;flex-direction:column;gap:2px">
+    <div style="font-size:10px;font-weight:700;letter-spacing:.09em;text-transform:uppercase;color:rgba(255,255,255,.28);padding:4px 10px 7px">Workspace</div>
+    <sc-for list="{{ navItems }}" as="n" hint-placeholder-count="6">
+      <button onClick="{{ n.onClick }}" style="display:flex;align-items:center;gap:10px;width:100%;padding:9px 12px;border:none;border-radius:var(--r);cursor:pointer;font:inherit;font-size:13.5px;font-weight:600;text-align:left;background:{{ n.bg }};color:{{ n.fg }};transition:.12s" style-hover="background:var(--sb2)">
+        {{ n.label }}
+        <sc-if value="{{ n.hasBadge }}" hint-placeholder-val="{{ false }}">
+          <span style="margin-left:auto;font-size:10.5px;font-weight:700;background:rgba(255,255,255,.12);color:rgba(255,255,255,.7);padding:1px 7px;border-radius:99px">{{ n.badge }}</span>
+        </sc-if>
+      </button>
+    </sc-for>
+
+    <div style="font-size:10px;font-weight:700;letter-spacing:.09em;text-transform:uppercase;color:rgba(255,255,255,.28);padding:18px 10px 7px">Lịch sử tìm kiếm</div>
+    <sc-for list="{{ recentSearches }}" as="r" hint-placeholder-count="3">
+      <button onClick="{{ r.onClick }}" style="display:flex;align-items:center;gap:8px;width:100%;padding:7px 12px;border:none;border-radius:var(--r);cursor:pointer;font:inherit;font-size:12.5px;font-weight:400;text-align:left;background:transparent;color:rgba(255,255,255,.45);transition:.12s" style-hover="background:var(--sb2);color:rgba(255,255,255,.8)">
+        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"></circle><path d="m21 21-4.3-4.3"></path></svg>
+        <span style="flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ r.keyword }}</span>
+        <span style="font-size:10.5px;opacity:.6">{{ r.age }}</span>
+      </button>
+    </sc-for>
+  </nav>
+
+  <!-- Plan usage bar -->
+  <div style="margin:0 10px;background:var(--sb2);border-radius:var(--rm);padding:14px 15px">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:7px">
+      <span style="font-size:11px;font-weight:600;color:rgba(255,255,255,.5)">{{ planName }} · Searches</span>
+      <span style="font-size:11px;font-weight:700;color:#fff">{{ usedSearches }}/{{ limitSearches }}</span>
+    </div>
+    <div style="height:4px;background:rgba(255,255,255,.14);border-radius:99px;overflow:hidden;margin-bottom:10px">
+      <div style="height:100%;width:{{ usagePct }}%;background:var(--accent);border-radius:99px"></div>
+    </div>
+    <button onClick="{{ goPricing }}" style="border:none;cursor:pointer;font:inherit;font-size:11.5px;font-weight:600;color:var(--sb);background:#fff;padding:5px 12px;border-radius:7px" style-hover="background:#f0f0f0">Nâng cấp →</button>
+  </div>
+</aside>
+
+<!-- MAIN -->
+<div style="flex:1;min-width:0;display:flex;flex-direction:column;overflow:hidden">
+  <!-- Top bar -->
+  <header style="flex-shrink:0;display:flex;align-items:center;gap:14px;padding:16px 26px;background:var(--sur);border-bottom:1px solid var(--bd)">
+    <div style="flex:1;min-width:0">
+      <div style="font-size:18px;font-weight:700;letter-spacing:-.02em">{{ pageTitle }}</div>
+      <div style="font-size:12.5px;color:var(--t4);margin-top:1px">{{ pageSubtitle }}</div>
+    </div>
+    <div style="display:flex;align-items:center;gap:9px">
+      <button onClick="{{ runSearch }}" style="display:flex;align-items:center;gap:7px;padding:9px 17px;border:none;border-radius:var(--r);background:var(--sb);color:#fff;cursor:pointer;font:inherit;font-size:13px;font-weight:700" style-hover="background:var(--sb2)">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><circle cx="11" cy="11" r="7"></circle><path d="m21 21-4.3-4.3"></path></svg>Tìm kiếm mới
+      </button>
+      <button style="position:relative;width:36px;height:36px;border:1px solid var(--bd);border-radius:var(--r);background:var(--sur);cursor:pointer;display:flex;align-items:center;justify-content:center;color:var(--t4)" style-hover="background:var(--bg)">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"></path><path d="M13.7 21a2 2 0 0 1-3.4 0"></path></svg>
+        <span style="position:absolute;top:7px;right:8px;width:6px;height:6px;border-radius:50%;background:var(--red);border:1.5px solid #fff"></span>
+      </button>
+      <div style="width:34px;height:34px;border-radius:50%;background:var(--accent);display:flex;align-items:center;justify-content:center;color:#fff;font-weight:700;font-size:12px">AJ</div>
+    </div>
+  </header>
+
+  <main style="flex:1;overflow-y:auto;padding:22px 26px 32px">
+
+    <!-- ===== HOME ===== -->
+    <sc-if value="{{ showHome }}" hint-placeholder-val="{{ true }}">
+    <div style="display:flex;flex-direction:column;gap:16px;animation:fadeIn .25s ease both">
+      <!-- Hero search -->
+      <div style="background:var(--sb);border-radius:var(--rl);padding:28px 30px">
+        <div style="font-size:10.5px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:rgba(255,255,255,.4);margin-bottom:10px">Nhập từ khóa nghiên cứu thị trường</div>
+        <div style="display:flex;align-items:center;gap:10px;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.13);border-radius:var(--r);padding:6px 6px 6px 16px">
+          <input value="{{ searchInput }}" onInput="{{ onSearchInput }}" onKeyDown="{{ onSearchKey }}" placeholder='"xe máy điện", "skincare nội địa", "TikTok Shop"…' style="flex:1;border:none;outline:none;font:inherit;font-size:14px;color:#fff;background:transparent;padding:8px 0">
+          <select style="border:none;outline:none;font:inherit;font-size:12.5px;color:rgba(255,255,255,.65);background:transparent;padding:0 10px;cursor:pointer"><option value="vn">🇻🇳 Việt Nam</option><option value="us">🌐 Global</option></select>
+          <button onClick="{{ runSearch }}" style="padding:10px 24px;background:#fff;color:var(--sb);border:none;border-radius:7px;font:inherit;font-size:13.5px;font-weight:700;cursor:pointer" style-hover="background:#f0f0f0">Phân tích →</button>
+        </div>
+        <div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap">
+          <sc-for list="{{ quickKws }}" as="q" hint-placeholder-count="4">
+            <button onClick="{{ q.onClick }}" style="border:1px solid rgba(255,255,255,.15);background:rgba(255,255,255,.06);cursor:pointer;font:inherit;font-size:12px;color:rgba(255,255,255,.7);padding:4px 12px;border-radius:99px" style-hover="background:rgba(255,255,255,.14)">{{ q.kw }}</button>
+          </sc-for>
+        </div>
+      </div>
+
+      <!-- Dashboard KPIs — from GET /api/dashboard → DashboardResponse.kpis (KpiItem: label, value) -->
+      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px">
+        <sc-for list="{{ dashKpis }}" as="k" hint-placeholder-count="4">
+          <div style="background:var(--sur);border:1px solid var(--bd);border-radius:var(--rm);padding:18px 20px;box-shadow:var(--sh-sm)">
+            <div style="font-size:11.5px;font-weight:600;color:var(--t4);margin-bottom:8px">{{ k.label }}</div>
+            <div style="font-size:26px;font-weight:800;letter-spacing:-.03em;color:var(--t1)">{{ k.value }}</div>
+          </div>
+        </sc-for>
+      </div>
+
+      <!-- Live trends — GET /api/home/trends → HomeTrendsResponse → TrendItem -->
+      <div style="background:var(--sur);border:1px solid var(--bd);border-radius:var(--rl);overflow:hidden;box-shadow:var(--sh-sm)">
+        <div style="display:flex;align-items:center;justify-content:space-between;padding:16px 20px;border-bottom:1px solid var(--bd2)">
+          <div style="display:flex;align-items:center;gap:9px;font-size:15px;font-weight:700">
+            <span style="width:8px;height:8px;border-radius:50%;background:var(--accent);animation:pulseG 2s infinite"></span>Xu hướng trực tiếp
+          </div>
+          <span style="font-size:12px;color:var(--t4)">GET /api/home/trends · TrendItem</span>
+        </div>
+        <div style="display:grid;grid-template-columns:repeat(5,1fr)">
+          <sc-for list="{{ trends }}" as="t" hint-placeholder-count="5">
+            <button onClick="{{ t.onClick }}" style="text-align:left;padding:16px 18px;border:none;border-right:1px solid var(--bd2);background:var(--sur);cursor:pointer;font:inherit;transition:.15s" style-hover="background:var(--abg)">
+              <div style="font-size:12.5px;font-weight:600;margin-bottom:4px">{{ t.name }}</div>
+              <div style="font-size:11px;color:var(--t4);margin-bottom:8px">{{ t.market }}</div>
+              <svg viewBox="0 0 100 32" preserveAspectRatio="none" style="width:100%;height:26px;display:block;margin-bottom:8px"><polyline points="{{ t.pts }}" fill="none" stroke="{{ t.sc }}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></polyline></svg>
+              <div style="display:flex;align-items:center;justify-content:space-between">
+                <span style="font-size:12.5px;font-weight:700;color:{{ t.cc }}">{{ t.change }}</span>
+                <span style="font-size:10.5px;color:var(--t4)">{{ t.sourceCount }} nguồn</span>
+              </div>
+            </button>
+          </sc-for>
+        </div>
+      </div>
+
+      <!-- Recent searches -->
+      <div style="background:var(--sur);border:1px solid var(--bd);border-radius:var(--rl);overflow:hidden;box-shadow:var(--sh-sm)">
+        <div style="font-size:14px;font-weight:700;padding:15px 20px;border-bottom:1px solid var(--bd2)">Tìm kiếm gần đây</div>
+        <sc-for list="{{ recentSearches }}" as="r" hint-placeholder-count="4">
+          <div style="display:flex;align-items:center;gap:12px;padding:13px 20px;border-bottom:1px solid var(--bd2)" style-hover="background:var(--sur2)">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="var(--t5)" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"></circle><path d="m21 21-4.3-4.3"></path></svg>
+            <span style="font-weight:600;font-size:13.5px;flex:1">{{ r.keyword }}</span>
+            <span style="font-size:11.5px;font-weight:700;padding:3px 10px;border-radius:99px;background:{{ r.statusBg }};color:{{ r.statusFg }}">{{ r.status }}</span>
+            <span style="font-size:12px;color:var(--t4)">{{ r.age }}</span>
+            <button onClick="{{ r.onClick }}" style="border:none;background:var(--abg);color:var(--accent);cursor:pointer;font:inherit;font-size:12px;font-weight:600;padding:5px 12px;border-radius:var(--r)">Xem →</button>
+          </div>
+        </sc-for>
+      </div>
+    </div>
+    </sc-if>
+
+    <!-- ===== PHÂN TÍCH — AnalysisResponse ===== -->
+    <sc-if value="{{ showAnalysis }}" hint-placeholder-val="{{ false }}">
+    <div style="display:flex;flex-direction:column;gap:16px;animation:fadeIn .25s ease both">
+      <!-- Header row -->
+      <div style="background:var(--sur);border:1px solid var(--bd);border-radius:var(--rm);padding:18px 22px;box-shadow:var(--sh-sm);display:flex;align-items:center;gap:14px;flex-wrap:wrap">
+        <div style="flex:1;min-width:200px">
+          <div style="display:flex;align-items:center;gap:9px;margin-bottom:5px">
+            <h2 style="font-size:18px;font-weight:800;letter-spacing:-.02em">{{ currentKeyword }}</h2>
+            <!-- ResearchGuard badge: ResearchGuard.status -->
+            <span style="font-size:10.5px;font-weight:700;padding:2px 9px;border-radius:99px;background:{{ guardBadgeBg }};color:{{ guardBadgeFg }}">{{ guardStatus }}</span>
+          </div>
+          <!-- DataQuality: freshnessMinutes, sourceDiversity, evidenceCoveragePct, confidenceBand -->
+          <div style="display:flex;gap:16px;font-size:12px;color:var(--t4);flex-wrap:wrap">
+            <span>⏱ {{ freshnessMin }}m ago</span>
+            <span>📡 {{ sourceDiversity }} providers</span>
+            <span>Độ tin cậy: <b style="color:var(--t2)">{{ confidenceBand }}</b></span>
+            <span>Evidence: {{ evidenceCoveragePct }}%</span>
+          </div>
+        </div>
+        <div style="display:flex;gap:8px">
+          <button onClick="{{ goSources }}" style="display:inline-flex;align-items:center;gap:6px;padding:8px 14px;border-radius:var(--r);font:inherit;font-size:13px;font-weight:600;background:var(--bg);color:var(--t2);border:1px solid var(--bd);cursor:pointer" style-hover="border-color:var(--accent);color:var(--accent)">Xem nguồn</button>
+          <button onClick="{{ goDeepInsight }}" style="display:inline-flex;align-items:center;gap:6px;padding:8px 16px;border-radius:var(--r);font:inherit;font-size:13px;font-weight:700;background:var(--sb);color:#fff;border:none;cursor:pointer" style-hover="background:var(--sb2)">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 3l1.9 5.2L19 10l-5.1 1.8L12 17l-1.9-5.2L5 10l5.1-1.8z"></path></svg>Deep Insight AI
+          </button>
+        </div>
+      </div>
+
+      <!-- ResearchGuard warning -->
+      <sc-if value="{{ showGuardWarning }}" hint-placeholder-val="{{ false }}">
+      <div style="background:var(--ambg);border:1px solid #FCD34D;border-radius:var(--r);padding:13px 16px;display:flex;align-items:flex-start;gap:10px">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="var(--amber)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;margin-top:1px"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>
+        <div>
+          <div style="font-weight:700;font-size:13px;color:var(--amber)">ResearchGuard: {{ guardMessage }}</div>
+          <div style="font-size:12px;color:var(--t2);margin-top:2px">Gợi ý: {{ guardSuggested }}</div>
+        </div>
+      </div>
+      </sc-if>
+
+      <!-- AI Insights — List[InsightItem]: label, text, evidenceSource, confidence, evidenceSignal -->
+      <div style="background:var(--sur);border:1px solid var(--bd);border-radius:var(--rl);overflow:hidden;box-shadow:var(--sh-sm)">
+        <div style="display:flex;align-items:center;gap:8px;padding:15px 20px;border-bottom:1px solid var(--bd2)">
+          <div style="width:24px;height:24px;border-radius:6px;background:var(--abg);display:flex;align-items:center;justify-content:center">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2.2" stroke-linecap="round"><path d="M12 3l1.9 5.2L19 10l-5.1 1.8L12 17l-1.9-5.2L5 10l5.1-1.8z"></path></svg>
+          </div>
+          <span style="font-size:14px;font-weight:700">AI Insights</span>
+          <span style="font-size:11.5px;color:var(--t4);margin-left:auto">{{ insightCount }} insights · evidence {{ evidenceCoveragePct }}%</span>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr">
+          <sc-for list="{{ insights }}" as="ins" hint-placeholder-count="4">
+            <div style="padding:16px 20px;border-right:1px solid {{ ins.rb }};border-bottom:1px solid var(--bd2);transition:.15s" style-hover="background:var(--sur2)">
+              <div style="display:flex;align-items:center;gap:7px;margin-bottom:7px">
+                <span style="width:3px;height:14px;border-radius:2px;background:var(--accent);flex-shrink:0"></span>
+                <span style="font-size:12.5px;font-weight:700">{{ ins.label }}</span>
+                <span style="margin-left:auto;font-size:10.5px;font-weight:600;padding:1px 8px;border-radius:99px;background:var(--bg);color:var(--t4)">{{ ins.confidence }}%</span>
+              </div>
+              <p style="font-size:13px;color:var(--t3);line-height:1.55;margin:0 0 8px">{{ ins.text }}</p>
+              <div style="display:flex;align-items:center;gap:5px;font-size:11px;color:var(--t4)">
+                <span style="font-weight:600;color:{{ ins.providerFg }};background:{{ ins.providerBg }};padding:1px 7px;border-radius:99px">{{ ins.evidenceSource }}</span>
+                <span>· {{ ins.evidenceSignal }}</span>
+              </div>
+            </div>
+          </sc-for>
+        </div>
+        <div style="padding:11px 20px;background:var(--sur2);border-top:1px solid var(--bd2);display:flex;align-items:center;justify-content:space-between">
+          <!-- suggestedActions: List[String] -->
+          <div style="display:flex;gap:7px;flex-wrap:wrap">
+            <sc-for list="{{ suggestedActions }}" as="a" hint-placeholder-count="3">
+              <button style="border:1px solid var(--bd);background:var(--sur);cursor:pointer;font:inherit;font-size:12px;color:var(--t2);padding:5px 12px;border-radius:99px" style-hover="border-color:var(--accent);color:var(--accent)">{{ a }}</button>
+            </sc-for>
+          </div>
+          <button onClick="{{ goDeepInsight }}" style="border:none;background:none;cursor:pointer;font:inherit;font-size:12.5px;font-weight:600;color:var(--accent)">Deep Insight →</button>
+        </div>
+      </div>
+
+      <!-- Timeline + relatedKeywords (KeywordMetric: keyword, mentionCount, totalViews, avgEngagement) -->
+      <div style="display:grid;grid-template-columns:1.3fr 1fr;gap:16px">
+        <div style="background:var(--sur);border:1px solid var(--bd);border-radius:var(--rm);padding:20px;box-shadow:var(--sh-sm)">
+          <div style="font-size:14px;font-weight:700;margin-bottom:4px">Timeline đề cập</div>
+          <div style="font-size:12px;color:var(--t4);margin-bottom:14px">SnapshotResponse.charts · lượng thảo luận theo thời gian</div>
+          <div style="height:180px;position:relative"><canvas id="chTimeline"></canvas></div>
+        </div>
+        <div style="background:var(--sur);border:1px solid var(--bd);border-radius:var(--rm);padding:20px;box-shadow:var(--sh-sm)">
+          <div style="font-size:14px;font-weight:700;margin-bottom:4px">Từ khóa liên quan</div>
+          <div style="font-size:12px;color:var(--t4);margin-bottom:14px">KeywordMetric: keyword / mentionCount / avgEngagement</div>
+          <div style="display:flex;flex-direction:column;gap:12px">
+            <sc-for list="{{ relatedKws }}" as="k" hint-placeholder-count="4">
+              <div style="display:flex;align-items:center;gap:10px;font-size:12.5px">
+                <span style="font-weight:500;flex:0 0 120px;color:var(--t2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ k.keyword }}</span>
+                <div style="flex:1;height:5px;border-radius:99px;background:var(--bd);overflow:hidden"><div style="height:100%;border-radius:99px;width:{{ k.barW }};background:var(--accent)"></div></div>
+                <span style="font-size:11.5px;font-weight:700;color:var(--accent);flex:0 0 48px;text-align:right">{{ k.mentionCount }}</span>
+              </div>
+            </sc-for>
+          </div>
+        </div>
+      </div>
+
+      <!-- News + Compare chart -->
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
+        <div style="background:var(--sur);border:1px solid var(--bd);border-radius:var(--rm);padding:20px;box-shadow:var(--sh-sm)">
+          <div style="font-size:14px;font-weight:700;margin-bottom:14px">Tin tức liên quan · AnalysisResponse.news</div>
+          <sc-for list="{{ newsItems }}" as="n" hint-placeholder-count="4">
+            <div style="display:flex;gap:10px;padding:10px 0;border-bottom:1px solid var(--bd2)">
+              <span style="width:6px;height:6px;border-radius:50%;background:var(--accent);flex-shrink:0;margin-top:5px"></span>
+              <span style="font-size:13px;color:var(--t2);line-height:1.45">{{ n }}</span>
+            </div>
+          </sc-for>
+        </div>
+        <div style="background:var(--sur);border:1px solid var(--bd);border-radius:var(--rm);padding:20px;box-shadow:var(--sh-sm)">
+          <div style="font-size:14px;font-weight:700;margin-bottom:4px">So sánh từ khóa</div>
+          <div style="font-size:12px;color:var(--t4);margin-bottom:14px">GET /api/analysis/compare · CompareItem</div>
+          <div style="height:170px;position:relative"><canvas id="chCompare"></canvas></div>
+        </div>
+      </div>
+    </div>
+    </sc-if>
+
+    <!-- ===== NGUỒN DỮ LIỆU — SnapshotResponse + SourceItemResponse ===== -->
+    <sc-if value="{{ showSources }}" hint-placeholder-val="{{ false }}">
+    <div style="display:flex;flex-direction:column;gap:16px;animation:fadeIn .25s ease both">
+      <!-- 3 providers from data.sql: SERPAPI_GOOGLE, SERPAPI_NEWS, YOUTUBE_API -->
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px">
+        <sc-for list="{{ providers }}" as="p" hint-placeholder-count="3">
+          <div style="background:var(--sur);border:1px solid var(--bd);border-radius:var(--rm);padding:18px;box-shadow:var(--sh-sm)">
+            <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px">
+              <div style="width:36px;height:36px;border-radius:9px;background:{{ p.iconBg }};color:{{ p.iconFg }};display:flex;align-items:center;justify-content:center;font-weight:800;font-size:13px;flex-shrink:0">{{ p.code }}</div>
+              <div><div style="font-weight:700;font-size:13.5px">{{ p.name }}</div><div style="font-size:11px;color:var(--t4)">{{ p.providerCode }}</div></div>
+              <span style="margin-left:auto;display:inline-flex;align-items:center;gap:4px;font-size:10.5px;font-weight:700;padding:3px 9px;border-radius:99px;background:{{ p.statusBg }};color:{{ p.statusFg }}"><span style="width:5px;height:5px;border-radius:50%;background:currentColor"></span>{{ p.statusLabel }}</span>
+            </div>
+            <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--t4)">
+              <span>{{ p.itemCount }} kết quả</span>
+              <span>max {{ p.maxResults }}/search</span>
+            </div>
+          </div>
+        </sc-for>
+      </div>
+
+      <!-- SnapshotResponse summary -->
+      <div style="background:var(--abg);border:1px solid var(--a20);border-radius:var(--rm);padding:16px 20px;display:flex;align-items:center;gap:20px;flex-wrap:wrap">
+        <div style="flex:1;min-width:200px">
+          <div style="font-size:12px;font-weight:700;color:var(--accent);margin-bottom:4px">SnapshotResponse · snapshotId: {{ snapshotId }}</div>
+          <div style="font-size:14px;font-weight:600">{{ snapshotSummary }}</div>
+        </div>
+        <div style="display:flex;gap:20px;text-align:center">
+          <div><div style="font-size:20px;font-weight:800;color:var(--green)">{{ snapshotPos }}</div><div style="font-size:11px;color:var(--t4)">Tích cực</div></div>
+          <div><div style="font-size:20px;font-weight:800;color:var(--t4)">{{ snapshotNeu }}</div><div style="font-size:11px;color:var(--t4)">Trung lập</div></div>
+          <div><div style="font-size:20px;font-weight:800;color:var(--red)">{{ snapshotNeg }}</div><div style="font-size:11px;color:var(--t4)">Tiêu cực</div></div>
+          <div><div style="font-size:20px;font-weight:800;color:var(--t1)">{{ snapshotTotal }}</div><div style="font-size:11px;color:var(--t4)">Tổng nguồn</div></div>
+        </div>
+      </div>
+
+      <!-- Source items table: platform (Google/News/YouTube), contentType, title, snippet, sourceName, sentimentLabel, publishedAt -->
+      <div style="background:var(--sur);border:1px solid var(--bd);border-radius:var(--rl);overflow:hidden;box-shadow:var(--sh-sm)">
+        <div style="display:flex;align-items:center;padding:14px 20px;border-bottom:1px solid var(--bd2);gap:12px;flex-wrap:wrap">
+          <span style="font-size:14px;font-weight:700">Dữ liệu nguồn thô</span>
+          <span style="font-size:12px;color:var(--t4)">GET /api/search/{{ currentKeyword }}/sources · SourceItemResponse</span>
+          <div style="margin-left:auto;display:flex;gap:8px">
+            <select style="border:1px solid var(--bd);border-radius:var(--r);font:inherit;font-size:12.5px;color:var(--t2);background:var(--bg);padding:6px 10px;outline:none"><option>Tất cả</option><option>SERPAPI_GOOGLE</option><option>SERPAPI_NEWS</option><option>YOUTUBE_API</option></select>
+            <select style="border:1px solid var(--bd);border-radius:var(--r);font:inherit;font-size:12.5px;color:var(--t2);background:var(--bg);padding:6px 10px;outline:none"><option>Tất cả sentiment</option><option>POSITIVE</option><option>NEUTRAL</option><option>NEGATIVE</option></select>
+          </div>
+        </div>
+        <div style="overflow-x:auto">
+          <table style="width:100%;border-collapse:collapse">
+            <thead><tr style="background:var(--sur2)">
+              <th style="text-align:left;padding:10px 18px;font-size:11.5px;font-weight:700;color:var(--t4);border-bottom:1px solid var(--bd);letter-spacing:.02em">TIÊU ĐỀ</th>
+              <th style="text-align:left;padding:10px 14px;font-size:11.5px;font-weight:700;color:var(--t4);border-bottom:1px solid var(--bd)">PLATFORM</th>
+              <th style="text-align:left;padding:10px 14px;font-size:11.5px;font-weight:700;color:var(--t4);border-bottom:1px solid var(--bd)">LOẠI</th>
+              <th style="text-align:left;padding:10px 14px;font-size:11.5px;font-weight:700;color:var(--t4);border-bottom:1px solid var(--bd)">SENTIMENT</th>
+              <th style="text-align:right;padding:10px 18px;font-size:11.5px;font-weight:700;color:var(--t4);border-bottom:1px solid var(--bd)">NGÀY</th>
+            </tr></thead>
+            <tbody>
+              <sc-for list="{{ sourceItems }}" as="si" hint-placeholder-count="8">
+                <tr style-hover="background:var(--sur2)">
+                  <td style="padding:12px 18px;border-bottom:1px solid var(--bd2);max-width:300px">
+                    <div style="font-size:13px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ si.title }}</div>
+                    <div style="font-size:11.5px;color:var(--t4);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ si.snippet }}</div>
+                  </td>
+                  <td style="padding:12px 14px;border-bottom:1px solid var(--bd2)"><span style="font-size:11px;font-weight:700;padding:3px 9px;border-radius:99px;background:{{ si.platBg }};color:{{ si.platFg }}">{{ si.platform }}</span></td>
+                  <td style="padding:12px 14px;border-bottom:1px solid var(--bd2);font-size:12px;color:var(--t3)">{{ si.contentType }}</td>
+                  <td style="padding:12px 14px;border-bottom:1px solid var(--bd2)"><span style="font-size:11px;font-weight:700;padding:3px 9px;border-radius:99px;background:{{ si.sentBg }};color:{{ si.sentFg }}">{{ si.sentimentLabel }}</span></td>
+                  <td style="padding:12px 18px;border-bottom:1px solid var(--bd2);text-align:right;font-size:11.5px;color:var(--t4);white-space:nowrap">{{ si.publishedAt }}</td>
+                </tr>
+              </sc-for>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+    </sc-if>
+
+    <!-- ===== DEEP INSIGHT — DeepInsightResponse ===== -->
+    <sc-if value="{{ showDeepInsight }}" hint-placeholder-val="{{ false }}">
+    <div style="display:flex;flex-direction:column;gap:16px;animation:fadeIn .25s ease both">
+      <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px">
+        <div>
+          <h2 style="font-size:18px;font-weight:800;letter-spacing:-.02em">Phân tích sâu AI</h2>
+          <div style="font-size:12.5px;color:var(--t4);margin-top:3px">POST /api/deep-insight · Gemini 2.5 Flash · DeepInsightResponse</div>
+        </div>
+        <button onClick="{{ runDeepInsight }}" style="display:inline-flex;align-items:center;gap:7px;padding:9px 18px;border-radius:var(--r);font:inherit;font-size:13px;font-weight:700;background:var(--sb);color:#fff;border:none;cursor:pointer" style-hover="background:var(--sb2)">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 3l1.9 5.2L19 10l-5.1 1.8L12 17l-1.9-5.2L5 10l5.1-1.8z"></path></svg>Chạy phân tích mới
+        </button>
+      </div>
+
+      <!-- Reasoning state -->
+      <sc-if value="{{ diLoading }}" hint-placeholder-val="{{ false }}">
+      <div style="background:var(--sur);border:1px solid var(--bd);border-radius:var(--rl);padding:28px;box-shadow:var(--sh-sm)">
+        <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px">
+          <div style="width:36px;height:36px;border-radius:9px;background:var(--abg);display:flex;align-items:center;justify-content:center">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2" stroke-linecap="round" style="animation:rotateSlow 2s linear infinite"><path d="M12 3l1.9 5.2L19 10l-5.1 1.8L12 17l-1.9-5.2L5 10l5.1-1.8z"></path></svg>
+          </div>
+          <div style="flex:1"><div style="font-weight:700;font-size:15px">AI đang suy luận…</div><div style="font-size:12.5px;color:var(--t4)">Gemini 2.5 Flash · "{{ currentKeyword }}"</div></div>
+          <span style="font-size:24px;font-weight:800;color:var(--accent);font-variant-numeric:tabular-nums">{{ diPctLabel }}</span>
+        </div>
+        <div style="height:4px;background:var(--bd);border-radius:99px;overflow:hidden;margin-bottom:20px">
+          <div style="height:100%;border-radius:99px;background:var(--accent);width:{{ diPct }}%;transition:width .25s"></div>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:3px">
+          <sc-for list="{{ diSteps }}" as="st" hint-placeholder-count="5">
+            <div style="display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:var(--r);background:{{ st.rb }}">
+              <span style="width:20px;height:20px;border-radius:50%;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:800;background:{{ st.ib }};color:{{ st.ifc }}">{{ st.icon }}</span>
+              <div style="flex:1;font-size:13px;font-weight:600;color:{{ st.tc }}">{{ st.t }}</div>
+              <span style="font-size:10.5px;font-weight:600;color:{{ st.tagc }}">{{ st.tag }}</span>
+            </div>
+          </sc-for>
+        </div>
+      </div>
+      </sc-if>
+
+      <!-- Results — DeepInsightResponse -->
+      <sc-if value="{{ diDone }}" hint-placeholder-val="{{ true }}">
+      <div style="display:flex;flex-direction:column;gap:14px">
+        <!-- marketInsight + stats (StatItem: value, label) -->
+        <div style="background:var(--sb);border-radius:var(--rl);padding:24px">
+          <div style="font-size:10.5px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:rgba(255,255,255,.4);margin-bottom:10px">marketInsight</div>
+          <p style="font-size:14px;color:rgba(255,255,255,.85);line-height:1.65;margin-bottom:18px">{{ diMarketInsight }}</p>
+          <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px">
+            <sc-for list="{{ diStats }}" as="st" hint-placeholder-count="4">
+              <div style="background:rgba(255,255,255,.07);border-radius:var(--r);padding:12px 14px">
+                <div style="font-size:20px;font-weight:800;color:#fff;letter-spacing:-.03em">{{ st.value }}</div>
+                <div style="font-size:11px;color:rgba(255,255,255,.45);margin-top:4px">{{ st.label }}</div>
+              </div>
+            </sc-for>
+          </div>
+        </div>
+
+        <!-- opportunityCards (OpportunityCard: title, desc, theme) + strategicRecommendation -->
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
+          <div style="background:var(--sur);border:1px solid var(--bd);border-radius:var(--rm);padding:20px;box-shadow:var(--sh-sm)">
+            <div style="font-size:14px;font-weight:700;margin-bottom:14px">Opportunity Cards</div>
+            <div style="display:flex;flex-direction:column;gap:9px">
+              <sc-for list="{{ diOpportunities }}" as="op" hint-placeholder-count="3">
+                <div style="display:flex;gap:9px;padding:12px;background:var(--sur2);border-radius:var(--r);border:1px solid var(--bd2)">
+                  <span style="width:8px;height:8px;border-radius:2px;background:{{ op.themeBg }};flex-shrink:0;margin-top:4px"></span>
+                  <div><div style="font-size:13px;font-weight:700;margin-bottom:3px">{{ op.title }}</div><div style="font-size:12px;color:var(--t3)">{{ op.desc }}</div></div>
+                </div>
+              </sc-for>
+            </div>
+          </div>
+          <div style="background:var(--sur);border:1px solid var(--bd);border-radius:var(--rm);padding:20px;box-shadow:var(--sh-sm)">
+            <div style="font-size:14px;font-weight:700;margin-bottom:14px">Strategic Recommendation</div>
+            <div style="font-size:14px;font-weight:700;color:var(--t1);margin-bottom:6px">{{ diStratTitle }}</div>
+            <p style="font-size:13px;color:var(--t3);line-height:1.55;margin-bottom:14px">{{ diStratDesc }}</p>
+            <div style="display:flex;flex-wrap:wrap;gap:8px">
+              <sc-for list="{{ diStratStats }}" as="ss" hint-placeholder-count="3">
+                <div style="background:var(--abg);border-radius:var(--r);padding:8px 12px;text-align:center">
+                  <div style="font-size:16px;font-weight:800;color:var(--accent)">{{ ss.value }}</div>
+                  <div style="font-size:11px;color:var(--t4)">{{ ss.label }}</div>
+                </div>
+              </sc-for>
+            </div>
+          </div>
+        </div>
+
+        <!-- competitors (CompetitorMapItem) + targetPersona (TargetPersona) -->
+        <div style="display:grid;grid-template-columns:1.2fr 1fr;gap:14px">
+          <div style="background:var(--sur);border:1px solid var(--bd);border-radius:var(--rm);overflow:hidden;box-shadow:var(--sh-sm)">
+            <div style="font-size:14px;font-weight:700;padding:15px 20px;border-bottom:1px solid var(--bd2)">Competitors · CompetitorMapItem</div>
+            <table style="width:100%;border-collapse:collapse">
+              <thead><tr style="background:var(--sur2)">
+                <th style="text-align:left;padding:9px 16px;font-size:11px;font-weight:700;color:var(--t4);border-bottom:1px solid var(--bd)">TÊN</th>
+                <th style="text-align:left;padding:9px 12px;font-size:11px;font-weight:700;color:var(--t4);border-bottom:1px solid var(--bd)">LEVEL</th>
+                <th style="text-align:left;padding:9px 12px;font-size:11px;font-weight:700;color:var(--t4);border-bottom:1px solid var(--bd)">FOLLOWERS</th>
+                <th style="text-align:left;padding:9px 16px;font-size:11px;font-weight:700;color:var(--t4);border-bottom:1px solid var(--bd)">FREQUENCY</th>
+              </tr></thead>
+              <tbody>
+                <sc-for list="{{ diCompetitors }}" as="c" hint-placeholder-count="4">
+                  <tr style-hover="background:var(--sur2)">
+                    <td style="padding:10px 16px;border-bottom:1px solid var(--bd2);font-size:13px;font-weight:600">{{ c.name }}</td>
+                    <td style="padding:10px 12px;border-bottom:1px solid var(--bd2)"><span style="font-size:10.5px;font-weight:700;padding:2px 8px;border-radius:99px;background:{{ c.strBg }};color:{{ c.strFg }}">{{ c.strengthLevel }}</span></td>
+                    <td style="padding:10px 12px;border-bottom:1px solid var(--bd2);font-size:12.5px;color:var(--t2)">{{ c.followers }}</td>
+                    <td style="padding:10px 16px;border-bottom:1px solid var(--bd2);font-size:12px;color:var(--t3)">{{ c.frequency }}</td>
+                  </tr>
+                </sc-for>
+              </tbody>
+            </table>
+          </div>
+          <div style="background:var(--sur);border:1px solid var(--bd);border-radius:var(--rm);padding:20px;box-shadow:var(--sh-sm)">
+            <div style="font-size:14px;font-weight:700;margin-bottom:12px">Target Persona</div>
+            <p style="font-size:13px;color:var(--t2);margin-bottom:12px;line-height:1.5">{{ diPersonaDesc }}</p>
+            <div style="font-size:10.5px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--t4);margin-bottom:7px">Pain Points</div>
+            <div style="display:flex;flex-direction:column;gap:5px;margin-bottom:12px">
+              <sc-for list="{{ diPainPoints }}" as="pp" hint-placeholder-count="3">
+                <div style="display:flex;gap:7px;font-size:12.5px;color:var(--t2)"><span style="color:var(--red);flex-shrink:0">✕</span>{{ pp }}</div>
+              </sc-for>
+            </div>
+            <div style="font-size:10.5px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--t4);margin-bottom:7px">Search Intents</div>
+            <div style="display:flex;flex-wrap:wrap;gap:6px">
+              <sc-for list="{{ diSearchIntents }}" as="si" hint-placeholder-count="3">
+                <span style="background:var(--abg);color:var(--accent);font-size:11.5px;font-weight:600;padding:3px 10px;border-radius:99px">{{ si }}</span>
+              </sc-for>
+            </div>
+          </div>
+        </div>
+
+        <!-- regionalPotential + sentiment -->
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
+          <div style="background:var(--sur);border:1px solid var(--bd);border-radius:var(--rm);padding:20px;box-shadow:var(--sh-sm)">
+            <div style="font-size:14px;font-weight:700;margin-bottom:8px">Regional Potential · RegionContribution</div>
+            <p style="font-size:13px;color:var(--t3);margin-bottom:14px;line-height:1.5">{{ diRegionalText }}</p>
+            <div style="display:flex;flex-direction:column;gap:9px">
+              <sc-for list="{{ diRegions }}" as="rg" hint-placeholder-count="4">
+                <div style="display:flex;align-items:center;gap:10px;font-size:12.5px">
+                  <span style="font-weight:600;flex:0 0 90px;color:var(--t2)">{{ rg.regionName }}</span>
+                  <div style="flex:1;height:6px;border-radius:99px;background:var(--bd);overflow:hidden"><div style="height:100%;border-radius:99px;width:{{ rg.pctW }};background:var(--accent)"></div></div>
+                  <span style="font-size:11.5px;font-weight:700;color:var(--accent);flex:0 0 36px;text-align:right">{{ rg.percentage }}%</span>
+                </div>
+              </sc-for>
+            </div>
+          </div>
+          <div style="background:var(--sur);border:1px solid var(--bd);border-radius:var(--rm);padding:20px;box-shadow:var(--sh-sm)">
+            <div style="font-size:14px;font-weight:700;margin-bottom:14px">Sentiment · SentimentBlock.bars</div>
+            <div style="display:flex;flex-direction:column;gap:11px;margin-bottom:16px">
+              <sc-for list="{{ diSentBars }}" as="sb" hint-placeholder-count="3">
+                <div>
+                  <div style="display:flex;justify-content:space-between;font-size:12.5px;margin-bottom:5px"><span style="font-weight:500">{{ sb.label }}</span><span style="font-weight:700;color:var(--t2)">{{ sb.pct }}%</span></div>
+                  <div style="height:7px;background:var(--bd);border-radius:99px;overflow:hidden"><div style="height:100%;border-radius:99px;width:{{ sb.pct }}%;background:{{ sb.color }}"></div></div>
+                </div>
+              </sc-for>
+            </div>
+            <div style="font-size:10.5px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--t4);margin-bottom:8px">Hot Topics · TopicItem</div>
+            <div style="display:flex;flex-wrap:wrap;gap:6px">
+              <sc-for list="{{ diTopics }}" as="tp" hint-placeholder-count="4">
+                <span style="background:var(--bg);border:1px solid var(--bd);font-size:11.5px;color:var(--t2);padding:3px 10px;border-radius:99px">{{ tp.name }} <b style="color:var(--accent)">{{ tp.change }}</b></span>
+              </sc-for>
+            </div>
+          </div>
+        </div>
+      </div>
+      </sc-if>
+    </div>
+    </sc-if>
+
+    <!-- ===== BÁO CÁO — UserReportResponse ===== -->
+    <sc-if value="{{ showReports }}" hint-placeholder-val="{{ false }}">
+    <div style="display:flex;flex-direction:column;gap:16px;animation:fadeIn .25s ease both">
+      <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+        <p style="font-size:13px;color:var(--t4);flex:1">GET /api/reports · UserReportResponse: id / title / status / keyword / createdAt</p>
+        <button style="display:inline-flex;align-items:center;gap:6px;padding:9px 16px;border-radius:var(--r);font:inherit;font-size:13px;font-weight:700;background:var(--sb);color:#fff;border:none;cursor:pointer" style-hover="background:var(--sb2)">+ Tạo báo cáo</button>
+      </div>
+      <div style="background:var(--sur);border:1px solid var(--bd);border-radius:var(--rl);overflow:hidden;box-shadow:var(--sh-sm)">
+        <div style="display:flex;align-items:center;gap:12px;padding:14px 20px;border-bottom:1px solid var(--bd2)">
+          <div style="position:relative;display:flex;align-items:center;flex:1;max-width:300px">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--t4)" stroke-width="2" stroke-linecap="round" style="position:absolute;left:11px;pointer-events:none"><circle cx="11" cy="11" r="7"></circle><path d="m21 21-4.3-4.3"></path></svg>
+            <input value="{{ filter }}" onInput="{{ onFilter }}" placeholder="Lọc theo keyword…" style="width:100%;padding:8px 12px 8px 32px;border:1px solid var(--bd);border-radius:var(--r);background:var(--bg);font:inherit;font-size:13px;outline:none;color:var(--t1)" style-focus="border-color:var(--accent)">
+          </div>
+          <span style="font-size:12px;color:var(--t4);margin-left:auto">{{ reportCount }} báo cáo</span>
+        </div>
+        <div style="overflow-x:auto">
+          <table style="width:100%;border-collapse:collapse">
+            <thead><tr style="background:var(--sur2)">
+              <th style="text-align:left;padding:11px 20px;font-size:11.5px;font-weight:700;color:var(--t4);border-bottom:1px solid var(--bd)">TIÊU ĐỀ</th>
+              <th style="text-align:left;padding:11px 14px;font-size:11.5px;font-weight:700;color:var(--t4);border-bottom:1px solid var(--bd)">TỪ KHÓA</th>
+              <th style="text-align:left;padding:11px 14px;font-size:11.5px;font-weight:700;color:var(--t4);border-bottom:1px solid var(--bd)">TRẠNG THÁI</th>
+              <th style="text-align:right;padding:11px 20px;font-size:11.5px;font-weight:700;color:var(--t4);border-bottom:1px solid var(--bd)">NGÀY TẠO</th>
+            </tr></thead>
+            <tbody>
+              <sc-for list="{{ reportRows }}" as="r" hint-placeholder-count="6">
+                <tr style-hover="background:var(--sur2)">
+                  <td style="padding:13px 20px;border-bottom:1px solid var(--bd2);font-size:13.5px;font-weight:600">{{ r.title }}</td>
+                  <td style="padding:13px 14px;border-bottom:1px solid var(--bd2)"><span style="font-size:11.5px;font-weight:600;padding:3px 10px;border-radius:99px;background:var(--abg);color:var(--accent)">{{ r.keyword }}</span></td>
+                  <td style="padding:13px 14px;border-bottom:1px solid var(--bd2)"><span style="font-size:11.5px;font-weight:700;padding:3px 10px;border-radius:99px;background:{{ r.statusBg }};color:{{ r.statusFg }}">{{ r.status }}</span></td>
+                  <td style="padding:13px 20px;border-bottom:1px solid var(--bd2);text-align:right;font-size:12px;color:var(--t4)">{{ r.createdAt }}</td>
+                </tr>
+              </sc-for>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+    </sc-if>
+
+    <!-- ===== GIÁ CẢ — PricingPlan ===== -->
+    <sc-if value="{{ showPricing }}" hint-placeholder-val="{{ false }}">
+    <div style="max-width:960px;margin:0 auto;animation:fadeIn .25s ease both">
+      <div style="text-align:center;padding:8px 0 24px">
+        <h2 style="font-size:26px;font-weight:800;letter-spacing:-.03em;margin-bottom:8px">Chọn gói phù hợp</h2>
+        <p style="font-size:14px;color:var(--t4)">GET /api/pricing · PricingPlan (id, name, monthly, features, current, ctaLabel)</p>
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px">
+        <sc-for list="{{ plans }}" as="pl" hint-placeholder-count="4">
+          <div style="background:{{ pl.bg }};border:{{ pl.border }};border-radius:var(--rl);padding:22px;position:relative">
+            <sc-if value="{{ pl.current }}" hint-placeholder-val="{{ false }}">
+              <div style="position:absolute;top:14px;right:14px;font-size:10px;font-weight:700;background:var(--accent);color:#fff;padding:2px 8px;border-radius:99px">Hiện tại</div>
+            </sc-if>
+            <div style="font-size:12px;font-weight:700;color:{{ pl.nameFg }};margin-bottom:6px;letter-spacing:.02em;text-transform:uppercase">{{ pl.name }}</div>
+            <div style="font-size:28px;font-weight:900;color:{{ pl.priceFg }};letter-spacing:-.04em;margin-bottom:3px">{{ pl.monthly }}</div>
+            <div style="font-size:11.5px;color:{{ pl.subFg }};margin-bottom:16px">/tháng (USD)</div>
+            <div style="display:flex;flex-direction:column;gap:7px;margin-bottom:18px">
+              <sc-for list="{{ pl.features }}" as="f" hint-placeholder-count="4">
+                <div style="display:flex;align-items:flex-start;gap:7px;font-size:12.5px;color:{{ pl.featFg }}"><span style="color:{{ pl.checkFg }};flex-shrink:0">✓</span>{{ f }}</div>
+              </sc-for>
+            </div>
+            <button style="width:100%;padding:10px;border:{{ pl.btnBd }};border-radius:var(--r);font:inherit;font-size:13px;font-weight:700;background:{{ pl.btnBg }};color:{{ pl.btnFg }};cursor:pointer">{{ pl.ctaLabel }}</button>
+          </div>
+        </sc-for>
+      </div>
+    </div>
+    </sc-if>
+
+  </main>
+</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:&quot;100%&quot;,&quot;height&quot;:&quot;100%&quot;}}">
+class Component extends DCLogic {
+  state = {
+    page: 'home',
+    searchInput: '',
+    currentKeyword: 'xe máy điện',
+    filter: '',
+    diLoading: false,
+    diDone: true,
+    diPct: 0,
+    diStep: 0,
+  };
+
+  componentDidMount() { this._tryCharts(); }
+  componentDidUpdate(pp, ps) { if (ps && ps.page !== this.state.page) { this._destroyCharts(); this._tryCharts(); } }
+  componentWillUnmount() { this._destroyCharts(); if (this._dt) clearInterval(this._dt); }
+
+  _tryCharts(n = 0) {
+    if (typeof window.Chart === 'undefined') { if (n < 40) setTimeout(() => this._tryCharts(n + 1), 100); return; }
+    requestAnimationFrame(() => this._buildCharts());
+  }
+  _destroyCharts() { (this._charts || []).forEach(c => { try { c.destroy(); } catch (e) {} }); this._charts = []; }
+  _buildCharts() {
+    this._destroyCharts();
+    const C = window.Chart;
+    const ticks = { font: { size: 11, family: 'Inter' }, color: '#9CA3AF' };
+    const grid = { color: '#F3F4F6' };
+    const mk = (id, cfg) => { const el = document.getElementById(id); if (!el) return; this._charts.push(new C(el, cfg)); };
+    if (this.state.page === 'analysis') {
+      mk('chTimeline', { type: 'line', data: { labels: ['T1','T2','T3','T4','T5','T6','T7','T8','T9','T10','T11','T12'], datasets: [{ data: [42,38,55,48,70,85,72,90,88,95,78,102], borderColor: '#0D9488', backgroundColor: 'rgba(13,148,136,.07)', fill: true, tension: .4, borderWidth: 2, pointRadius: 0 }] }, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { x: { grid: { display: false }, ticks }, y: { grid, ticks, beginAtZero: true } } } });
+      mk('chCompare', { type: 'bar', data: { labels: ['xe máy điện', 'xe đạp điện', 'xe điện đi làm'], datasets: [{ label: 'Mentions', data: [9800, 7200, 4300], backgroundColor: '#0D9488', borderRadius: 5 }, { label: 'Avg Engagement', data: [4200, 3800, 2100], backgroundColor: '#CCFBEF', borderRadius: 5 }] }, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { x: { grid: { display: false }, ticks }, y: { grid, ticks, beginAtZero: true } } } });
+    }
+  }
+
+  go(p) { this.setState({ page: p }); }
+
+  runSearch() {
+    const kw = this.state.searchInput.trim() || 'xe máy điện';
+    this.setState({ currentKeyword: kw, page: 'analysis', searchInput: '' });
+  }
+
+  runDeepInsight() {
+    if (this._dt) clearInterval(this._dt);
+    this.setState({ diLoading: true, diDone: false, diPct: 0, diStep: 0 });
+    this._dt = setInterval(() => {
+      this.setState(s => {
+        let pct = s.diPct + 2 + Math.random() * 3;
+        let step = Math.min(4, Math.floor(pct / 20));
+        if (pct >= 100) { clearInterval(this._dt); return { diPct: 100, diStep: 5, diLoading: false, diDone: true }; }
+        return { diPct: pct, diStep: step };
+      });
+    }, 120);
+  }
+
+  renderVals() {
+    const s = this.state;
+
+    // Nav
+    const navDef = [
+      { id: 'home',       label: 'Tổng quan' },
+      { id: 'analysis',   label: 'Phân tích' },
+      { id: 'sources',    label: 'Nguồn dữ liệu' },
+      { id: 'deepInsight',label: 'Deep Insight' },
+      { id: 'reports',    label: 'Báo cáo' },
+      { id: 'pricing',    label: 'Gói dịch vụ', hasBadge: true, badge: 'FREE' },
+    ];
+    const navItems = navDef.map(n => {
+      const a = s.page === n.id;
+      return { label: n.label, onClick: () => this.go(n.id),
+        bg: a ? 'rgba(255,255,255,.1)' : 'transparent',
+        fg: a ? '#fff' : 'rgba(255,255,255,.55)',
+        hasBadge: !a && !!n.hasBadge, badge: n.badge || '' };
+    });
+
+    const pageInfo = {
+      home: ['Tổng quan', 'Xin chào, Alex · AISKIM Market Research'],
+      analysis: ['Phân tích', `"${s.currentKeyword}" · GET /api/analysis`],
+      sources: ['Nguồn dữ liệu', `"${s.currentKeyword}" · GET /api/search/{id}/sources`],
+      deepInsight: ['Phân tích sâu AI', 'POST /api/deep-insight · DeepInsightResponse'],
+      reports: ['Báo cáo', 'GET /api/reports · UserReportResponse'],
+      pricing: ['Gói dịch vụ', 'GET /api/pricing · PricingPlan'],
+    };
+    const [pageTitle, pageSubtitle] = pageInfo[s.page] || ['', ''];
+
+    // Quick keywords
+    const quickKws = [
+      { kw: 'Xe máy điện', onClick: () => this.setState({ searchInput: 'xe máy điện', currentKeyword: 'xe máy điện', page: 'analysis' }) },
+      { kw: 'Skincare nội địa', onClick: () => this.setState({ currentKeyword: 'skincare nội địa', page: 'analysis' }) },
+      { kw: 'TikTok Shop trends', onClick: () => this.setState({ currentKeyword: 'TikTok Shop trends', page: 'analysis' }) },
+      { kw: 'Cà phê muối', onClick: () => this.setState({ currentKeyword: 'cà phê muối', page: 'analysis' }) },
+    ];
+
+    // Dashboard KPIs (DashboardResponse.kpis → KpiItem: label, value)
+    const dashKpis = [
+      { label: 'Searches this month', value: '8' },
+      { label: 'Search limit (FREE)', value: '10' },
+      { label: 'Reports created', value: '3' },
+      { label: 'Deep Insights left', value: '0' },
+    ];
+
+    // HomeTrendsResponse → TrendItem: id, name, change, sentiment, market, sourceCount, updatedAt
+    const trendData = [
+      { name: 'Xe máy điện', market: 'Xe điện & Di động', change: '↑ +142%', sourceCount: 15, pts: '0,28 25,22 50,18 75,12 100,6', sc: '#0D9488', cc: 'var(--accent)' },
+      { name: 'TikTok Shop', market: 'Thương mại & Bán lẻ', change: '↑ +89%', sourceCount: 12, pts: '0,26 25,20 50,22 75,14 100,8', sc: '#0D9488', cc: 'var(--accent)' },
+      { name: 'AI chatbot', market: 'Công nghệ & AI', change: '↑ +67%', sourceCount: 10, pts: '0,24 25,22 50,26 75,18 100,10', sc: '#0D9488', cc: 'var(--accent)' },
+      { name: 'Livestream bán hàng', market: 'Thương mại', change: '↑ +54%', sourceCount: 9, pts: '0,28 25,24 50,26 75,20 100,14', sc: '#0D9488', cc: 'var(--accent)' },
+      { name: 'Sữa hạt', market: 'F&B & Tiêu dùng', change: '↓ −8%', sourceCount: 6, pts: '0,10 25,12 50,14 75,20 100,26', sc: '#DC2626', cc: 'var(--red)' },
+    ];
+    const trends = trendData.map(t => ({ ...t, onClick: () => this.setState({ currentKeyword: t.name, page: 'analysis' }) }));
+
+    // Recent searches
+    const recentSearches = [
+      { keyword: 'xe máy điện', status: 'COMPLETED', statusBg: 'var(--gbg)', statusFg: 'var(--green)', age: '2h', onClick: () => this.setState({ currentKeyword: 'xe máy điện', page: 'analysis' }) },
+      { keyword: 'TikTok Shop trends', status: 'COMPLETED', statusBg: 'var(--gbg)', statusFg: 'var(--green)', age: '5h', onClick: () => this.setState({ currentKeyword: 'TikTok Shop trends', page: 'analysis' }) },
+      { keyword: 'Cà phê muối', status: 'PENDING', statusBg: 'var(--ambg)', statusFg: 'var(--amber)', age: '1d', onClick: () => this.setState({ currentKeyword: 'cà phê muối', page: 'analysis' }) },
+    ];
+
+    // AnalysisResponse fields
+    const pColor = { SERPAPI_GOOGLE: { bg: '#DBEAFE', fg: '#2563EB' }, SERPAPI_NEWS: { bg: '#FEF3C7', fg: '#D97706' }, YOUTUBE_API: { bg: '#FEE2E2', fg: '#DC2626' } };
+    const insights = [
+      { label: 'Tín hiệu xu hướng', text: `"${s.currentKeyword}" tăng 34% trong 7 ngày — Google Search ghi nhận đỉnh ngày 12/06.`, confidence: 92, evidenceSource: 'SERPAPI_GOOGLE', evidenceSignal: '5 bài top 10', rb: 'var(--bd2)', providerBg: pColor.SERPAPI_GOOGLE.bg, providerFg: pColor.SERPAPI_GOOGLE.fg },
+      { label: 'Tín hiệu truyền thông', text: 'SERPAPI_NEWS phát hiện 3 bài báo lớn về chính sách trợ giá — tác động tích cực tâm lý thị trường.', confidence: 88, evidenceSource: 'SERPAPI_NEWS', evidenceSignal: '5 bài tin tức', rb: 'transparent', providerBg: pColor.SERPAPI_NEWS.bg, providerFg: pColor.SERPAPI_NEWS.fg },
+      { label: 'YouTube Engagement', text: 'avgEngagement 4.2K trên top videos — người xem tương tác cao với nội dung review thực tế.', confidence: 90, evidenceSource: 'YOUTUBE_API', evidenceSignal: '5 videos', rb: 'var(--bd2)', providerBg: pColor.YOUTUBE_API.bg, providerFg: pColor.YOUTUBE_API.fg },
+      { label: 'Cơ hội từ khóa', text: 'relatedKeywords từ KeywordMetric cho thấy "đi làm" và "pin" tăng 45% — phân khúc văn phòng tiềm năng.', confidence: 84, evidenceSource: 'SERPAPI_GOOGLE', evidenceSignal: 'mentionCount 9.8K', rb: 'transparent', providerBg: pColor.SERPAPI_GOOGLE.bg, providerFg: pColor.SERPAPI_GOOGLE.fg },
+    ];
+    const suggestedActions = ['So sánh đối thủ →', 'Phân tích persona →', 'Tiềm năng khu vực →'];
+
+    // KeywordMetric: keyword, mentionCount, totalViews, avgEngagement
+    const relatedKws = [
+      { keyword: 'xe điện pin dài', mentionCount: '9.8K', barW: '90%' },
+      { keyword: 'xe đạp điện', mentionCount: '7.2K', barW: '72%' },
+      { keyword: 'xe điện đi làm', mentionCount: '4.3K', barW: '45%' },
+      { keyword: 'giá xe điện', mentionCount: '3.1K', barW: '32%' },
+    ];
+    const newsItems = [
+      'Chính phủ công bố trợ giá xe điện nội địa 2026 · VnExpress',
+      'Doanh số xe máy điện tăng 68% Q1/2026 tại TP.HCM · CafeF',
+      'Pin thể rắn hứa hẹn quãng đường 200km/lần sạc · VnTechReview',
+    ];
+
+    // DataQuality & ResearchGuard
+    const guardBadgeBg = 'var(--gbg)', guardBadgeFg = 'var(--green)';
+
+    // 3 providers (SERPAPI_GOOGLE, SERPAPI_NEWS, YOUTUBE_API from data.sql)
+    const providers = [
+      { code: 'G', name: 'SerpApi Google', providerCode: 'SERPAPI_GOOGLE', iconBg: '#DBEAFE', iconFg: '#2563EB', itemCount: 5, maxResults: 5, statusBg: 'var(--gbg)', statusFg: 'var(--green)', statusLabel: 'Active' },
+      { code: 'N', name: 'SerpApi News', providerCode: 'SERPAPI_NEWS', iconBg: '#FEF3C7', iconFg: '#D97706', itemCount: 5, maxResults: 5, statusBg: 'var(--gbg)', statusFg: 'var(--green)', statusLabel: 'Active' },
+      { code: 'YT', name: 'YouTube API', providerCode: 'YOUTUBE_API', iconBg: '#FEE2E2', iconFg: '#DC2626', itemCount: 5, maxResults: 5, statusBg: 'var(--gbg)', statusFg: 'var(--green)', statusLabel: 'Active' },
+    ];
+
+    // SnapshotResponse fields
+    const snapshotId = 'snap-' + s.currentKeyword.replace(/\s/g,'-').toLowerCase().substring(0,8);
+
+    // SourceItemResponse: title, snippet, platform, contentType, sourceName, sentimentLabel, publishedAt
+    const platColor = { 'Google': { bg: '#DBEAFE', fg: '#2563EB' }, 'YouTube': { bg: '#FEE2E2', fg: '#DC2626' }, 'News': { bg: '#FEF3C7', fg: '#D97706' } };
+    const sentColor = { POSITIVE: { bg: 'var(--gbg)', fg: 'var(--green)' }, NEUTRAL: { bg: 'var(--bg)', fg: 'var(--t4)' }, NEGATIVE: { bg: 'var(--rbg)', fg: 'var(--red)' } };
+    const rawSrc = [
+      { title: `Review "${s.currentKeyword}" 2026: Nên mua không?`, snippet: 'Đánh giá chi tiết về pin, tốc độ sạc và vận hành thực tế...', platform: 'YouTube', contentType: 'VIDEO', sourceName: 'TechVN', publishedAt: '24/06', sentimentLabel: 'POSITIVE' },
+      { title: `Chính phủ trợ giá ${s.currentKeyword} nội địa`, snippet: 'Theo quyết định mới, người mua xe điện nội địa được hỗ trợ...', platform: 'News', contentType: 'ARTICLE', sourceName: 'VnExpress', publishedAt: '23/06', sentimentLabel: 'POSITIVE' },
+      { title: `${s.currentKeyword} giá tốt nhất tháng 6/2026`, snippet: 'So sánh 10 mẫu theo tiêu chí giá và chất lượng pin...', platform: 'Google', contentType: 'WEBPAGE', sourceName: 'Tinhte.vn', publishedAt: '22/06', sentimentLabel: 'NEUTRAL' },
+      { title: `Pin ${s.currentKeyword} bị lỗi sau 6 tháng?`, snippet: 'Nhiều người dùng phản ánh tình trạng pin xuống nhanh...', platform: 'YouTube', contentType: 'VIDEO', sourceName: 'AutoReview', publishedAt: '21/06', sentimentLabel: 'NEGATIVE' },
+      { title: `Doanh số ${s.currentKeyword} tăng 68% Q1`, snippet: 'Báo cáo từ Hiệp hội xe điện Việt Nam cho thấy tăng trưởng mạnh...', platform: 'News', contentType: 'ARTICLE', sourceName: 'CafeF', publishedAt: '20/06', sentimentLabel: 'POSITIVE' },
+    ];
+    const sourceItems = rawSrc.map(r => ({ ...r,
+      platBg: (platColor[r.platform] || { bg: 'var(--bg)' }).bg, platFg: (platColor[r.platform] || { fg: 'var(--t3)' }).fg,
+      sentBg: (sentColor[r.sentimentLabel] || { bg: 'var(--bg)' }).bg, sentFg: (sentColor[r.sentimentLabel] || { fg: 'var(--t3)' }).fg
+    }));
+
+    // Deep Insight — DeepInsightResponse
+    const diStepDef = [
+      { t: 'Thu thập SourceItemResponse từ 3 providers' },
+      { t: 'Phân tích sentiment & KeywordMetric' },
+      { t: 'Trích xuất CompetitorMapItem signals' },
+      { t: 'Xây dựng TargetPersona & RegionalPotential' },
+      { t: 'Tổng hợp StrategicRecommendation' },
+    ];
+    const diSteps = diStepDef.map((st, i) => {
+      const done = i < s.diStep, active = i === s.diStep && s.diLoading;
+      return { t: st.t, icon: done ? '✓' : (i + 1),
+        ib: done ? 'var(--accent)' : (active ? 'var(--abg)' : 'var(--bg)'),
+        ifc: done ? '#fff' : (active ? 'var(--accent)' : 'var(--t4)'),
+        rb: active ? 'var(--abg)' : 'transparent',
+        tc: done || active ? 'var(--t1)' : 'var(--t4)',
+        tag: done ? 'Xong' : (active ? 'Đang xử lý…' : 'Chờ'),
+        tagc: done ? 'var(--accent)' : (active ? 'var(--accent)' : 'var(--t4)') };
+    });
+
+    const themeMap = { market: 'var(--accent)', content: 'var(--blue)', region: 'var(--amber)' };
+    const diOpportunities = [
+      { title: 'Phân khúc đi làm', desc: '"xe điện đi làm" tăng 45% — văn phòng 25–35 tuổi chưa được phục vụ tốt.', theme: 'market', themeBg: 'var(--accent)' },
+      { title: 'Content pin thực tế', desc: 'Review pin & quãng đường chiếm 38% thảo luận — cơ hội content marketing.', theme: 'content', themeBg: 'var(--blue)' },
+      { title: 'Khu vực Hà Nội', desc: 'Hà Nội tăng 28% so TP.HCM — thị trường chưa bão hòa.', theme: 'region', themeBg: 'var(--amber)' },
+    ];
+    const strMap = { HIGH: { bg: 'var(--rbg)', fg: 'var(--red)' }, MEDIUM: { bg: 'var(--ambg)', fg: 'var(--amber)' }, LOW: { bg: 'var(--gbg)', fg: 'var(--green)' } };
+    const diCompetitors = [
+      { name: 'VinFast Klara', strengthLevel: 'HIGH', followers: '2.3M', frequency: 'Daily', channelUrl: '', note: '' },
+      { name: 'Dat Bike', strengthLevel: 'MEDIUM', followers: '450K', frequency: '3x/week', channelUrl: '', note: '' },
+      { name: 'Pega', strengthLevel: 'MEDIUM', followers: '280K', frequency: '2x/week', channelUrl: '', note: '' },
+      { name: 'Yadea VN', strengthLevel: 'LOW', followers: '120K', frequency: 'Weekly', channelUrl: '', note: '' },
+    ].map(c => ({ name: c.name, strengthLevel: c.strengthLevel, followers: c.followers, frequency: c.frequency,
+      strBg: (strMap[c.strengthLevel] || {}).bg || 'var(--bg)', strFg: (strMap[c.strengthLevel] || {}).fg || 'var(--t3)' }));
+
+    // RegionalPotential.topRegions (RegionContribution: regionName, percentage, demandLevel)
+    const diRegions = [
+      { regionName: 'TP.HCM', percentage: 42, pctW: '84%' },
+      { regionName: 'Hà Nội', percentage: 28, pctW: '56%' },
+      { regionName: 'Bình Dương', percentage: 14, pctW: '28%' },
+      { regionName: 'Đà Nẵng', percentage: 10, pctW: '20%' },
+    ];
+    // SentimentBlock.bars (SentimentBar: label, pct, color, cls)
+    const diSentBars = [
+      { label: 'Tích cực', pct: 64, color: 'var(--accent)' },
+      { label: 'Trung lập', pct: 24, color: 'var(--t5)' },
+      { label: 'Tiêu cực', pct: 12, color: 'var(--red)' },
+    ];
+    // TopicItem: name, change
+    const diTopics = [
+      { name: 'pin', change: '+38%' }, { name: 'giá', change: '+29%' },
+      { name: 'sạc nhanh', change: '+24%' }, { name: 'bảo hành', change: '+18%' },
+    ];
+
+    // UserReportResponse: id, title, status, keyword, createdAt
+    const allReports = [
+      { id: '1', title: 'Phân tích xe máy điện Q2/2026', keyword: 'xe máy điện', status: 'COMPLETED', createdAt: '24/06/2026' },
+      { id: '2', title: 'TikTok Shop trending report', keyword: 'TikTok Shop trends', status: 'COMPLETED', createdAt: '20/06/2026' },
+      { id: '3', title: 'AI chatbot market overview', keyword: 'AI chatbot', status: 'PENDING', createdAt: '18/06/2026' },
+      { id: '4', title: 'F&B Cà phê muối insight', keyword: 'cà phê muối', status: 'COMPLETED', createdAt: '15/06/2026' },
+      { id: '5', title: 'Livestream thương mại analysis', keyword: 'livestream', status: 'FAILED', createdAt: '10/06/2026' },
+    ];
+    const stMap = { COMPLETED: { bg: 'var(--gbg)', fg: 'var(--green)' }, PENDING: { bg: 'var(--ambg)', fg: 'var(--amber)' }, FAILED: { bg: 'var(--rbg)', fg: 'var(--red)' } };
+    const filtered = allReports.filter(r => r.keyword.toLowerCase().includes(s.filter.toLowerCase()) || r.title.toLowerCase().includes(s.filter.toLowerCase()));
+    const reportRows = filtered.map(r => ({
+      title: r.title, keyword: r.keyword, status: r.status,
+      statusBg: (stMap[r.status] || {}).bg || 'var(--bg)', statusFg: (stMap[r.status] || {}).fg || 'var(--t4)',
+      createdAt: r.createdAt
+    }));
+
+    // PricingPlan: id, name, monthly, yearly, features, current, ctaLabel (from data.sql)
+    const plans = [
+      { id: 'FREE', name: 'FREE', monthly: '$0', current: true, ctaLabel: 'Gói hiện tại', features: ['10 searches/tháng', 'Basic insights', 'Community support', 'Không export'], bg: 'var(--sur)', border: '2px solid var(--accent)', nameFg: 'var(--accent)', priceFg: 'var(--t1)', subFg: 'var(--t4)', featFg: 'var(--t2)', checkFg: 'var(--accent)', btnBg: 'var(--abg)', btnFg: 'var(--accent)', btnBd: 'none' },
+      { id: 'STARTER', name: 'STARTER', monthly: '$0.40', current: false, ctaLabel: 'Chọn gói này', features: ['100 searches/tháng', 'Advanced insights', 'Export PDF (10 lần)', '1 Deep Insight/tháng'], bg: 'var(--sur)', border: '1px solid var(--bd)', nameFg: 'var(--t3)', priceFg: 'var(--t1)', subFg: 'var(--t4)', featFg: 'var(--t2)', checkFg: 'var(--accent)', btnBg: 'var(--sb)', btnFg: '#fff', btnBd: 'none' },
+      { id: 'TEAM', name: 'TEAM', monthly: '$1.20', current: false, ctaLabel: 'Chọn gói này', features: ['500 searches/tháng', 'Competitor view', 'Unlimited PDF export', '10 Deep Insights/tháng', 'API integration'], bg: 'var(--sur)', border: '1px solid var(--bd)', nameFg: 'var(--t3)', priceFg: 'var(--t1)', subFg: 'var(--t4)', featFg: 'var(--t2)', checkFg: 'var(--accent)', btnBg: 'var(--sb)', btnFg: '#fff', btnBd: 'none' },
+      { id: 'ENTERPRISE', name: 'ENTERPRISE', monthly: '$59.99', current: false, ctaLabel: 'Liên hệ Sales', features: ['Unlimited searches', 'Unlimited exports', 'Admin dashboard', 'Custom AI models', 'Priority support', 'SLA guarantee'], bg: 'var(--sb)', border: '1px solid var(--sb)', nameFg: 'rgba(255,255,255,.6)', priceFg: '#fff', subFg: 'rgba(255,255,255,.45)', featFg: 'rgba(255,255,255,.75)', checkFg: '#5EEAD4', btnBg: '#fff', btnFg: 'var(--sb)', btnBd: 'none' },
+    ];
+
+    return {
+      navItems, pageTitle, pageSubtitle,
+      searchInput: s.searchInput,
+      onSearchInput: e => this.setState({ searchInput: e.target.value }),
+      onSearchKey: e => { if (e.key === 'Enter') this.runSearch(); },
+      runSearch: () => this.runSearch(),
+      quickKws, trends, dashKpis, recentSearches,
+      currentKeyword: s.currentKeyword,
+      planName: 'FREE', usedSearches: 8, limitSearches: 10, usagePct: '80',
+      goPricing: () => this.go('pricing'),
+      // Analysis (AnalysisResponse)
+      guardBadgeBg, guardBadgeFg, guardStatus: 'intentScore: HIGH',
+      showGuardWarning: false, guardMessage: '', guardSuggested: '',
+      freshnessMin: 3, sourceDiversity: 3, evidenceCoveragePct: 87, confidenceBand: 'HIGH',
+      insightCount: 4, insights, suggestedActions, relatedKws, newsItems,
+      // Sources (SnapshotResponse + SourceItemResponse)
+      providers, snapshotId, snapshotSummary: `Tổng hợp ${s.currentKeyword}: sentiment chủ yếu tích cực, nhu cầu tăng mạnh Q2.`, snapshotPos: 158, snapshotNeu: 62, snapshotNeg: 27, snapshotTotal: 15, sourceItems,
+      // Deep insight (DeepInsightResponse)
+      diLoading: s.diLoading, diDone: s.diDone,
+      diPct: Math.round(s.diPct), diPctLabel: Math.round(s.diPct) + '%', diSteps,
+      runDeepInsight: () => this.runDeepInsight(),
+      diMarketInsight: `Thị trường "${s.currentKeyword}" đang tăng trưởng mạnh với sentiment tích cực 64%. Ba providers ghi nhận 15 nguồn dữ liệu, avgEngagement 4.2K. Phân khúc "đi làm" và "giá rẻ" chưa được khai thác triệt để — cơ hội lớn cho content định vị mới.`,
+      diStats: [{ value: '9.8K', label: 'Total mentions' }, { value: '4.2K', label: 'Avg engagement' }, { value: '64%', label: 'Positive sentiment' }, { value: '87%', label: 'Evidence coverage' }],
+      diOpportunities, diCompetitors,
+      diStratTitle: 'Định vị "xe điện thông minh cho người đi làm"',
+      diStratDesc: 'Tập trung content pin thực tế và chi phí vận hành thay vì giá mua. Target nhóm 25–40 tuổi qua YouTube và Google Search.',
+      diStratStats: [{ value: '45%', label: 'Tăng trưởng YoY' }, { value: '28d', label: 'Time to market' }, { value: '$1.2M', label: 'Market size' }],
+      diPersonaDesc: 'Nhân viên văn phòng 25–35 tuổi, thu nhập 15–25M/tháng, sử dụng xe hàng ngày tại đô thị lớn.',
+      diPainPoints: ['Tốn tiền xăng hàng tháng', 'Lo ngại pin hết giữa đường', 'Không biết hãng nào uy tín'],
+      diSearchIntents: ['so sánh xe điện', 'pin xe điện bao lâu', 'mua xe điện ở đâu'],
+      diRegions, diSentBars, diTopics,
+      diRegionalText: 'TP.HCM dẫn đầu 42%, Hà Nội 28%. Bình Dương và Đà Nẵng là thị trường mới nổi.',
+      // Reports (UserReportResponse)
+      reportRows, reportCount: filtered.length,
+      filter: s.filter, onFilter: e => this.setState({ filter: e.target.value }),
+      // Pricing (PricingPlan)
+      plans,
+      // Nav
+      goHome: () => this.go('home'), goAnalysis: () => this.go('analysis'),
+      goSources: () => this.go('sources'), goDeepInsight: () => this.go('deepInsight'),
+      goReports: () => this.go('reports'),
+      showHome: s.page === 'home', showAnalysis: s.page === 'analysis',
+      showSources: s.page === 'sources', showDeepInsight: s.page === 'deepInsight',
+      showReports: s.page === 'reports', showPricing: s.page === 'pricing',
+    };
+  }
+}
+</script>
+</body>
+</html>

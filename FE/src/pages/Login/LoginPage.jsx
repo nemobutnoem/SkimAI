@@ -1,12 +1,12 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import { ROUTES } from '../../constants/routes'
 import { useAuth } from '../../hooks/useAuth'
+import { appApi } from '../../services/appApi'
 
 function loadGoogleIdentityScript() {
   if (typeof window === 'undefined') return Promise.reject(new Error('Browser only'))
   if (window.google?.accounts?.id) return Promise.resolve()
-
   const existing = document.querySelector('script[data-google-identity="true"]')
   if (existing) {
     return new Promise((resolve, reject) => {
@@ -14,7 +14,6 @@ function loadGoogleIdentityScript() {
       existing.addEventListener('error', () => reject(new Error('Failed to load Google Identity script')))
     })
   }
-
   return new Promise((resolve, reject) => {
     const script = document.createElement('script')
     script.src = 'https://accounts.google.com/gsi/client'
@@ -27,21 +26,92 @@ function loadGoogleIdentityScript() {
   })
 }
 
+function ParticleCanvas() {
+  const canvasRef = useRef(null)
+
+  useEffect(() => {
+    const canvas = canvasRef.current
+    if (!canvas) return
+    const ctx = canvas.getContext('2d')
+    let running = true
+
+    const resize = () => {
+      canvas.width = canvas.offsetWidth
+      canvas.height = canvas.offsetHeight
+    }
+    resize()
+    window.addEventListener('resize', resize)
+
+    const N = 55
+    const particles = Array.from({ length: N }, () => ({
+      x: Math.random() * canvas.width,
+      y: Math.random() * canvas.height,
+      r: Math.random() * 1.8 + 0.4,
+      vx: (Math.random() - 0.5) * 0.4,
+      vy: (Math.random() - 0.5) * 0.4,
+      alpha: Math.random() * 0.5 + 0.1,
+    }))
+    const colors = ['rgba(13,148,136,', 'rgba(99,102,241,', 'rgba(52,211,153,', 'rgba(255,255,255,']
+
+    const draw = () => {
+      if (!running) return
+      ctx.clearRect(0, 0, canvas.width, canvas.height)
+      particles.forEach((p, i) => {
+        p.x += p.vx
+        p.y += p.vy
+        if (p.x < 0) p.x = canvas.width
+        if (p.x > canvas.width) p.x = 0
+        if (p.y < 0) p.y = canvas.height
+        if (p.y > canvas.height) p.y = 0
+        ctx.beginPath()
+        ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2)
+        ctx.fillStyle = colors[i % colors.length] + p.alpha + ')'
+        ctx.fill()
+        particles.forEach((p2, j) => {
+          if (j <= i) return
+          const dx = p.x - p2.x, dy = p.y - p2.y
+          const dist = Math.sqrt(dx * dx + dy * dy)
+          if (dist < 90) {
+            ctx.beginPath()
+            ctx.moveTo(p.x, p.y)
+            ctx.lineTo(p2.x, p2.y)
+            ctx.strokeStyle = 'rgba(255,255,255,' + (0.06 * (1 - dist / 90)) + ')'
+            ctx.lineWidth = 0.5
+            ctx.stroke()
+          }
+        })
+      })
+      requestAnimationFrame(draw)
+    }
+    draw()
+
+    return () => {
+      running = false
+      window.removeEventListener('resize', resize)
+    }
+  }, [])
+
+  return <canvas ref={canvasRef} style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', zIndex: 0 }} />
+}
+
 export function LoginPage() {
   const navigate = useNavigate()
   const location = useLocation()
-  const { loginWithGoogle, isAuthenticated, user } = useAuth()
+  const { loginWithGoogle, login, isAuthenticated, user } = useAuth()
 
+  const [email, setEmail] = useState('')
+  const [password, setPassword] = useState('')
+  const [remember, setRemember] = useState(false)
   const [error, setError] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
-
-  const [googleReady, setGoogleReady] = useState(false)
   const [googleError, setGoogleError] = useState('')
+  const [emailFocus, setEmailFocus] = useState(false)
+  const [pwFocus, setPwFocus] = useState(false)
 
   useEffect(() => {
     if (isAuthenticated) {
-      const target = user?.role === 'admin' 
-        ? ROUTES.ADMIN_DASHBOARD 
+      const target = user?.role === 'admin'
+        ? ROUTES.ADMIN_DASHBOARD
         : (location.state?.from || ROUTES.DASHBOARD)
       navigate(target, { replace: true })
     }
@@ -49,25 +119,13 @@ export function LoginPage() {
 
   useEffect(() => {
     const clientId = import.meta.env.VITE_GOOGLE_CLIENT_ID
-    if (!clientId) {
-      setGoogleError('Thiếu VITE_GOOGLE_CLIENT_ID trong .env')
-      setGoogleReady(false)
-      return
-    }
-
+    if (!clientId) { setGoogleError('Chưa cấu hình Google Client ID'); return }
     let cancelled = false
-
-    setGoogleError('')
     loadGoogleIdentityScript()
       .then(() => {
         if (cancelled) return
-
         const google = window.google
-        if (!google?.accounts?.id) {
-          setGoogleError('Google Identity chưa sẵn sàng')
-          return
-        }
-
+        if (!google?.accounts?.id) { setGoogleError('Google Identity chưa sẵn sàng'); return }
         google.accounts.id.initialize({
           client_id: clientId,
           callback: async (response) => {
@@ -75,8 +133,8 @@ export function LoginPage() {
             setIsSubmitting(true)
             try {
               const session = await loginWithGoogle({ credential: response?.credential })
-              const target = session?.user?.role === 'admin' 
-                ? ROUTES.ADMIN_DASHBOARD 
+              const target = session?.user?.role === 'admin'
+                ? ROUTES.ADMIN_DASHBOARD
                 : (location.state?.from || ROUTES.DASHBOARD)
               navigate(target, { replace: true })
             } catch (err) {
@@ -86,86 +144,212 @@ export function LoginPage() {
             }
           },
         })
-
         const container = document.getElementById('googleSignInBtn')
-        if (!container) {
-          setGoogleError('Không tìm thấy vùng hiển thị Google button')
-          return
-        }
-
+        if (!container) return
         container.innerHTML = ''
-        google.accounts.id.renderButton(container, {
-          theme: 'outline',
-          size: 'large',
-          width: '360',
-        })
-
-        setGoogleReady(true)
+        google.accounts.id.renderButton(container, { theme: 'outline', size: 'large', width: '340' })
       })
-      .catch((err) => {
-        if (cancelled) return
-        setGoogleError(err?.message ?? 'Không load được Google Identity')
-        setGoogleReady(false)
-      })
+      .catch((err) => { if (!cancelled) setGoogleError(err?.message ?? 'Không load được Google Identity') })
+    return () => { cancelled = true }
+  }, [loginWithGoogle, navigate, location.state])
 
-    return () => {
-      cancelled = true
+  const handleEmailLogin = async (e) => {
+    e.preventDefault()
+    if (!email || !password) { setError('Vui lòng nhập email và mật khẩu'); return }
+    setError('')
+    setIsSubmitting(true)
+    try {
+      const session = await login({ email, password })
+      const target = session?.user?.role === 'admin'
+        ? ROUTES.ADMIN_DASHBOARD
+        : (location.state?.from || ROUTES.DASHBOARD)
+      navigate(target, { replace: true })
+    } catch (err) {
+      setError(err?.message ?? 'Email hoặc mật khẩu không đúng')
+    } finally {
+      setIsSubmitting(false)
     }
-  }, [loginWithGoogle, navigate])
+  }
+
+  const inputStyle = (focused) => ({
+    width: '100%',
+    padding: '11px 14px',
+    border: `1.5px solid ${focused ? '#0D9488' : '#E5E7EB'}`,
+    borderRadius: 10,
+    fontFamily: 'inherit',
+    fontSize: 14,
+    color: '#111827',
+    outline: 'none',
+    background: '#fff',
+    boxShadow: focused ? '0 0 0 3px rgba(13,148,136,.1)' : 'none',
+    transition: 'border-color .18s, box-shadow .18s',
+  })
 
   return (
-    <div className="login-layout">
-      {/* LEFT SIDE - BRANDING */}
-      <div className="login-visual">
-        <div className="login-visual-content">
-          <div className="login-logo">
-            <div className="login-logo-icon">AI</div>
-            <span>AISKIM</span>
+    <div style={{ width: '100%', height: '100vh', display: 'flex', overflow: 'hidden', background: '#0F172A' }}>
+
+      {/* ── LEFT PANEL ── */}
+      <div style={{ flex: '0 0 48%', position: 'relative', overflow: 'hidden', display: 'flex', flexDirection: 'column', alignItems: 'flex-start', justifyContent: 'flex-end', padding: '44px 48px' }}>
+        <ParticleCanvas />
+
+        {/* Blobs */}
+        <div style={{ position: 'absolute', width: 380, height: 380, borderRadius: '50%', background: 'radial-gradient(circle at 40% 40%,rgba(13,148,136,.55),rgba(13,148,136,.05) 70%)', top: -80, left: -100, filter: 'blur(2px)', zIndex: 1, animation: 'lpFloat1 9s ease-in-out infinite' }} />
+        <div style={{ position: 'absolute', width: 320, height: 320, borderRadius: '50%', background: 'radial-gradient(circle at 55% 55%,rgba(99,102,241,.5),rgba(99,102,241,.04) 70%)', bottom: 40, right: -80, filter: 'blur(2px)', zIndex: 1, animation: 'lpFloat2 11s ease-in-out infinite' }} />
+        <div style={{ position: 'absolute', width: 200, height: 200, borderRadius: '50%', background: 'radial-gradient(circle at 50% 50%,rgba(34,211,238,.35),rgba(34,211,238,.02) 70%)', top: '45%', left: '40%', filter: 'blur(1px)', zIndex: 1, animation: 'lpFloat3 7s ease-in-out infinite' }} />
+
+        {/* Spinning rings */}
+        <div style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-42%,-52%)', zIndex: 1 }}>
+          <div style={{ width: 320, height: 320, borderRadius: '50%', border: '1px solid rgba(13,148,136,.2)', position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%,-50%)', animation: 'lpSpinCW 18s linear infinite' }} />
+          <div style={{ width: 420, height: 420, borderRadius: '50%', border: '1px dashed rgba(255,255,255,.08)', position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%,-50%)', animation: 'lpSpinCCW 28s linear infinite' }} />
+          <div style={{ width: 200, height: 200, borderRadius: '50%', border: '1px solid rgba(99,102,241,.2)', position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%,-50%)', animation: 'lpSpinCW 10s linear infinite reverse' }} />
+        </div>
+
+        {/* Glassmorphism card */}
+        <div style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-42%,-52%)', width: 260, padding: '22px', borderRadius: 20, background: 'rgba(255,255,255,.06)', backdropFilter: 'blur(18px)', WebkitBackdropFilter: 'blur(18px)', border: '1px solid rgba(255,255,255,.12)', zIndex: 2, animation: 'lpFadeUp 1s .4s ease both' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 9, marginBottom: 14 }}>
+            <div style={{ width: 8, height: 8, borderRadius: '50%', background: '#0D9488', animation: 'lpGlowPulse 2.5s infinite' }} />
+            <span style={{ fontSize: 11, fontWeight: 600, color: 'rgba(255,255,255,.55)', letterSpacing: '.06em', textTransform: 'uppercase' }}>Live analysis</span>
           </div>
-          <h1>Trí tuệ Thị trường nhanh như Tư duy.</h1>
-          <p>
-            Đưa ra quyết định dựa trên dữ liệu với tính năng phát hiện xu hướng thời gian thực, 
-            phân tích cảm nhận và giám sát đối thủ do AI hỗ trợ.
-          </p>
-          <div className="login-badges">
-            <span className="login-badge">🚀 Phân tích nhanh hơn gấp 10 lần</span>
-            <span className="login-badge">📈 Xu hướng tìm kiếm thời gian thực</span>
-            <span className="login-badge">💡 Nhận định AI chuyên sâu</span>
+          <div style={{ fontSize: 28, fontWeight: 800, color: '#fff', letterSpacing: '-.04em', lineHeight: 1 }}>+34%</div>
+          <div style={{ fontSize: 12, color: 'rgba(255,255,255,.45)', marginTop: 4 }}>Lượt tìm kiếm tuần này</div>
+          <div style={{ marginTop: 14, height: 4, background: 'rgba(255,255,255,.1)', borderRadius: 99, overflow: 'hidden' }}>
+            <div style={{ height: '100%', width: '72%', background: 'linear-gradient(90deg,#0D9488,#34D399)', borderRadius: 99 }} />
+          </div>
+          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10.5, color: 'rgba(255,255,255,.3)', marginTop: 5 }}>
+            <span>0</span><span>72% quota</span><span>100</span>
           </div>
         </div>
-        {/* Abstract shapes in the background */}
-        <div className="login-shape shape-1" />
-        <div className="login-shape shape-2" />
-        <div className="login-shape shape-3" />
+
+        {/* Brand text */}
+        <div style={{ position: 'relative', zIndex: 3, animation: 'lpSlideRight .8s .1s ease both' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 18 }}>
+            <div style={{ width: 34, height: 34, background: 'linear-gradient(135deg,#0D9488,#34D399)', borderRadius: 9, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M2 12h3l2-9 4 18 3-11 2 5 2-3h4" />
+              </svg>
+            </div>
+            <span style={{ fontSize: 18, fontWeight: 800, color: '#fff', letterSpacing: '-.03em' }}>AISKIM</span>
+          </div>
+          <h2 style={{ fontSize: 26, fontWeight: 700, color: '#fff', lineHeight: 1.3, marginBottom: 10 }}>
+            Thấu hiểu thị trường<br />trong <span style={{ color: '#34D399' }}>vài giây</span>
+          </h2>
+          <p style={{ fontSize: 13.5, color: 'rgba(255,255,255,.45)', lineHeight: 1.6, maxWidth: 280 }}>
+            Dữ liệu từ 3 nguồn thật · Gemini 2.5 Flash · ResearchGuard AI
+          </p>
+        </div>
       </div>
 
-      {/* RIGHT SIDE - FORM */}
-      <div className="login-form-container">
-        <div className="login-form-inner">
-          <div className="login-header">
-            <h2>Chào mừng quay lại</h2>
-            <p>Đăng nhập để truy cập dữ liệu thị trường và phân tích AI của bạn.</p>
+      {/* ── RIGHT PANEL ── */}
+      <div style={{ flex: 1, background: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '48px 40px', position: 'relative', overflow: 'hidden' }}>
+
+        {/* Subtle bg */}
+        <div style={{ position: 'absolute', inset: 0, background: 'radial-gradient(ellipse at 80% 20%,rgba(13,148,136,.04) 0%,transparent 60%),radial-gradient(ellipse at 20% 80%,rgba(99,102,241,.04) 0%,transparent 60%)', pointerEvents: 'none' }} />
+
+        <div style={{ width: '100%', maxWidth: 380, position: 'relative', zIndex: 1, animation: 'lpFadeUp .7s .2s ease both' }}>
+          {/* Header */}
+          <div style={{ marginBottom: 28 }}>
+            <h1 style={{ fontSize: 26, fontWeight: 800, color: '#111827', letterSpacing: '-.03em', marginBottom: 6 }}>Đăng nhập</h1>
+            <p style={{ fontSize: 14, color: '#6B7280' }}>
+              Chưa có tài khoản?{' '}
+              <a href="#" style={{ color: '#0D9488', fontWeight: 600, textDecoration: 'none' }}>Đăng ký miễn phí →</a>
+            </p>
           </div>
 
-          <div className="login-trust-strip">
-            <span>🔒 Bảo mật SSL</span>
-            <span>⚡ Phân tích tức thì</span>
-            <span>🇻🇳 Dữ liệu Việt Nam</span>
+          {/* Google button */}
+          <div style={{ marginBottom: 16 }}>
+            {!googleError ? (
+              <div id="googleSignInBtn" style={{ minHeight: 44, display: 'flex', justifyContent: 'center', width: '100%' }} />
+            ) : (
+              <div style={{ fontSize: 12.5, color: '#6B7280', textAlign: 'center', padding: '10px 0' }}>{googleError}</div>
+            )}
           </div>
 
-          <div className="login-google">
-            <div id="googleSignInBtn" style={{ minHeight: '44px', display: 'flex', justifyContent: 'center', width: '100%' }} />
-            {!googleReady && !googleError && (
-              <div className="login-google-hint">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
-                Đang tải đăng nhập Google…
+          {/* Divider */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 20 }}>
+            <div style={{ flex: 1, height: 1, background: '#F3F4F6' }} />
+            <span style={{ fontSize: 12, color: '#9CA3AF', fontWeight: 500 }}>hoặc đăng nhập bằng email</span>
+            <div style={{ flex: 1, height: 1, background: '#F3F4F6' }} />
+          </div>
+
+          {/* Form */}
+          <form onSubmit={handleEmailLogin} style={{ display: 'flex', flexDirection: 'column', gap: 14, marginBottom: 18 }}>
+            <div>
+              <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: '#374151', marginBottom: 6 }}>Email</label>
+              <input
+                type="email"
+                placeholder="you@company.com"
+                value={email}
+                onChange={e => setEmail(e.target.value)}
+                onFocus={() => setEmailFocus(true)}
+                onBlur={() => setEmailFocus(false)}
+                style={inputStyle(emailFocus)}
+              />
+            </div>
+            <div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+                <label style={{ fontSize: 13, fontWeight: 600, color: '#374151' }}>Mật khẩu</label>
+                <a href="#" style={{ fontSize: 12.5, color: '#0D9488', fontWeight: 500, textDecoration: 'none' }}>Quên mật khẩu?</a>
+              </div>
+              <input
+                type="password"
+                placeholder="••••••••"
+                value={password}
+                onChange={e => setPassword(e.target.value)}
+                onFocus={() => setPwFocus(true)}
+                onBlur={() => setPwFocus(false)}
+                style={inputStyle(pwFocus)}
+              />
+            </div>
+
+            <label style={{ display: 'flex', alignItems: 'center', gap: 9, cursor: 'pointer', fontSize: 13, color: '#6B7280' }}>
+              <div
+                onClick={() => setRemember(r => !r)}
+                style={{ width: 17, height: 17, border: `1.5px solid ${remember ? '#0D9488' : '#D1D5DB'}`, borderRadius: 4, background: remember ? '#0D9488' : '#fff', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all .18s' }}
+              >
+                {remember && <svg width="10" height="10" viewBox="0 0 12 12" fill="none" stroke="#fff" strokeWidth="2" strokeLinecap="round"><polyline points="2,6 5,9 10,3" /></svg>}
+              </div>
+              Ghi nhớ đăng nhập
+            </label>
+
+            {error && (
+              <div style={{ fontSize: 13, color: '#DC2626', background: '#FEF2F2', border: '1px solid #FECACA', borderRadius: 8, padding: '10px 14px' }}>
+                {error}
               </div>
             )}
-            {googleError && <div className="login-error">{googleError}</div>}
-            {error && <div className="login-error">{error}</div>}
-          </div>
+
+            <button
+              type="submit"
+              disabled={isSubmitting}
+              style={{ width: '100%', padding: '13px', border: 'none', borderRadius: 10, background: isSubmitting ? '#9CA3AF' : 'linear-gradient(135deg,#0D9488,#0F766E)', color: '#fff', fontFamily: 'inherit', fontSize: 14.5, fontWeight: 700, cursor: isSubmitting ? 'not-allowed' : 'pointer', letterSpacing: '.01em', transition: '.22s' }}
+            >
+              {isSubmitting ? 'Đang đăng nhập...' : 'Đăng nhập vào AISKIM'}
+            </button>
+          </form>
+
+          <p style={{ textAlign: 'center', fontSize: 12, color: '#9CA3AF', lineHeight: 1.6 }}>
+            Bằng cách đăng nhập, bạn đồng ý với{' '}
+            <a href="#" style={{ color: '#0D9488', textDecoration: 'none' }}>Điều khoản dịch vụ</a>
+            {' '}và{' '}
+            <a href="#" style={{ color: '#0D9488', textDecoration: 'none' }}>Chính sách quyền riêng tư</a>.
+          </p>
         </div>
       </div>
+
+      {/* Keyframe animations */}
+      <style>{`
+        @keyframes lpFloat1 {0%,100%{transform:translate(0,0) scale(1)}33%{transform:translate(30px,-20px) scale(1.06)}66%{transform:translate(-20px,25px) scale(.96)}}
+        @keyframes lpFloat2 {0%,100%{transform:translate(0,0) scale(1)}33%{transform:translate(-25px,18px) scale(1.04)}66%{transform:translate(22px,-22px) scale(.97)}}
+        @keyframes lpFloat3 {0%,100%{transform:translate(0,0) scale(1)}50%{transform:translate(18px,18px) scale(1.05)}}
+        @keyframes lpSpinCW  {to{transform:translate(-50%,-50%) rotate(360deg)}}
+        @keyframes lpSpinCCW {to{transform:translate(-50%,-50%) rotate(-360deg)}}
+        @keyframes lpFadeUp  {from{opacity:0;transform:translateY(22px)}to{opacity:1;transform:translateY(0)}}
+        @keyframes lpSlideRight{from{opacity:0;transform:translateX(-18px)}to{opacity:1;transform:translateX(0)}}
+        @keyframes lpGlowPulse{0%,100%{box-shadow:0 0 0 0 rgba(13,148,136,.35)}50%{box-shadow:0 0 24px 6px rgba(13,148,136,.18)}}
+        @media(max-width:768px){
+          .lp-left{display:none!important}
+          .lp-right{flex:1!important;border-radius:0!important}
+        }
+      `}</style>
     </div>
   )
 }

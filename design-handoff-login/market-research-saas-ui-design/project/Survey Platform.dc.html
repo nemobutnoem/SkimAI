@@ -1,0 +1,655 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<style>
+  *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:'Inter',-apple-system,sans-serif;-webkit-font-smoothing:antialiased}
+  :root{
+    --sidebar:#0F172A;--sidebar2:#1E293B;--sidebar3:#334155;
+    --accent:#0D9488;--ad:#0F766E;--al:#14B8A6;--abg:#F0FDFA;--a20:#CCFBEF;
+    --bg:#F8F9FA;--sur:#fff;--sur2:#FAFAFA;
+    --bd:#E5E7EB;--bd2:#F3F4F6;
+    --t1:#111827;--t2:#374151;--t3:#6B7280;--t4:#9CA3AF;--t5:#E5E7EB;
+    --green:#059669;--gbg:#D1FAE5;
+    --red:#DC2626;--rbg:#FEE2E2;
+    --amber:#D97706;--abg2:#FEF3C7;
+    --blue:#2563EB;--bbg:#DBEAFE;
+    --r:8px;--rm:12px;--rl:16px;
+    --sh:0 1px 3px rgba(0,0,0,.06),0 4px 14px rgba(0,0,0,.07);
+    --sh-sm:0 1px 2px rgba(0,0,0,.05),0 2px 6px rgba(0,0,0,.05);
+  }
+  @keyframes fadeIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
+  @keyframes slideQ{from{opacity:0;transform:translateX(32px)}to{opacity:1;transform:translateX(0)}}
+  @keyframes blink{0%,100%{opacity:.3}50%{opacity:1}}
+  @keyframes pulseG{0%{box-shadow:0 0 0 0 rgba(5,150,105,.4)}70%{box-shadow:0 0 0 7px transparent}100%{box-shadow:0 0 0 0 transparent}}
+  #sp ::-webkit-scrollbar{width:6px}
+  #sp ::-webkit-scrollbar-thumb{background:var(--bd);border-radius:99px}
+</style>
+</helmet>
+
+<div id="sp" style="height:100vh;width:100%;display:flex;background:var(--bg);color:var(--t1);font-size:14px;line-height:1.5;overflow:hidden">
+
+<!-- ======================================================
+     SCREEN 4 — RESPONDENT FORM (full-screen, no sidebar)
+     ====================================================== -->
+<sc-if value="{{ showForm }}" hint-placeholder-val="{{ false }}">
+<div style="width:100%;height:100vh;background:#fff;display:flex;flex-direction:column;animation:fadeIn .3s ease both">
+  <!-- Progress bar -->
+  <div style="height:3px;background:var(--bd);flex-shrink:0"><div style="height:100%;background:var(--accent);width:{{ formProgress }}%;transition:width .4s ease"></div></div>
+  <!-- Top bar -->
+  <header style="display:flex;align-items:center;justify-content:space-between;padding:16px 28px;flex-shrink:0">
+    <div style="display:flex;align-items:center;gap:10px">
+      <div style="width:28px;height:28px;background:var(--accent);border-radius:6px;display:flex;align-items:center;justify-content:center"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11l3 3L22 4"></path><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"></path></svg></div>
+      <span style="font-weight:700;font-size:14px;color:var(--t1)">{{ formSurveyTitle }}</span>
+    </div>
+    <span style="font-size:13px;color:var(--t4)">{{ formQIndex + 1 }} / {{ formQTotal }}</span>
+  </header>
+  <!-- Question -->
+  <main style="flex:1;display:flex;align-items:center;justify-content:center;padding:32px 24px;overflow-y:auto">
+    <div style="width:100%;max-width:600px;animation:slideQ .35s ease both">
+      <div style="font-size:12px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:var(--accent);margin-bottom:14px">Câu {{ formQIndex + 1 }}</div>
+      <h2 style="font-size:24px;font-weight:700;line-height:1.35;margin-bottom:8px;color:var(--t1)">{{ currentQ.text }}</h2>
+      <sc-if value="{{ currentQ.required }}" hint-placeholder-val="{{ false }}"><div style="font-size:12px;color:var(--red);margin-bottom:24px">* Bắt buộc trả lời</div></sc-if>
+      <sc-if value="{{ currentQ.notRequired }}" hint-placeholder-val="{{ true }}"><div style="font-size:12px;color:var(--t4);margin-bottom:24px">Không bắt buộc</div></sc-if>
+
+      <!-- Multiple choice -->
+      <sc-if value="{{ currentQ.isMC }}" hint-placeholder-val="{{ true }}">
+      <div style="display:flex;flex-direction:column;gap:10px">
+        <sc-for list="{{ currentQ.options }}" as="opt" hint-placeholder-count="4">
+          <button onClick="{{ opt.onSelect }}" style="display:flex;align-items:center;gap:12px;padding:14px 16px;border:2px solid {{ opt.bd }};border-radius:var(--rm);background:{{ opt.bg }};cursor:pointer;font:inherit;font-size:14px;font-weight:500;color:{{ opt.fg }};text-align:left;transition:.15s" style-hover="border-color:var(--accent);background:var(--abg)">
+            <span style="width:20px;height:20px;border-radius:50%;border:2px solid {{ opt.dotBd }};background:{{ opt.dotBg }};display:flex;align-items:center;justify-content:center;flex-shrink:0"><sc-if value="{{ opt.checked }}" hint-placeholder-val="{{ false }}"><span style="width:8px;height:8px;border-radius:50%;background:#fff"></span></sc-if></span>
+            {{ opt.label }}
+          </button>
+        </sc-for>
+      </div>
+      </sc-if>
+
+      <!-- Rating -->
+      <sc-if value="{{ currentQ.isRating }}" hint-placeholder-val="{{ false }}">
+      <div style="display:flex;gap:10px;flex-wrap:wrap">
+        <sc-for list="{{ ratingOpts }}" as="r" hint-placeholder-count="5">
+          <button onClick="{{ r.onSelect }}" style="width:52px;height:52px;border:2px solid {{ r.bd }};border-radius:var(--r);background:{{ r.bg }};cursor:pointer;font:inherit;font-size:16px;font-weight:700;color:{{ r.fg }};transition:.15s" style-hover="border-color:var(--accent);background:var(--abg)">{{ r.val }}</button>
+        </sc-for>
+      </div>
+      <div style="display:flex;justify-content:space-between;font-size:11.5px;color:var(--t4);margin-top:8px"><span>Hoàn toàn không đồng ý</span><span>Hoàn toàn đồng ý</span></div>
+      </sc-if>
+
+      <!-- Short answer -->
+      <sc-if value="{{ currentQ.isText }}" hint-placeholder-val="{{ false }}">
+      <textarea placeholder="Nhập câu trả lời của bạn…" style="width:100%;min-height:120px;border:2px solid var(--bd);border-radius:var(--rm);padding:14px 16px;font:inherit;font-size:14px;color:var(--t1);resize:vertical;outline:none;transition:.15s" style-focus="border-color:var(--accent)"></textarea>
+      </sc-if>
+    </div>
+  </main>
+  <!-- Nav -->
+  <footer style="display:flex;align-items:center;justify-content:space-between;padding:20px 28px;border-top:1px solid var(--bd);flex-shrink:0;max-width:656px;margin:0 auto;width:100%">
+    <button onClick="{{ prevQ }}" style="padding:10px 20px;border:1px solid var(--bd);border-radius:var(--r);background:var(--sur);font:inherit;font-size:13.5px;font-weight:600;color:var(--t2);cursor:pointer;display:flex;align-items:center;gap:7px" style-hover="border-color:var(--t3)"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M15 18l-6-6 6-6"></path></svg>Quay lại</button>
+    <button onClick="{{ nextQ }}" style="padding:10px 28px;border:none;border-radius:var(--r);background:var(--accent);color:#fff;font:inherit;font-size:13.5px;font-weight:700;cursor:pointer;display:flex;align-items:center;gap:7px" style-hover="background:var(--ad)">{{ formQIndex + 1 < formQTotal ? 'Tiếp theo' : 'Gửi khảo sát' }}<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M9 18l6-6-6-6"></path></svg></button>
+  </footer>
+</div>
+</sc-if>
+
+<!-- ======================================================
+     ADMIN SHELL (screens 1-3)
+     ====================================================== -->
+<sc-if value="{{ showAdmin }}" hint-placeholder-val="{{ true }}">
+<div style="display:flex;flex:1;min-width:0;overflow:hidden">
+
+<!-- SIDEBAR -->
+<aside style="width:232px;flex-shrink:0;background:var(--sidebar);display:flex;flex-direction:column;padding:0 0 20px">
+  <!-- Logo -->
+  <div style="display:flex;align-items:center;gap:9px;padding:22px 18px 20px">
+    <div style="width:30px;height:30px;background:var(--accent);border-radius:7px;display:flex;align-items:center;justify-content:center"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11l3 3L22 4"></path><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"></path></svg></div>
+    <span style="font-weight:800;font-size:16px;letter-spacing:-.03em;color:#fff">SurveyLab</span>
+  </div>
+
+  <nav style="flex:1;padding:0 10px;display:flex;flex-direction:column;gap:2px">
+    <div style="font-size:10px;font-weight:700;letter-spacing:.09em;text-transform:uppercase;color:rgba(255,255,255,.3);padding:4px 10px 7px">Workspace</div>
+    <sc-for list="{{ navItems }}" as="n" hint-placeholder-count="5">
+      <button onClick="{{ n.onClick }}" style="display:flex;align-items:center;gap:10px;width:100%;padding:9px 12px;border:none;border-radius:var(--r);cursor:pointer;font:inherit;font-size:13.5px;font-weight:600;text-align:left;background:{{ n.bg }};color:{{ n.fg }};transition:.12s" style-hover="background:var(--sidebar2)">
+        <span style="width:18px;height:18px;flex-shrink:0;display:flex;align-items:center;justify-content:center;opacity:{{ n.iconOp }}"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="9" rx="1"></rect><rect x="14" y="3" width="7" height="5" rx="1"></rect><rect x="14" y="12" width="7" height="9" rx="1"></rect><rect x="3" y="16" width="7" height="5" rx="1"></rect></svg></span>
+        {{ n.label }}
+        <sc-if value="{{ n.hasBadge }}" hint-placeholder-val="{{ false }}"><span style="margin-left:auto;font-size:10.5px;font-weight:700;background:rgba(255,255,255,.12);color:rgba(255,255,255,.7);padding:1px 7px;border-radius:99px">{{ n.badge }}</span></sc-if>
+      </button>
+    </sc-for>
+
+    <div style="height:1px;background:rgba(255,255,255,.07);margin:12px 2px"></div>
+    <button onClick="{{ goSettings }}" style="display:flex;align-items:center;gap:10px;width:100%;padding:9px 12px;border:none;border-radius:var(--r);cursor:pointer;font:inherit;font-size:13.5px;font-weight:500;text-align:left;background:transparent;color:rgba(255,255,255,.45)" style-hover="background:var(--sidebar2);color:rgba(255,255,255,.8)">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
+      Cài đặt
+    </button>
+  </nav>
+
+  <!-- User -->
+  <div style="margin:0 10px;display:flex;align-items:center;gap:10px;padding:11px 12px;border-radius:var(--r);background:var(--sidebar2)">
+    <div style="width:30px;height:30px;border-radius:50%;background:var(--accent);display:flex;align-items:center;justify-content:center;color:#fff;font-weight:700;font-size:12px;flex-shrink:0">AJ</div>
+    <div style="min-width:0"><div style="font-size:12.5px;font-weight:600;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Alex Johnson</div><div style="font-size:11px;color:rgba(255,255,255,.4)">Pro plan</div></div>
+  </div>
+</aside>
+
+<!-- MAIN AREA -->
+<div style="flex:1;min-width:0;display:flex;flex-direction:column;overflow:hidden">
+
+  <!-- ===== DASHBOARD ===== -->
+  <sc-if value="{{ showDashboard }}" hint-placeholder-val="{{ true }}">
+  <div style="flex:1;display:flex;flex-direction:column;overflow:hidden;animation:fadeIn .25s ease both">
+    <!-- Topbar -->
+    <header style="flex-shrink:0;display:flex;align-items:center;gap:14px;padding:18px 28px;background:var(--sur);border-bottom:1px solid var(--bd)">
+      <div style="flex:1">
+        <h1 style="font-size:19px;font-weight:700;letter-spacing:-.02em">Tất cả khảo sát</h1>
+        <div style="font-size:12.5px;color:var(--t4);margin-top:1px">{{ surveyCount }} khảo sát · workspace của bạn</div>
+      </div>
+      <div style="display:flex;align-items:center;gap:9px">
+        <div style="position:relative;display:flex;align-items:center">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--t4)" stroke-width="2" stroke-linecap="round" style="position:absolute;left:11px;pointer-events:none"><circle cx="11" cy="11" r="7"></circle><path d="m21 21-4.3-4.3"></path></svg>
+          <input placeholder="Tìm khảo sát…" style="padding:8px 12px 8px 32px;border:1px solid var(--bd);border-radius:var(--r);font:inherit;font-size:13px;color:var(--t1);background:var(--bg);outline:none;width:220px" style-focus="border-color:var(--accent);background:var(--sur)">
+        </div>
+        <button onClick="{{ goBuilder }}" style="display:flex;align-items:center;gap:7px;padding:9px 18px;border:none;border-radius:var(--r);background:var(--accent);color:#fff;cursor:pointer;font:inherit;font-size:13.5px;font-weight:700" style-hover="background:var(--ad)">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M12 5v14M5 12h14"></path></svg>Tạo khảo sát
+        </button>
+      </div>
+    </header>
+
+    <main style="flex:1;overflow-y:auto;padding:24px 28px">
+      <!-- KPIs -->
+      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:22px">
+        <sc-for list="{{ kpis }}" as="k" hint-placeholder-count="4">
+          <div style="background:var(--sur);border:1px solid var(--bd);border-radius:var(--rm);padding:18px 20px;box-shadow:var(--sh-sm)">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+              <span style="font-size:12px;font-weight:600;color:var(--t4)">{{ k.label }}</span>
+              <div style="width:28px;height:28px;border-radius:7px;background:{{ k.iconBg }};display:flex;align-items:center;justify-content:center;color:{{ k.iconFg }};font-size:11px;font-weight:800">{{ k.iconInitial }}</div>
+            </div>
+            <div style="font-size:26px;font-weight:800;letter-spacing:-.03em;color:var(--t1);margin-bottom:4px">{{ k.value }}</div>
+            <div style="font-size:12px;color:{{ k.deltaFg }};font-weight:500">{{ k.delta }}</div>
+          </div>
+        </sc-for>
+      </div>
+
+      <!-- Survey list -->
+      <div style="background:var(--sur);border:1px solid var(--bd);border-radius:var(--rl);overflow:hidden;box-shadow:var(--sh-sm)">
+        <!-- Tabs -->
+        <div style="display:flex;align-items:center;border-bottom:1px solid var(--bd);padding:0 20px">
+          <sc-for list="{{ tabs }}" as="tab" hint-placeholder-count="3">
+            <button onClick="{{ tab.onClick }}" style="padding:14px 14px;border:none;background:none;cursor:pointer;font:inherit;font-size:13.5px;font-weight:600;color:{{ tab.fg }};border-bottom:2px solid {{ tab.line }};margin-bottom:-1px;display:flex;align-items:center;gap:6px">{{ tab.label }}<sc-if value="{{ tab.hasCnt }}" hint-placeholder-val="{{ false }}"><span style="font-size:10.5px;background:{{ tab.cntBg }};color:{{ tab.cntFg }};padding:1px 7px;border-radius:99px;font-weight:700">{{ tab.cnt }}</span></sc-if></button>
+          </sc-for>
+        </div>
+        <!-- Table -->
+        <table style="width:100%;border-collapse:collapse">
+          <thead>
+            <tr style="background:var(--sur2)">
+              <th style="text-align:left;padding:11px 20px;font-size:11.5px;font-weight:700;color:var(--t4);border-bottom:1px solid var(--bd);letter-spacing:.02em">TÊN KHẢO SÁT</th>
+              <th style="text-align:left;padding:11px 16px;font-size:11.5px;font-weight:700;color:var(--t4);border-bottom:1px solid var(--bd);letter-spacing:.02em">TRẠNG THÁI</th>
+              <th style="text-align:right;padding:11px 16px;font-size:11.5px;font-weight:700;color:var(--t4);border-bottom:1px solid var(--bd);letter-spacing:.02em">PHẢN HỒI</th>
+              <th style="text-align:right;padding:11px 16px;font-size:11.5px;font-weight:700;color:var(--t4);border-bottom:1px solid var(--bd);letter-spacing:.02em">HOÀN THÀNH</th>
+              <th style="text-align:right;padding:11px 16px;font-size:11.5px;font-weight:700;color:var(--t4);border-bottom:1px solid var(--bd);letter-spacing:.02em">CẬP NHẬT</th>
+              <th style="padding:11px 20px;border-bottom:1px solid var(--bd)"></th>
+            </tr>
+          </thead>
+          <tbody>
+            <sc-for list="{{ surveyRows }}" as="s" hint-placeholder-count="6">
+              <tr style="transition:background .1s" style-hover="background:var(--sur2)">
+                <td style="padding:14px 20px;border-bottom:1px solid var(--bd2)">
+                  <div style="font-size:13.5px;font-weight:600;margin-bottom:3px">{{ s.title }}</div>
+                  <div style="font-size:12px;color:var(--t4)">{{ s.questionCount }} câu hỏi</div>
+                </td>
+                <td style="padding:14px 16px;border-bottom:1px solid var(--bd2)">
+                  <span style="display:inline-flex;align-items:center;gap:5px;font-size:12px;font-weight:700;padding:4px 10px;border-radius:99px;background:{{ s.statusBg }};color:{{ s.statusFg }}"><span style="width:5px;height:5px;border-radius:50%;background:currentColor"></span>{{ s.statusLabel }}</span>
+                </td>
+                <td style="padding:14px 16px;border-bottom:1px solid var(--bd2);text-align:right;font-size:13.5px;font-weight:700;font-variant-numeric:tabular-nums">{{ s.responses }}</td>
+                <td style="padding:14px 16px;border-bottom:1px solid var(--bd2);text-align:right">
+                  <div style="display:flex;align-items:center;gap:8px;justify-content:flex-end">
+                    <div style="width:70px;height:5px;border-radius:99px;background:var(--bd);overflow:hidden"><div style="height:100%;border-radius:99px;width:{{ s.compW }};background:var(--accent)"></div></div>
+                    <span style="font-size:12.5px;font-weight:700;color:var(--t2);font-variant-numeric:tabular-nums">{{ s.completion }}%</span>
+                  </div>
+                </td>
+                <td style="padding:14px 16px;border-bottom:1px solid var(--bd2);text-align:right;font-size:12px;color:var(--t4)">{{ s.updated }}</td>
+                <td style="padding:14px 20px;border-bottom:1px solid var(--bd2);text-align:right">
+                  <div style="display:flex;gap:6px;justify-content:flex-end">
+                    <button onClick="{{ goResults }}" style="border:none;cursor:pointer;font:inherit;font-size:12px;font-weight:600;color:var(--accent);background:var(--abg);padding:5px 11px;border-radius:var(--r)">Kết quả</button>
+                    <button onClick="{{ goBuilder }}" style="border:1px solid var(--bd);cursor:pointer;font:inherit;font-size:12px;font-weight:600;color:var(--t3);background:var(--sur);padding:5px 11px;border-radius:var(--r)">Chỉnh sửa</button>
+                  </div>
+                </td>
+              </tr>
+            </sc-for>
+          </tbody>
+        </table>
+      </div>
+    </main>
+  </div>
+  </sc-if>
+
+  <!-- ===== SURVEY BUILDER ===== -->
+  <sc-if value="{{ showBuilder }}" hint-placeholder-val="{{ false }}">
+  <div style="flex:1;display:flex;flex-direction:column;overflow:hidden;animation:fadeIn .25s ease both">
+    <!-- Builder topbar -->
+    <header style="flex-shrink:0;display:flex;align-items:center;gap:12px;padding:13px 20px;background:var(--sur);border-bottom:1px solid var(--bd)">
+      <button onClick="{{ goDashboard }}" style="display:flex;align-items:center;gap:6px;border:none;background:none;cursor:pointer;font:inherit;font-size:13px;color:var(--t3);padding:0" style-hover="color:var(--t1)"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M15 18l-6-6 6-6"></path></svg>Thoát</button>
+      <div style="width:1px;height:18px;background:var(--bd)"></div>
+      <input value="{{ builderTitle }}" onInput="{{ onBuilderTitle }}" style="font:inherit;font-size:15px;font-weight:700;border:none;outline:none;color:var(--t1);background:transparent;flex:1" placeholder="Tên khảo sát…">
+      <div style="display:flex;align-items:center;gap:8px;margin-left:auto">
+        <span style="font-size:12px;color:var(--t4)">{{ builderSaveStatus }}</span>
+        <button style="padding:7px 15px;border:1px solid var(--bd);border-radius:var(--r);background:var(--sur);font:inherit;font-size:13px;font-weight:600;color:var(--t2);cursor:pointer" style-hover="border-color:var(--t3)">Xem trước</button>
+        <button onClick="{{ goForm }}" style="padding:7px 15px;border:none;border-radius:var(--r);background:var(--accent);color:#fff;font:inherit;font-size:13px;font-weight:700;cursor:pointer" style-hover="background:var(--ad)">Xuất bản →</button>
+      </div>
+    </header>
+
+    <!-- 3-col builder -->
+    <div style="flex:1;display:flex;overflow:hidden">
+
+      <!-- Col 1: Question types -->
+      <div style="width:200px;flex-shrink:0;background:var(--sur);border-right:1px solid var(--bd);overflow-y:auto;padding:16px 10px">
+        <div style="font-size:10.5px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:var(--t4);padding:2px 8px 10px">Loại câu hỏi</div>
+        <div style="display:flex;flex-direction:column;gap:2px">
+          <sc-for list="{{ questionTypes }}" as="qt" hint-placeholder-count="7">
+            <button onClick="{{ qt.onAdd }}" style="display:flex;align-items:center;gap:9px;width:100%;padding:9px 10px;border:none;border-radius:var(--r);cursor:pointer;font:inherit;font-size:13px;font-weight:500;text-align:left;background:transparent;color:var(--t2);transition:.12s" style-hover="background:var(--abg);color:var(--accent)">
+              <span style="width:24px;height:24px;border-radius:6px;background:{{ qt.iconBg }};display:flex;align-items:center;justify-content:center;flex-shrink:0;color:{{ qt.iconFg }};font-size:12px;font-weight:800">{{ qt.iconLetter }}</span>
+              {{ qt.label }}
+            </button>
+          </sc-for>
+        </div>
+      </div>
+
+      <!-- Col 2: Editor canvas -->
+      <div style="flex:1;min-width:0;overflow-y:auto;background:var(--bg);padding:20px">
+        <div style="max-width:620px;margin:0 auto;display:flex;flex-direction:column;gap:10px">
+          <!-- Survey title block -->
+          <div style="background:var(--sur);border:1px solid var(--bd);border-radius:var(--rm);padding:20px 22px">
+            <div style="font-size:11px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:var(--t4);margin-bottom:10px">Tiêu đề khảo sát</div>
+            <input value="{{ builderTitle }}" onInput="{{ onBuilderTitle }}" style="width:100%;font:inherit;font-size:18px;font-weight:700;border:none;outline:none;color:var(--t1);background:transparent;margin-bottom:8px">
+            <input placeholder="Mô tả ngắn (tuỳ chọn)…" style="width:100%;font:inherit;font-size:13.5px;border:none;outline:none;color:var(--t3);background:transparent">
+          </div>
+
+          <!-- Question cards -->
+          <sc-for list="{{ builderQuestions }}" as="bq" hint-placeholder-count="3">
+            <div onClick="{{ bq.onSelect }}" style="background:var(--sur);border:{{ bq.border }};border-radius:var(--rm);padding:18px 20px;cursor:pointer;transition:.15s;position:relative">
+              <div style="display:flex;align-items:flex-start;gap:12px">
+                <div style="width:24px;height:24px;border-radius:6px;background:{{ bq.numBg }};display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;color:{{ bq.numFg }};flex-shrink:0;margin-top:1px">{{ bq.num }}</div>
+                <div style="flex:1;min-width:0">
+                  <div style="font-size:13.5px;font-weight:600;margin-bottom:6px;color:var(--t1)">{{ bq.text }}</div>
+                  <div style="font-size:11.5px;color:var(--t4)">{{ bq.typeLabel }}</div>
+                  <sc-if value="{{ bq.hasOptions }}" hint-placeholder-val="{{ false }}">
+                  <div style="margin-top:10px;display:flex;flex-direction:column;gap:5px">
+                    <sc-for list="{{ bq.previewOpts }}" as="po" hint-placeholder-count="3">
+                      <div style="display:flex;align-items:center;gap:8px;font-size:13px;color:var(--t3)"><span style="width:14px;height:14px;border-radius:50%;border:1.5px solid var(--bd);flex-shrink:0"></span>{{ po }}</div>
+                    </sc-for>
+                  </div>
+                  </sc-if>
+                </div>
+                <sc-if value="{{ bq.active }}" hint-placeholder-val="{{ false }}">
+                <div style="display:flex;gap:4px">
+                  <button style="width:26px;height:26px;border:1px solid var(--bd);border-radius:var(--r);background:var(--sur);cursor:pointer;display:flex;align-items:center;justify-content:center;color:var(--t4)" style-hover="color:var(--accent)"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg></button>
+                  <button style="width:26px;height:26px;border:1px solid var(--bd);border-radius:var(--r);background:var(--sur);cursor:pointer;display:flex;align-items:center;justify-content:center;color:var(--t4)" style-hover="color:var(--red)"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6l-1 14H6L5 6"></path><path d="M10 11v6M14 11v6M9 6V4h6v2"></path></svg></button>
+                </div>
+                </sc-if>
+              </div>
+            </div>
+          </sc-for>
+
+          <!-- Add question button -->
+          <button onClick="{{ addMC }}" style="display:flex;align-items:center;justify-content:center;gap:8px;width:100%;padding:14px;border:1.5px dashed var(--bd);border-radius:var(--rm);background:transparent;cursor:pointer;font:inherit;font-size:13.5px;font-weight:600;color:var(--t4);transition:.15s" style-hover="border-color:var(--accent);color:var(--accent);background:var(--abg)"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M12 5v14M5 12h14"></path></svg>Thêm câu hỏi</button>
+        </div>
+      </div>
+
+      <!-- Col 3: Live preview -->
+      <div style="width:320px;flex-shrink:0;background:var(--sur2);border-left:1px solid var(--bd);overflow-y:auto">
+        <div style="padding:14px 16px;border-bottom:1px solid var(--bd);display:flex;align-items:center;justify-content:space-between">
+          <span style="font-size:12px;font-weight:700;color:var(--t3);letter-spacing:.04em;text-transform:uppercase">Xem trước</span>
+          <span style="font-size:11px;color:var(--t4)">Câu {{ activeQ + 1 }}/{{ builderQuestions.length }}</span>
+        </div>
+        <!-- Mock phone preview -->
+        <div style="padding:20px 16px">
+          <div style="background:var(--sur);border:1px solid var(--bd);border-radius:14px;overflow:hidden;box-shadow:var(--sh)">
+            <div style="height:3px;background:var(--bd)"><div style="height:100%;background:var(--accent);width:{{ previewProgress }}%"></div></div>
+            <div style="padding:20px">
+              <div style="font-size:10px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:var(--accent);margin-bottom:10px">Câu {{ activeQ + 1 }}</div>
+              <div style="font-size:15px;font-weight:700;color:var(--t1);margin-bottom:16px;line-height:1.4">{{ previewQ.text }}</div>
+              <sc-if value="{{ previewQ.isMC }}" hint-placeholder-val="{{ true }}">
+              <div style="display:flex;flex-direction:column;gap:8px">
+                <sc-for list="{{ previewQ.opts }}" as="o" hint-placeholder-count="3">
+                  <div style="display:flex;align-items:center;gap:9px;padding:10px 12px;border:1.5px solid var(--bd);border-radius:9px;font-size:13px;color:var(--t2)"><span style="width:14px;height:14px;border-radius:50%;border:1.5px solid var(--bd);flex-shrink:0"></span>{{ o }}</div>
+                </sc-for>
+              </div>
+              </sc-if>
+              <sc-if value="{{ previewQ.isRating }}" hint-placeholder-val="{{ false }}">
+              <div style="display:flex;gap:6px">
+                <sc-for list="{{ previewRatingOpts }}" as="r" hint-placeholder-count="5">
+                  <div style="width:36px;height:36px;border:1.5px solid var(--bd);border-radius:7px;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:600;color:var(--t3)">{{ r }}</div>
+                </sc-for>
+              </div>
+              </sc-if>
+              <div style="margin-top:16px;display:flex;justify-content:flex-end"><div style="padding:8px 18px;background:var(--accent);color:#fff;border-radius:var(--r);font-size:13px;font-weight:700">Tiếp →</div></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  </sc-if>
+
+  <!-- ===== RESULTS & ANALYTICS ===== -->
+  <sc-if value="{{ showResults }}" hint-placeholder-val="{{ false }}">
+  <div style="flex:1;display:flex;flex-direction:column;overflow:hidden;animation:fadeIn .25s ease both">
+    <header style="flex-shrink:0;display:flex;align-items:center;gap:14px;padding:16px 28px;background:var(--sur);border-bottom:1px solid var(--bd)">
+      <button onClick="{{ goDashboard }}" style="display:flex;align-items:center;gap:5px;border:none;background:none;cursor:pointer;font:inherit;font-size:13px;color:var(--t3);padding:0" style-hover="color:var(--t1)"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M15 18l-6-6 6-6"></path></svg>Khảo sát</button>
+      <div style="width:1px;height:18px;background:var(--bd)"></div>
+      <div style="flex:1">
+        <h1 style="font-size:16px;font-weight:700">{{ resultsSurveyTitle }}</h1>
+        <div style="font-size:12px;color:var(--t4);margin-top:1px">Kết quả & phân tích</div>
+      </div>
+      <div style="display:flex;gap:8px">
+        <select style="border:1px solid var(--bd);border-radius:var(--r);font:inherit;font-size:13px;color:var(--t2);background:var(--bg);padding:7px 12px;outline:none" style-focus="border-color:var(--accent)">
+          <option>30 ngày gần nhất</option><option>7 ngày</option><option>Tất cả</option>
+        </select>
+        <button style="display:flex;align-items:center;gap:6px;padding:8px 15px;border:1px solid var(--bd);border-radius:var(--r);background:var(--sur);font:inherit;font-size:13px;font-weight:600;color:var(--t2);cursor:pointer" style-hover="border-color:var(--t3)"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"></path></svg>Xuất CSV</button>
+      </div>
+    </header>
+
+    <main style="flex:1;overflow-y:auto;padding:24px 28px;display:flex;flex-direction:column;gap:20px">
+      <!-- Stats row -->
+      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:14px">
+        <sc-for list="{{ resultKpis }}" as="k" hint-placeholder-count="4">
+          <div style="background:var(--sur);border:1px solid var(--bd);border-radius:var(--rm);padding:16px 20px;box-shadow:var(--sh-sm)">
+            <div style="font-size:11.5px;font-weight:600;color:var(--t4);margin-bottom:8px">{{ k.label }}</div>
+            <div style="font-size:26px;font-weight:800;letter-spacing:-.03em;color:var(--t1)">{{ k.value }}</div>
+            <div style="font-size:12px;color:var(--t3);margin-top:4px">{{ k.sub }}</div>
+          </div>
+        </sc-for>
+      </div>
+
+      <!-- Charts row -->
+      <div style="display:grid;grid-template-columns:1.3fr 1fr;gap:18px">
+        <div style="background:var(--sur);border:1px solid var(--bd);border-radius:var(--rm);padding:20px;box-shadow:var(--sh-sm)">
+          <div style="font-size:14px;font-weight:700;margin-bottom:4px">Phản hồi theo ngày</div>
+          <div style="font-size:12px;color:var(--t4);margin-bottom:14px">30 ngày gần nhất</div>
+          <div style="height:190px;position:relative"><canvas id="chResponses"></canvas></div>
+        </div>
+        <div style="background:var(--sur);border:1px solid var(--bd);border-radius:var(--rm);padding:20px;box-shadow:var(--sh-sm)">
+          <div style="font-size:14px;font-weight:700;margin-bottom:4px">Thiết bị truy cập</div>
+          <div style="font-size:12px;color:var(--t4);margin-bottom:14px">Phân bố respondent</div>
+          <div style="height:140px;position:relative"><canvas id="chDevices"></canvas></div>
+          <div style="display:flex;flex-direction:column;gap:7px;margin-top:10px">
+            <div style="display:flex;align-items:center;gap:8px;font-size:12.5px"><span style="width:3px;height:12px;border-radius:2px;background:var(--accent);flex-shrink:0"></span>Mobile<b style="margin-left:auto">58%</b></div>
+            <div style="display:flex;align-items:center;gap:8px;font-size:12.5px"><span style="width:3px;height:12px;border-radius:2px;background:var(--blue);flex-shrink:0"></span>Desktop<b style="margin-left:auto">34%</b></div>
+            <div style="display:flex;align-items:center;gap:8px;font-size:12.5px"><span style="width:3px;height:12px;border-radius:2px;background:var(--t5);flex-shrink:0"></span>Tablet<b style="margin-left:auto">8%</b></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Question breakdown -->
+      <div style="background:var(--sur);border:1px solid var(--bd);border-radius:var(--rm);overflow:hidden;box-shadow:var(--sh-sm)">
+        <div style="padding:16px 20px;border-bottom:1px solid var(--bd);font-size:14px;font-weight:700">Kết quả theo câu hỏi</div>
+        <div style="display:flex;flex-direction:column;gap:0">
+          <sc-for list="{{ questionResults }}" as="qr" hint-placeholder-count="4">
+            <div style="padding:18px 20px;border-bottom:1px solid var(--bd2)">
+              <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:12px">
+                <div><div style="font-size:13.5px;font-weight:700;margin-bottom:3px">{{ qr.num }}. {{ qr.text }}</div><div style="font-size:12px;color:var(--t4)">{{ qr.responses }} phản hồi · {{ qr.typeLabel }}</div></div>
+              </div>
+              <div style="display:flex;flex-direction:column;gap:8px">
+                <sc-for list="{{ qr.options }}" as="o" hint-placeholder-count="3">
+                  <div>
+                    <div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:5px"><span style="font-weight:500">{{ o.label }}</span><span style="font-weight:700;color:var(--t2);font-variant-numeric:tabular-nums">{{ o.pct }}%</span></div>
+                    <div style="height:8px;background:var(--bd);border-radius:99px;overflow:hidden"><div style="height:100%;border-radius:99px;width:{{ o.pct }}%;background:var(--accent);transition:width .4s ease"></div></div>
+                  </div>
+                </sc-for>
+              </div>
+            </div>
+          </sc-for>
+        </div>
+      </div>
+
+      <!-- Individual responses -->
+      <div style="background:var(--sur);border:1px solid var(--bd);border-radius:var(--rm);overflow:hidden;box-shadow:var(--sh-sm)">
+        <div style="display:flex;align-items:center;padding:14px 20px;border-bottom:1px solid var(--bd)">
+          <span style="font-size:14px;font-weight:700">Phản hồi cá nhân</span>
+          <span style="font-size:12px;color:var(--t4);margin-left:10px">247 phản hồi</span>
+          <div style="margin-left:auto;display:flex;gap:8px">
+            <select style="border:1px solid var(--bd);border-radius:var(--r);font:inherit;font-size:12.5px;color:var(--t2);background:var(--bg);padding:6px 10px;outline:none"><option>Tất cả trạng thái</option><option>Hoàn thành</option><option>Bỏ dở</option></select>
+          </div>
+        </div>
+        <table style="width:100%;border-collapse:collapse">
+          <thead><tr style="background:var(--sur2)">
+            <th style="text-align:left;padding:10px 20px;font-size:11.5px;font-weight:700;color:var(--t4);border-bottom:1px solid var(--bd)">RESPONDENT</th>
+            <th style="text-align:left;padding:10px 16px;font-size:11.5px;font-weight:700;color:var(--t4);border-bottom:1px solid var(--bd)">TRẠNG THÁI</th>
+            <th style="text-align:right;padding:10px 16px;font-size:11.5px;font-weight:700;color:var(--t4);border-bottom:1px solid var(--bd)">THỜI GIAN</th>
+            <th style="text-align:right;padding:10px 20px;font-size:11.5px;font-weight:700;color:var(--t4);border-bottom:1px solid var(--bd)">NGÀY</th>
+          </tr></thead>
+          <tbody>
+            <sc-for list="{{ responseRows }}" as="r" hint-placeholder-count="6">
+              <tr style-hover="background:var(--sur2)">
+                <td style="padding:12px 20px;border-bottom:1px solid var(--bd2)"><div style="display:flex;align-items:center;gap:9px"><div style="width:28px;height:28px;border-radius:50%;background:{{ r.avatarBg }};display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:#fff;flex-shrink:0">{{ r.initials }}</div><div><div style="font-size:13px;font-weight:600">{{ r.name }}</div><div style="font-size:11.5px;color:var(--t4)">{{ r.device }}</div></div></div></td>
+                <td style="padding:12px 16px;border-bottom:1px solid var(--bd2)"><span style="font-size:11.5px;font-weight:700;padding:3px 10px;border-radius:99px;background:{{ r.statusBg }};color:{{ r.statusFg }}">{{ r.status }}</span></td>
+                <td style="padding:12px 16px;border-bottom:1px solid var(--bd2);text-align:right;font-size:12.5px;color:var(--t3)">{{ r.duration }}</td>
+                <td style="padding:12px 20px;border-bottom:1px solid var(--bd2);text-align:right;font-size:12px;color:var(--t4)">{{ r.date }}</td>
+              </tr>
+            </sc-for>
+          </tbody>
+        </table>
+      </div>
+    </main>
+  </div>
+  </sc-if>
+
+</div>
+</sc-if>
+
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:&quot;100%&quot;,&quot;height&quot;:&quot;100%&quot;}}">
+class Component extends DCLogic {
+  state = {
+    page: 'dashboard',
+    activeTab: 'all',
+    activeQ: 0,
+    selectedQ: 0,
+    formQIndex: 0,
+    formSelected: {},
+    formRating: null,
+    builderTitle: 'Khảo sát trải nghiệm khách hàng 2026',
+    builderSaveStatus: 'Đã lưu tự động',
+    builderQuestions: [
+      { id: 1, type: 'mc', text: 'Bạn biết đến sản phẩm của chúng tôi qua kênh nào?', required: true, options: ['Mạng xã hội', 'Tìm kiếm Google', 'Bạn bè giới thiệu', 'Quảng cáo online'] },
+      { id: 2, type: 'rating', text: 'Bạn hài lòng với chất lượng sản phẩm ở mức nào?', required: true, options: [] },
+      { id: 3, type: 'text', text: 'Bạn có góp ý gì để chúng tôi cải thiện dịch vụ không?', required: false, options: [] },
+    ],
+  };
+
+  componentDidMount() { this._tryCharts(); }
+  componentDidUpdate(pp, ps) { if (ps && ps.page !== this.state.page) { this._destroyCharts(); this._tryCharts(); } }
+  componentWillUnmount() { this._destroyCharts(); }
+
+  _tryCharts(n = 0) {
+    if (typeof window.Chart === 'undefined') { if (n < 40) setTimeout(() => this._tryCharts(n + 1), 100); return; }
+    requestAnimationFrame(() => this._buildCharts());
+  }
+  _destroyCharts() { (this._charts || []).forEach(c => { try { c.destroy(); } catch (e) {} }); this._charts = []; }
+  _buildCharts() {
+    this._destroyCharts();
+    const C = window.Chart;
+    const ticks = { font: { size: 11, family: 'Inter' }, color: '#9CA3AF' };
+    const grid = { color: '#F3F4F6' };
+    const mk = (id, cfg) => { const el = document.getElementById(id); if (!el) return; this._charts.push(new C(el, cfg)); };
+    if (this.state.page === 'results') {
+      mk('chResponses', { type: 'bar', data: { labels: ['T2','T3','T4','T5','T6','T7','CN','T2','T3','T4','T5','T6','T7','CN','T2','T3','T4','T5','T6','T7','CN','T2','T3','T4','T5','T6','T7','CN','T2','T3'], datasets: [{ data: [8,12,15,6,18,22,14,10,16,20,9,14,18,25,12,8,15,22,19,28,16,11,18,24,20,15,22,30,25,18], backgroundColor: '#0D9488', borderRadius: 4 }] }, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { x: { grid: { display: false }, ticks: { maxTicksLimit: 6, ...ticks } }, y: { grid, ticks, beginAtZero: true } } } });
+      mk('chDevices', { type: 'doughnut', data: { labels: ['Mobile','Desktop','Tablet'], datasets: [{ data: [58,34,8], backgroundColor: ['#0D9488','#2563EB','#E5E7EB'], borderWidth: 0, cutout: '65%' }] }, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } } } });
+    }
+  }
+
+  go(p) { this.setState({ page: p }); }
+  addMC() {
+    const bqs = this.state.builderQuestions;
+    this.setState({ builderQuestions: [...bqs, { id: Date.now(), type: 'mc', text: 'Câu hỏi mới', required: false, options: ['Lựa chọn 1', 'Lựa chọn 2', 'Lựa chọn 3'] }] });
+  }
+  nextQ() {
+    const idx = this.state.formQIndex;
+    if (idx < 2) this.setState({ formQIndex: idx + 1, formSelected: {}, formRating: null });
+  }
+  prevQ() { if (this.state.formQIndex > 0) this.setState({ formQIndex: this.state.formQIndex - 1 }); }
+
+  renderVals() {
+    const s = this.state;
+    const icoSvg = (path, extra) => `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${path}</svg>`;
+
+    // Nav items
+    const navDef = [
+      { id: 'dashboard', label: 'Khảo sát của tôi', hasBadge: true, badge: '8' },
+      { id: 'results', label: 'Phân tích' },
+      { id: 'builder', label: 'Mẫu (Templates)' },
+    ];
+    const navItems = navDef.map(n => {
+      const a = s.page === n.id || (s.page === 'form' && n.id === 'dashboard');
+      return { label: n.label, onClick: () => this.go(n.id), hasBadge: n.hasBadge && !a, badge: n.badge || '',
+        bg: a ? 'rgba(255,255,255,.1)' : 'transparent',
+        fg: a ? '#fff' : 'rgba(255,255,255,.55)',
+        iconOp: a ? '1' : '.6' };
+    });
+
+    const kpis = [
+      { label: 'Khảo sát đang chạy', value: '5', delta: '+1 so với tháng trước', deltaFg: 'var(--green)', iconBg: 'var(--abg)', iconFg: 'var(--accent)', iconInitial: '▶' },
+      { label: 'Tổng phản hồi', value: '1,247', delta: '+183 tuần này', deltaFg: 'var(--green)', iconBg: 'var(--bbg)', iconFg: 'var(--blue)', iconInitial: '◎' },
+      { label: 'Tỷ lệ hoàn thành tb.', value: '74%', delta: '+3% so với tháng trước', deltaFg: 'var(--green)', iconBg: 'var(--gbg)', iconFg: 'var(--green)', iconInitial: '✓' },
+      { label: 'Thời gian tb. (phút)', value: '3:42', delta: 'Giảm 18 giây', deltaFg: 'var(--green)', iconBg: 'var(--abg2)', iconFg: 'var(--amber)', iconInitial: '⏱' },
+    ];
+
+    // Tabs
+    const tabDef = [{ id: 'all', label: 'Tất cả', cnt: 8 }, { id: 'active', label: 'Đang chạy', cnt: 5 }, { id: 'draft', label: 'Bản nháp', cnt: 2 }, { id: 'closed', label: 'Đã đóng', cnt: 1 }];
+    const tabs = tabDef.map(t => ({ label: t.label, onClick: () => this.setState({ activeTab: t.id }),
+      fg: s.activeTab === t.id ? 'var(--accent)' : 'var(--t3)',
+      line: s.activeTab === t.id ? 'var(--accent)' : 'transparent',
+      hasCnt: true, cnt: t.cnt,
+      cntBg: s.activeTab === t.id ? 'var(--abg)' : 'var(--bd2)',
+      cntFg: s.activeTab === t.id ? 'var(--accent)' : 'var(--t4)' }));
+
+    // Survey rows
+    const smRaw = [
+      { title: 'Khảo sát trải nghiệm khách hàng Q2', questionCount: 8, status: 'ACTIVE', responses: '247', completion: 74, updated: '2 giờ trước' },
+      { title: 'NPS tháng 6/2026', questionCount: 3, status: 'ACTIVE', responses: '189', completion: 91, updated: '5 giờ trước' },
+      { title: 'Khảo sát ra mắt sản phẩm mới', questionCount: 12, status: 'ACTIVE', responses: '432', completion: 68, updated: '1 ngày trước' },
+      { title: 'Đánh giá sau sự kiện Workshop', questionCount: 6, status: 'ACTIVE', responses: '87', completion: 82, updated: '2 ngày trước' },
+      { title: 'Phản hồi onboarding', questionCount: 5, status: 'ACTIVE', responses: '156', completion: 79, updated: '3 ngày trước' },
+      { title: 'Khảo sát giá cả dịch vụ', questionCount: 7, status: 'DRAFT', responses: '—', completion: 0, updated: '1 tuần trước' },
+      { title: 'Ý kiến về UI mới', questionCount: 4, status: 'DRAFT', responses: '—', completion: 0, updated: '1 tuần trước' },
+      { title: 'Khảo sát thị trường Q1', questionCount: 10, status: 'CLOSED', responses: '312', completion: 88, updated: '1 tháng trước' },
+    ];
+    const stMap = { 'ACTIVE': { label: 'Đang chạy', bg: 'var(--gbg)', fg: 'var(--green)' }, 'DRAFT': { label: 'Bản nháp', bg: 'var(--abg2)', fg: 'var(--amber)' }, 'CLOSED': { label: 'Đã đóng', bg: 'var(--bd2)', fg: 'var(--t4)' } };
+    const filtered = s.activeTab === 'all' ? smRaw : smRaw.filter(x => x.status.toLowerCase() === s.activeTab);
+    const surveyRows = filtered.map(r => ({
+      title: r.title, questionCount: r.questionCount,
+      statusLabel: stMap[r.status].label, statusBg: stMap[r.status].bg, statusFg: stMap[r.status].fg,
+      responses: r.responses, compW: r.completion + '%', completion: r.completion, updated: r.updated
+    }));
+
+    const qtDef = [
+      { type: 'mc',       label: 'Trắc nghiệm',      iconBg: 'var(--abg)',  iconFg: 'var(--accent)', iconLetter: '◉' },
+      { type: 'checkbox', label: 'Nhiều lựa chọn',   iconBg: 'var(--bbg)',  iconFg: 'var(--blue)',   iconLetter: '☑' },
+      { type: 'rating',   label: 'Đánh giá (1–5)',   iconBg: 'var(--abg2)', iconFg: 'var(--amber)',  iconLetter: '★' },
+      { type: 'nps',      label: 'NPS (0–10)',        iconBg: '#FEE2E2',     iconFg: 'var(--red)',    iconLetter: 'N' },
+      { type: 'text',     label: 'Câu trả lời ngắn', iconBg: 'var(--gbg)',  iconFg: 'var(--green)',  iconLetter: 'A' },
+      { type: 'long',     label: 'Câu trả lời dài',  iconBg: '#F3F4F6',     iconFg: 'var(--t3)',     iconLetter: '¶' },
+      { type: 'dropdown', label: 'Danh sách thả',    iconBg: '#EDE9FE',     iconFg: '#7C3AED',       iconLetter: '▾' },
+    ];
+    const questionTypes = qtDef.map(qt => ({ ...qt, onAdd: () => this.addMC() }));
+
+    const typeLabel = { mc: 'Trắc nghiệm', rating: 'Đánh giá 1–5', text: 'Câu trả lời ngắn', checkbox: 'Nhiều lựa chọn', nps: 'NPS', long: 'Câu trả lời dài' };
+    const builderQuestions = s.builderQuestions.map((q, i) => ({
+      num: i + 1, text: q.text, typeLabel: typeLabel[q.type] || q.type,
+      hasOptions: q.options && q.options.length > 0,
+      previewOpts: q.options.slice(0, 3),
+      active: s.selectedQ === i,
+      border: s.selectedQ === i ? '2px solid var(--accent)' : '1px solid var(--bd)',
+      numBg: s.selectedQ === i ? 'var(--accent)' : 'var(--bd2)',
+      numFg: s.selectedQ === i ? '#fff' : 'var(--t4)',
+      onSelect: () => this.setState({ selectedQ: i, activeQ: i }),
+    }));
+
+    const activeQObj = s.builderQuestions[s.activeQ] || s.builderQuestions[0];
+    const previewQ = { text: activeQObj.text, isMC: activeQObj.type === 'mc', isRating: activeQObj.type === 'rating', opts: activeQObj.options.slice(0, 3) };
+    const previewProgress = Math.round(((s.activeQ + 1) / s.builderQuestions.length) * 100);
+    const previewRatingOpts = [1,2,3,4,5];
+
+    // Results
+    const resultKpis = [
+      { label: 'Tổng phản hồi', value: '247', sub: '189 hoàn thành đầy đủ' },
+      { label: 'Tỷ lệ hoàn thành', value: '76%', sub: '+4% so với KS trước' },
+      { label: 'Thời gian trung bình', value: '4:12', sub: 'phút mỗi phản hồi' },
+      { label: 'Điểm NPS', value: '+42', sub: 'Từ 156 đánh giá' },
+    ];
+    const questionResults = [
+      { num: 1, text: 'Bạn biết đến sản phẩm qua kênh nào?', responses: 247, typeLabel: 'Trắc nghiệm', options: [{ label: 'Mạng xã hội', pct: 42 }, { label: 'Tìm kiếm Google', pct: 28 }, { label: 'Bạn bè giới thiệu', pct: 22 }, { label: 'Quảng cáo online', pct: 8 }] },
+      { num: 2, text: 'Bạn hài lòng với chất lượng sản phẩm ở mức nào?', responses: 238, typeLabel: 'Đánh giá 1–5', options: [{ label: 'Rất hài lòng (5)', pct: 38 }, { label: 'Hài lòng (4)', pct: 34 }, { label: 'Bình thường (3)', pct: 18 }, { label: 'Không hài lòng (1–2)', pct: 10 }] },
+    ];
+
+    const avatarColors = ['#0D9488','#2563EB','#7C3AED','#DC2626','#D97706','#059669'];
+    const responseRows = [
+      { name: 'Nguyễn Văn A', device: 'Mobile · Chrome', status: 'Hoàn thành', statusBg: 'var(--gbg)', statusFg: 'var(--green)', duration: '3:42', date: '28/06 14:22', initials: 'NA', avatarBg: avatarColors[0] },
+      { name: 'Trần Thị B', device: 'Desktop · Safari', status: 'Hoàn thành', statusBg: 'var(--gbg)', statusFg: 'var(--green)', duration: '2:58', date: '28/06 13:15', initials: 'TB', avatarBg: avatarColors[1] },
+      { name: 'Lê Minh C', device: 'Mobile · Firefox', status: 'Bỏ dở', statusBg: 'var(--abg2)', statusFg: 'var(--amber)', duration: '1:20', date: '28/06 12:48', initials: 'LC', avatarBg: avatarColors[2] },
+      { name: 'Phạm Thu D', device: 'Tablet · Chrome', status: 'Hoàn thành', statusBg: 'var(--gbg)', statusFg: 'var(--green)', duration: '5:10', date: '27/06 09:30', initials: 'PD', avatarBg: avatarColors[3] },
+      { name: 'Hoàng Đức E', device: 'Desktop · Edge', status: 'Hoàn thành', statusBg: 'var(--gbg)', statusFg: 'var(--green)', duration: '4:22', date: '27/06 08:15', initials: 'HE', avatarBg: avatarColors[4] },
+    ];
+
+    // Form (respondent view)
+    const formQuestions = s.builderQuestions;
+    const fq = formQuestions[s.formQIndex] || formQuestions[0];
+    const formOpts = (fq.options || []).map((opt, i) => {
+      const checked = s.formSelected[s.formQIndex] === i;
+      return { label: opt, checked, onSelect: () => this.setState(st => ({ formSelected: { ...st.formSelected, [st.formQIndex]: i } })),
+        bd: checked ? 'var(--accent)' : 'var(--bd)', bg: checked ? 'var(--abg)' : 'var(--sur)',
+        fg: checked ? 'var(--accent)' : 'var(--t2)',
+        dotBd: checked ? 'var(--accent)' : 'var(--bd)', dotBg: checked ? 'var(--accent)' : 'transparent' };
+    });
+    const ratingOpts = [1,2,3,4,5].map(v => {
+      const sel = s.formRating === v;
+      return { val: v, onSelect: () => this.setState({ formRating: v }),
+        bd: sel ? 'var(--accent)' : 'var(--bd)', bg: sel ? 'var(--accent)' : 'var(--sur)', fg: sel ? '#fff' : 'var(--t2)' };
+    });
+
+    return {
+      // Page flags
+      showAdmin: s.page !== 'form',
+      showForm: s.page === 'form',
+      showDashboard: s.page === 'dashboard',
+      showBuilder: s.page === 'builder',
+      showResults: s.page === 'results',
+      // Nav
+      navItems, goSettings: () => {},
+      goDashboard: () => this.go('dashboard'),
+      goBuilder: () => this.go('builder'),
+      goResults: () => this.go('results'),
+      goForm: () => this.go('form'),
+      // Dashboard
+      surveyCount: 8, kpis, tabs, surveyRows,
+      // Builder
+      builderTitle: s.builderTitle,
+      onBuilderTitle: e => this.setState({ builderTitle: e.target.value, builderSaveStatus: 'Đang lưu…' }),
+      builderSaveStatus: s.builderSaveStatus,
+      questionTypes, builderQuestions,
+      activeQ: s.activeQ, addMC: () => this.addMC(),
+      previewQ, previewProgress, previewRatingOpts,
+      // Results
+      resultsSurveyTitle: 'Khảo sát trải nghiệm khách hàng Q2',
+      resultKpis, questionResults, responseRows,
+      // Form
+      formSurveyTitle: s.builderTitle,
+      formQIndex: s.formQIndex,
+      formQTotal: formQuestions.length,
+      formProgress: Math.round(((s.formQIndex + 1) / formQuestions.length) * 100),
+      currentQ: { text: fq.text, required: fq.required, notRequired: !fq.required, isMC: fq.type === 'mc', isRating: fq.type === 'rating', isText: fq.type === 'text', options: formOpts },
+      ratingOpts,
+      nextQ: () => this.nextQ(),
+      prevQ: () => this.prevQ(),
+    };
+  }
+}
+</script>
+</body>
+</html>

@@ -475,17 +475,16 @@ export function DeepInsightPage() {
       `}</style>
 
       {/* Page Header */}
-      <div className="di-page-top">
+      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 16, flexWrap: 'wrap' }}>
         <div>
-          <p className="dashboard-kicker">Phân tích sâu</p>
-          <h1>AI Phân tích chuyên sâu</h1>
-          <p className="hint">Khuyến nghị chiến lược được xây dựng từ dữ liệu nghiên cứu thị trường đã thu thập.</p>
+          <div style={{ fontSize: 20, fontWeight: 800, letterSpacing: '-0.03em' }}>Deep Insight</div>
+          <div style={{ fontSize: 12.5, color: 'var(--text-muted)', marginTop: 2 }}>Khuyến nghị chiến lược từ dữ liệu thị trường</div>
         </div>
-        <div className="header-actions">
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
           <Button variant="secondary" className="btn-sm" onClick={handleExport} disabled={loading || !data || isExporting}>
             {isExporting ? 'Đang xuất...' : 'Xuất báo cáo'}
           </Button>
-          <Link to={keyword ? `${ROUTES.ANALYSIS}?keyword=${encodeURIComponent(keyword)}` : ROUTES.ANALYSIS} className="btn btn-primary btn-sm">← Quay lại Nghiên cứu</Link>
+          <Link to={keyword ? `${ROUTES.ANALYSIS}?keyword=${encodeURIComponent(keyword)}` : ROUTES.ANALYSIS} className="btn btn-primary btn-sm">← Quay lại</Link>
         </div>
       </div>
 
