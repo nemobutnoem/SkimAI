@@ -106,11 +106,7 @@ export function AccountPage() {
   const [company, setCompany] = useState('')
   const [isSavingProfile, setIsSavingProfile] = useState(false)
 
-  // Password Form State
-  const [currentPassword, setCurrentPassword] = useState('')
-  const [newPassword, setNewPassword] = useState('')
-  const [confirmPassword, setConfirmPassword] = useState('')
-  const [isChangingPassword, setIsChangingPassword] = useState(false)
+
 
   // Notifications State
   const [notifications, setNotifications] = useState({
@@ -155,33 +151,7 @@ export function AccountPage() {
     }
   }
 
-  const handleSavePassword = async (e) => {
-    e.preventDefault()
-    if (!currentPassword) {
-      toast.error('Vui lòng nhập mật khẩu hiện tại')
-      return
-    }
-    if (newPassword.length < 6) {
-      toast.error('Mật khẩu mới phải có ít nhất 6 ký tự')
-      return
-    }
-    if (newPassword !== confirmPassword) {
-      toast.error('Xác nhận mật khẩu mới không khớp')
-      return
-    }
-    setIsChangingPassword(true)
-    try {
-      await appApi.changePassword({ currentPassword, newPassword })
-      toast.success('Đổi mật khẩu thành công!')
-      setCurrentPassword('')
-      setNewPassword('')
-      setConfirmPassword('')
-    } catch (err) {
-      toast.error(err.message || 'Không thể đổi mật khẩu.')
-    } finally {
-      setIsChangingPassword(false)
-    }
-  }
+
 
   const handleToggleNotification = async (key) => {
     const updated = {
@@ -363,81 +333,29 @@ export function AccountPage() {
         </SectionCard>
       </div>
 
-      {/* Row 2: Notifications & Change Password */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(340px, 1fr))', gap: 16 }}>
-        
-        {/* Notifications Card */}
-        <SectionCard title="Tùy chọn thông báo">
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-            <Switch 
-              checked={notifications.emailUpdates} 
-              onChange={() => handleToggleNotification('emailUpdates')} 
-              label="Cập nhật hệ thống" 
-              description="Nhận thông báo về tính năng mới và nâng cấp từ SkimAI."
-            />
-            <Switch 
-              checked={notifications.weeklyReport} 
-              onChange={() => handleToggleNotification('weeklyReport')} 
-              label="Báo cáo tuần" 
-              description="Tóm tắt hoạt động nghiên cứu thị trường hàng tuần của bạn."
-            />
-            <Switch 
-              checked={notifications.usageAlerts} 
-              onChange={() => handleToggleNotification('usageAlerts')} 
-              label="Cảnh báo tài nguyên" 
-              description="Nhận thư cảnh báo khi tài khoản sắp sử dụng hết lượt API/AI."
-            />
-          </div>
-        </SectionCard>
-
-        {/* Change Password Card */}
-        <SectionCard title="Đổi mật khẩu bảo mật">
-          <form onSubmit={handleSavePassword} style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-            <div>
-              <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', marginBottom: 4, textTransform: 'uppercase' }}>Mật khẩu hiện tại</label>
-              <input 
-                type="password" 
-                value={currentPassword} 
-                onChange={e => setCurrentPassword(e.target.value)} 
-                required
-                placeholder="••••••••"
-                style={fieldStyle(false)}
-              />
-            </div>
-            <div>
-              <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', marginBottom: 4, textTransform: 'uppercase' }}>Mật khẩu mới</label>
-              <input 
-                type="password" 
-                value={newPassword} 
-                onChange={e => setNewPassword(e.target.value)} 
-                required
-                placeholder="Tối thiểu 6 ký tự"
-                style={fieldStyle(false)}
-              />
-            </div>
-            <div>
-              <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', marginBottom: 4, textTransform: 'uppercase' }}>Xác nhận mật khẩu mới</label>
-              <input 
-                type="password" 
-                value={confirmPassword} 
-                onChange={e => setConfirmPassword(e.target.value)} 
-                required
-                placeholder="Nhập lại mật khẩu mới"
-                style={fieldStyle(false)}
-              />
-            </div>
-            <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 4 }}>
-              <button 
-                type="submit" 
-                disabled={isChangingPassword}
-                style={{ padding: '8px 16px', border: 'none', borderRadius: 'var(--radius-md)', background: 'var(--dark)', color: '#fff', font: 'inherit', fontSize: 12.5, fontWeight: 600, cursor: isChangingPassword ? 'not-allowed' : 'pointer', opacity: isChangingPassword ? 0.7 : 1 }}
-              >
-                {isChangingPassword ? 'Đang cập nhật...' : 'Cập nhật mật khẩu'}
-              </button>
-            </div>
-          </form>
-        </SectionCard>
-      </div>
+      {/* Row 2: Notifications */}
+      <SectionCard title="Tùy chọn thông báo">
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+          <Switch 
+            checked={notifications.emailUpdates} 
+            onChange={() => handleToggleNotification('emailUpdates')} 
+            label="Cập nhật hệ thống" 
+            description="Nhận thông báo về tính năng mới và nâng cấp từ SkimAI."
+          />
+          <Switch 
+            checked={notifications.weeklyReport} 
+            onChange={() => handleToggleNotification('weeklyReport')} 
+            label="Báo cáo tuần" 
+            description="Tóm tắt hoạt động nghiên cứu thị trường hàng tuần của bạn."
+          />
+          <Switch 
+            checked={notifications.usageAlerts} 
+            onChange={() => handleToggleNotification('usageAlerts')} 
+            label="Cảnh báo tài nguyên" 
+            description="Nhận thư cảnh báo khi tài khoản sắp sử dụng hết lượt API/AI."
+          />
+        </div>
+      </SectionCard>
 
       {/* Row 3: Resource Usage */}
       {(data?.usage ?? []).length > 0 && (
