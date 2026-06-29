@@ -51,7 +51,10 @@ export function DashboardPage() {
 
   if (loading) return <DashboardSkeleton />
 
-  const recent = data?.recent ?? []
+  const recent = (data?.recent ?? []).filter(r => {
+    const kw = (r.keyword ?? r.title ?? r.query ?? '').trim()
+    return kw !== ''
+  })
   const kpis = data?.kpis ?? []
   const planName = data?.plan?.planName ?? 'Free'
   const usedSearches = data?.plan?.usedSearches ?? 0
@@ -159,16 +162,6 @@ export function DashboardPage() {
                     <circle cx="11" cy="11" r="7" /><path d="m21 21-4.3-4.3" />
                   </svg>
                   <span className="dash-recent-kw">{kw}</span>
-                  <span
-                    className="dash-status-badge"
-                    style={{
-                      background: r.status === 'DONE' ? 'var(--accent-bg)' : 'var(--orange-light)',
-                      color: r.status === 'DONE' ? 'var(--accent)' : 'var(--orange)',
-                    }}
-                  >
-                    {r.status === 'DONE' ? 'Hoàn thành' : (r.status ?? 'Xong')}
-                  </span>
-                  <span className="dash-recent-age">{timeAgo(r.createdAt ?? r.timestamp)}</span>
                   <button
                     className="dash-recent-btn"
                     onClick={() => navigate(`${ROUTES.ANALYSIS}?keyword=${encodeURIComponent(kw)}`)}

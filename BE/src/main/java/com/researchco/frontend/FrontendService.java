@@ -2245,6 +2245,9 @@ public class FrontendService {
             return null;
         }
         String normalizedKeyword = keyword == null ? "" : keyword.trim();
+        if (normalizedKeyword.isEmpty()) {
+            return null;
+        }
         String countryCode = localeProfile.countryCode();
         String languageCode = localeProfile.languageCode();
 
