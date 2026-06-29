@@ -150,6 +150,9 @@ public class FrontendService {
     @Autowired
     private org.springframework.security.crypto.password.PasswordEncoder passwordEncoder;
 
+    @Autowired
+    private org.springframework.jdbc.core.JdbcTemplate jdbcTemplate;
+
     @Value("${app.payment.bank.id:MB}")
     private String paymentBankId;
 
@@ -326,18 +329,79 @@ public class FrontendService {
                         new FrontendDtos.UsageItem("Lượt sử dụng AI", aiUsagePct)
                 ),
                 invoices,
-                new LinkedHashMap<>(notificationSettings.get())
+                getNotificationSettings(user)
         );
+    }
+
+    @jakarta.annotation.PostConstruct
+    public void initDatabaseTable() {
+        try {
+            jdbcTemplate.execute(
+                "CREATE TABLE IF NOT EXISTS user_notifications (" +
+                "    user_id UUID PRIMARY KEY," +
+                "    email_updates BOOLEAN DEFAULT TRUE," +
+                "    weekly_report BOOLEAN DEFAULT TRUE," +
+                "    usage_alerts BOOLEAN DEFAULT FALSE" +
+                ")"
+            );
+        } catch (Exception e) {
+            System.err.println("Error initializing user_notifications table: " + e.getMessage());
+        }
+    }
+
+    public Map<String, Boolean> getNotificationSettings(UserEntity user) {
+        try {
+            return jdbcTemplate.queryForObject(
+                "SELECT email_updates, weekly_report, usage_alerts FROM user_notifications WHERE user_id = ?",
+                (rs, rowNum) -> {
+                    Map<String, Boolean> map = new LinkedHashMap<>();
+                    map.put("emailUpdates", rs.getBoolean("email_updates"));
+                    map.put("weeklyReport", rs.getBoolean("weekly_report"));
+                    map.put("usageAlerts", rs.getBoolean("usage_alerts"));
+                    return map;
+                },
+                user.getId()
+            );
+        } catch (org.springframework.dao.EmptyResultDataAccessException e) {
+            Map<String, Boolean> defaults = new LinkedHashMap<>();
+            defaults.put("emailUpdates", true);
+            defaults.put("weeklyReport", true);
+            defaults.put("usageAlerts", false);
+            return defaults;
+        }
     }
 
     @Transactional
     public Map<String, Boolean> saveNotificationSettings(Map<String, Boolean> settings) {
-        Map<String, Boolean> normalized = new LinkedHashMap<>();
-        normalized.put("emailUpdates", Boolean.TRUE.equals(settings.get("emailUpdates")));
-        normalized.put("weeklyReport", Boolean.TRUE.equals(settings.get("weeklyReport")));
-        normalized.put("usageAlerts", Boolean.TRUE.equals(settings.get("usageAlerts")));
-        notificationSettings.set(normalized);
-        return normalized;
+        UserEntity user = preferredUser();
+        boolean emailUpdates = Boolean.TRUE.equals(settings.get("emailUpdates"));
+        boolean weeklyReport = Boolean.TRUE.equals(settings.get("weeklyReport"));
+        boolean usageAlerts = Boolean.TRUE.equals(settings.get("usageAlerts"));
+
+        int rows = jdbcTemplate.update(
+            "UPDATE user_notifications SET email_updates = ?, weekly_report = ?, usage_alerts = ? WHERE user_id = ?",
+            emailUpdates, weeklyReport, usageAlerts, user.getId()
+        );
+        
+        if (rows == 0) {
+            try {
+                jdbcTemplate.update(
+                    "INSERT INTO user_notifications (user_id, email_updates, weekly_report, usage_alerts) VALUES (?, ?, ?, ?)",
+                    user.getId(), emailUpdates, weeklyReport, usageAlerts
+                );
+            } catch (Exception e) {
+                jdbcTemplate.update(
+                    "UPDATE user_notifications SET email_updates = ?, weekly_report = ?, usage_alerts = ? WHERE user_id = ?",
+                    emailUpdates, weeklyReport, usageAlerts, user.getId()
+                );
+            }
+        }
+        
+        Map<String, Boolean> result = new LinkedHashMap<>();
+        result.put("emailUpdates", emailUpdates);
+        result.put("weeklyReport", weeklyReport);
+        result.put("usageAlerts", usageAlerts);
+        return result;
     }
 
     @Transactional
