@@ -147,6 +147,9 @@ public class FrontendService {
     @Lazy
     private FrontendService self;
 
+    @Autowired
+    private org.springframework.security.crypto.password.PasswordEncoder passwordEncoder;
+
     @Value("${app.payment.bank.id:MB}")
     private String paymentBankId;
 
@@ -335,6 +338,29 @@ public class FrontendService {
         normalized.put("usageAlerts", Boolean.TRUE.equals(settings.get("usageAlerts")));
         notificationSettings.set(normalized);
         return normalized;
+    }
+
+    @Transactional
+    public FrontendDtos.Profile updateProfile(FrontendDtos.ProfileUpdateRequest request) {
+        UserEntity user = preferredUser();
+        user.setFullName(request.name().trim());
+        userRepository.save(user);
+        return new FrontendDtos.Profile(user.getFullName(), user.getEmail(), "SkimAI Labs");
+    }
+
+    @Transactional
+    public void changePassword(FrontendDtos.PasswordChangeRequest request) {
+        UserEntity user = preferredUser();
+        if (user.getPasswordHash() == null || user.getPasswordHash().isBlank()) {
+            throw new com.researchco.common.AppException(org.springframework.http.HttpStatus.BAD_REQUEST,
+                    "Tài khoản đăng nhập bằng Google không thể đổi mật khẩu qua đây.");
+        }
+        if (!passwordEncoder.matches(request.currentPassword(), user.getPasswordHash())) {
+            throw new com.researchco.common.AppException(org.springframework.http.HttpStatus.BAD_REQUEST,
+                    "Mật khẩu hiện tại không chính xác.");
+        }
+        user.setPasswordHash(passwordEncoder.encode(request.newPassword()));
+        userRepository.save(user);
     }
 
     @Transactional

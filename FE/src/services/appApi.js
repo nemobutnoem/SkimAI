@@ -169,6 +169,12 @@ const realApi = {
   getAccountOverview() {
     return request('/account/overview')
   },
+  updateProfile(payload) {
+    return request('/account/profile', { method: 'PUT', body: payload })
+  },
+  changePassword(payload) {
+    return request('/account/password', { method: 'POST', body: payload })
+  },
   saveNotificationSettings(settings) {
     return request('/account/notifications', { method: 'PUT', body: settings })
   },
