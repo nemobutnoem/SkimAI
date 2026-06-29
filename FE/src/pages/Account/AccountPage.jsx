@@ -140,7 +140,7 @@ export function AccountPage() {
       )}
 
       {/* Invoice history */}
-      <SectionCard title="Lịch sử Hóa đơn" subtitle="GET /api/account/overview">
+      <SectionCard title="Lịch sử Hóa đơn">
         {(data?.invoices ?? []).length > 0 ? (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
             {data.invoices.map((inv, i) => (
