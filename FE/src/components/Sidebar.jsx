@@ -82,14 +82,7 @@ function DatabaseIcon({ size = 16 }) {
   )
 }
 
-function BellIcon({ size = 16 }) {
-  return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" />
-      <path d="M13.73 21a2 2 0 0 1-3.46 0" />
-    </svg>
-  )
-}
+
 
 function UsersIcon({ size = 16 }) {
   return (
@@ -336,10 +329,7 @@ export function SidebarLayout({ children, pageTitle, pageSubtitle, actions }) {
               </svg>
               Tìm kiếm mới
             </button>
-            <button className="sidebar-icon-btn" title="Thông báo">
-              <BellIcon size={16} />
-              <span style={{ position: 'absolute', top: 7, right: 7, width: 7, height: 7, background: '#EF4444', borderRadius: '50%', border: '1.5px solid var(--sur)' }} />
-            </button>
+
             {isAuthenticated && (
               <div
                 className="sidebar-avatar"
