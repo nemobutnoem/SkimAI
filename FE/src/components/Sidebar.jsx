@@ -191,15 +191,24 @@ export function Sidebar({ isOpen, onClose }) {
         )}
       </div>
 
-      {/* Admin: back to user link */}
-      {isOnAdminPage && isAdmin && (
+      {/* Admin: switch between Admin and User dashboards */}
+      {isAdmin && (
         <div style={{ padding: '0 12px 10px' }}>
-          <button
-            onClick={() => { navigate(ROUTES.DASHBOARD); onClose?.() }}
-            style={{ background: 'none', border: 'none', cursor: 'pointer', font: 'inherit', fontSize: 12, color: 'var(--text-muted)', padding: 0 }}
-          >
-            ← Giao diện User
-          </button>
+          {isOnAdminPage ? (
+            <button
+              onClick={() => { navigate(ROUTES.DASHBOARD); onClose?.() }}
+              style={{ background: 'none', border: 'none', cursor: 'pointer', font: 'inherit', fontSize: 12, color: 'var(--text-muted)', padding: 0 }}
+            >
+              ← Giao diện User
+            </button>
+          ) : (
+            <button
+              onClick={() => { navigate(ROUTES.ADMIN_DASHBOARD); onClose?.() }}
+              style={{ background: 'none', border: 'none', cursor: 'pointer', font: 'inherit', fontSize: 12, color: 'var(--accent)', fontWeight: 600, padding: 0 }}
+            >
+              ⚙️ Vào Trang Admin →
+            </button>
+          )}
         </div>
       )}
 
