@@ -191,32 +191,30 @@ export function Sidebar({ isOpen, onClose }) {
         )}
       </div>
 
-      {/* Admin: switch between Admin and User dashboards */}
-      {isAdmin && (
-        <div style={{ padding: '0 12px 10px' }}>
-          {isOnAdminPage ? (
-            <button
-              onClick={() => { navigate(ROUTES.DASHBOARD); onClose?.() }}
-              style={{ background: 'none', border: 'none', cursor: 'pointer', font: 'inherit', fontSize: 12, color: 'var(--text-muted)', padding: 0 }}
-            >
-              ← Giao diện User
-            </button>
-          ) : (
-            <button
-              onClick={() => { navigate(ROUTES.ADMIN_DASHBOARD); onClose?.() }}
-              style={{ background: 'none', border: 'none', cursor: 'pointer', font: 'inherit', fontSize: 12, color: 'var(--accent)', fontWeight: 600, padding: 0 }}
-            >
-              ⚙️ Vào Trang Admin →
-            </button>
-          )}
-        </div>
-      )}
-
-
-
       {/* Nav */}
       <nav className="sidebar-nav">
         <div className="sidebar-section-label" style={{ paddingTop: 4 }}>Workspace</div>
+        {isAdmin && (
+          <button
+            onClick={() => { navigate(isOnAdminPage ? ROUTES.DASHBOARD : ROUTES.ADMIN_DASHBOARD); onClose?.() }}
+            className="sidebar-nav-item"
+            style={{
+              color: 'var(--accent)',
+              background: 'var(--accent-bg)',
+              marginBottom: 8,
+              border: '1px dashed rgba(13, 148, 136, 0.25)',
+              display: 'flex',
+              alignItems: 'center',
+              width: '100%',
+              boxSizing: 'border-box'
+            }}
+          >
+            <SettingsIcon size={16} />
+            <span style={{ flex: 1, fontWeight: 700 }}>
+              {isOnAdminPage ? 'Giao diện User' : 'Trang quản trị Admin'}
+            </span>
+          </button>
+        )}
         {nav.map(({ to, label, icon: Icon, badge }) => (
           <NavLink
             key={to}
@@ -281,11 +279,36 @@ export function Sidebar({ isOpen, onClose }) {
   )
 }
 
-/* ── Sidebar layout wrapper ── */
 export function SidebarLayout({ children, pageTitle, pageSubtitle, actions }) {
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const { user, isAuthenticated } = useAuth()
   const navigate = useNavigate()
+  const location = useLocation()
+
+  const getHeaderInfo = () => {
+    if (pageTitle) return { title: pageTitle, subtitle: pageSubtitle }
+    
+    const path = location.pathname
+    if (path.startsWith('/admin/dashboard')) return { title: 'Tổng quan hệ thống', subtitle: 'Báo cáo thông số và dữ liệu admin' }
+    if (path.startsWith('/admin/reports')) return { title: 'Quản lý báo cáo', subtitle: 'Danh sách và kiểm duyệt báo cáo' }
+    if (path.startsWith('/admin/users')) return { title: 'Quản lý người dùng', subtitle: 'Danh sách tài khoản và phân quyền' }
+    if (path.startsWith('/admin/revenue')) return { title: 'Quản lý doanh thu', subtitle: 'Doanh số và giao dịch gói cước' }
+    if (path.startsWith('/admin/feedbacks')) return { title: 'Xử lý phản hồi', subtitle: 'Danh sách yêu cầu hỗ trợ và giải đáp' }
+    if (path.startsWith('/admin/settings')) return { title: 'Cài đặt hệ thống', subtitle: 'Cấu hình tham số và kết nối' }
+
+    if (path.startsWith('/dashboard')) return { title: 'Tổng quan', subtitle: 'Theo dõi hoạt động và chỉ số nghiên cứu của bạn' }
+    if (path.startsWith('/analysis')) return { title: 'Phân tích thị trường', subtitle: 'Quét xu hướng, tổng hợp tin tức và lập báo cáo tự động' }
+    if (path.startsWith('/data-sources')) return { title: 'Nguồn dữ liệu', subtitle: 'Quản lý các nguồn dữ liệu cấp thông tin nghiên cứu' }
+    if (path.startsWith('/deep-insight')) return { title: 'Deep Insight', subtitle: 'Phân tích đa chiều nâng cao (SWOT, Persona, APA)' }
+    if (path.startsWith('/reports')) return { title: 'Báo cáo của tôi', subtitle: 'Danh sách các báo cáo đã tạo và tùy chọn tải về' }
+    if (path.startsWith('/pricing')) return { title: 'Gói dịch vụ', subtitle: 'Nâng cấp gói tài khoản để mở rộng hạn ngạch tìm kiếm' }
+    if (path.startsWith('/support')) return { title: 'Hỗ trợ kỹ thuật', subtitle: 'Gửi yêu cầu hỗ trợ hoặc đóng góp ý kiến nâng cấp' }
+    if (path.startsWith('/account')) return { title: 'Cài đặt tài khoản', subtitle: 'Quản lý thông tin hồ sơ và bảo mật cá nhân' }
+    
+    return { title: null, subtitle: null }
+  }
+  
+  const { title: resolvedTitle, subtitle: resolvedSubtitle } = getHeaderInfo()
 
   return (
     <div className="sidebar-shell">
@@ -299,8 +322,8 @@ export function SidebarLayout({ children, pageTitle, pageSubtitle, actions }) {
       <div className="sidebar-main">
         <header className="sidebar-topbar">
           <div style={{ flex: 1, minWidth: 0 }}>
-            {pageTitle && <div className="sidebar-topbar-title">{pageTitle}</div>}
-            {pageSubtitle && <div className="sidebar-topbar-sub">{pageSubtitle}</div>}
+            {resolvedTitle && <div className="sidebar-topbar-title">{resolvedTitle}</div>}
+            {resolvedSubtitle && <div className="sidebar-topbar-sub">{resolvedSubtitle}</div>}
           </div>
           <div className="sidebar-topbar-actions">
             {actions}

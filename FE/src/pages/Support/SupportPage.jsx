@@ -1,4 +1,4 @@
-﻿import { useState, useEffect } from 'react'
+import { useState, useEffect } from 'react'
 import { useAuth } from '../../hooks/useAuth'
 import { appApi } from '../../services/appApi'
 
@@ -73,11 +73,7 @@ export function SupportPage() {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16, maxWidth: 720 }}>
 
-      {/* Page header */}
-      <div style={{ marginBottom: 4 }}>
-        <div style={{ fontSize: 20, fontWeight: 800, letterSpacing: '-0.03em' }}>Hỗ trợ</div>
-        <div style={{ fontSize: 12.5, color: 'var(--text-muted)', marginTop: 2 }}>Gửi yêu cầu hỗ trợ hoặc góp ý tính năng</div>
-      </div>
+
 
       {/* Message banner */}
       {message && (

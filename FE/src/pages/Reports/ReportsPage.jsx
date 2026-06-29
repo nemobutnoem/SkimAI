@@ -32,19 +32,7 @@ export function ReportsPage() {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
-      {/* Header */}
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-        <div>
-          <div style={{ fontSize: 20, fontWeight: 800, letterSpacing: '-0.02em' }}>Báo cáo</div>
-          <div style={{ fontSize: 13, color: 'var(--text-muted)', marginTop: 2 }}>Lịch sử phân tích thị trường của bạn</div>
-        </div>
-        <button
-          onClick={() => navigate(ROUTES.ANALYSIS)}
-          style={{ padding: '8px 16px', border: 'none', borderRadius: 'var(--radius-md)', background: 'var(--accent)', color: '#fff', font: 'inherit', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}
-        >
-          + Tạo phân tích mới
-        </button>
-      </div>
+
 
       {/* Stats derived from loaded data */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12 }}>

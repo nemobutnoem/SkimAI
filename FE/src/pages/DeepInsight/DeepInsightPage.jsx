@@ -754,11 +754,7 @@ export function DeepInsightPage() {
       `}</style>
 
       {/* Page Header */}
-      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 16, flexWrap: 'wrap' }}>
-        <div>
-          <div style={{ fontSize: 20, fontWeight: 800, letterSpacing: '-0.03em' }}>Deep Insight</div>
-          <div style={{ fontSize: 12.5, color: 'var(--text-muted)', marginTop: 2 }}>Khuyến nghị chiến lược từ dữ liệu thị trường</div>
-        </div>
+      <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 16, flexWrap: 'wrap' }}>
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
           <Button variant="secondary" className="btn-sm" onClick={handleExport} disabled={loading || !data || isExporting}>
             {isExporting ? 'Đang xuất...' : 'Xuất báo cáo'}

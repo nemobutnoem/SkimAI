@@ -11,13 +11,7 @@ const PLANNED_SOURCES = [
 export function DataSourcesPage() {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
-      {/* Header */}
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-        <div>
-          <div style={{ fontSize: 20, fontWeight: 800, letterSpacing: '-0.02em' }}>Nguồn dữ liệu</div>
-          <div style={{ fontSize: 13, color: 'var(--text-muted)', marginTop: 2 }}>Các nguồn dữ liệu thị trường được tích hợp trong hệ thống</div>
-        </div>
-      </div>
+
 
       {/* Coming soon notice */}
       <div style={{ background: 'var(--accent-bg)', border: '1px solid var(--accent-20)', borderRadius: 'var(--radius-lg)', padding: '14px 20px', display: 'flex', alignItems: 'center', gap: 12 }}>
