@@ -119,6 +119,7 @@ const USER_NAV = [
   { to: ROUTES.DEEP_INSIGHT, label: 'Deep Insight',   icon: StarIcon },
   { to: ROUTES.REPORTS,      label: 'Báo cáo',        icon: ReportIcon },
   { to: ROUTES.PRICING,      label: 'Gói dịch vụ',   icon: PriceIcon, badge: 'FREE' },
+  { to: ROUTES.SUPPORT,      label: 'Hỗ trợ',        icon: SupportIcon },
 ]
 
 const PUBLIC_NAV = [
