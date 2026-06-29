@@ -200,9 +200,27 @@ export function AccountPage() {
   }
 
   const subscription = data?.subscription
-  const billingDate = subscription?.renewsAt
-    ? new Date(subscription.renewsAt).toLocaleDateString('vi-VN')
-    : 'Chưa lập lịch'
+  const getBillingDateLabel = () => {
+    if (!subscription?.renewsAt) return 'Chưa lập lịch'
+    const rawVal = subscription.renewsAt
+    const d = new Date(rawVal)
+    if (isNaN(d.getTime())) {
+      return rawVal
+    }
+    return d.toLocaleDateString('vi-VN')
+  }
+  const billingDate = getBillingDateLabel()
+
+  const getBillingCycleLabel = () => {
+    if (!subscription?.billingCycle) return ''
+    const cycle = subscription.billingCycle
+    if (cycle === 'monthly') return 'Hàng tháng'
+    if (cycle === 'yearly') return 'Hàng năm'
+    if (cycle === 'promo') return 'Thử nghiệm Beta'
+    if (cycle === 'lifetime') return 'Trọn đời'
+    return cycle
+  }
+  const billingCycleLabel = getBillingCycleLabel()
 
   const initials = (data?.profile?.name ?? 'U').slice(0, 2).toUpperCase()
 
@@ -322,7 +340,7 @@ export function AccountPage() {
               <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13 }}>
                 <span style={{ color: 'var(--text-muted)' }}>Chu kỳ thanh toán</span>
                 <span style={{ fontWeight: 600 }}>
-                  {subscription.billingCycle === 'monthly' ? 'Hàng tháng' : subscription.billingCycle === 'yearly' ? 'Hàng năm' : subscription.billingCycle}
+                  {billingCycleLabel}
                 </span>
               </div>
               <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13 }}>
