@@ -142,8 +142,6 @@ export function Sidebar({ isOpen, onClose }) {
   const { isAuthenticated, user, logout } = useAuth()
   const navigate = useNavigate()
   const location = useLocation()
-  const [recentSearches, setRecentSearches] = useState([])
-  const [searchInput, setSearchInput] = useState('')
   const [planInfo, setPlanInfo] = useState(null)
 
   const isAdmin = user?.role === 'admin'
@@ -159,13 +157,7 @@ export function Sidebar({ isOpen, onClose }) {
       .catch(() => {})
   }, [isAuthenticated])
 
-  const handleSearchSubmit = (e) => {
-    e.preventDefault()
-    if (!searchInput.trim()) return
-    navigate(`${ROUTES.ANALYSIS}?keyword=${encodeURIComponent(searchInput.trim())}`)
-    setSearchInput('')
-    onClose?.()
-  }
+
 
   const handleLogout = () => {
     logout()
@@ -210,22 +202,7 @@ export function Sidebar({ isOpen, onClose }) {
         </div>
       )}
 
-      {/* Search box */}
-      <div className="sidebar-search">
-        <form onSubmit={handleSearchSubmit}>
-          <div className="sidebar-search-box">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,.4)" strokeWidth="2" strokeLinecap="round">
-              <circle cx="11" cy="11" r="7" /><path d="m21 21-4.3-4.3" />
-            </svg>
-            <input
-              value={searchInput}
-              onChange={e => setSearchInput(e.target.value)}
-              autoComplete="off"
-              placeholder="Tìm kiếm…"
-            />
-          </div>
-        </form>
-      </div>
+
 
       {/* Nav */}
       <nav className="sidebar-nav">
