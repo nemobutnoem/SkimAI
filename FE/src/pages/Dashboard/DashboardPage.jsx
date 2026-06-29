@@ -129,7 +129,7 @@ export function DashboardPage() {
                 <button
                   key={t.id ?? t.name ?? i}
                   className="dash-trend-cell"
-                  onClick={() => navigate(`${ROUTES.ANALYSIS}?q=${encodeURIComponent(t.keyword ?? t.name ?? '')}`)}
+                  onClick={() => navigate(`${ROUTES.ANALYSIS}?keyword=${encodeURIComponent(t.keyword ?? t.name ?? '')}`)}
                 >
                   <div className="dash-trend-name">{t.keyword ?? t.name}</div>
                   <div className="dash-trend-market">{t.market ?? t.category ?? ''}</div>
@@ -170,7 +170,7 @@ export function DashboardPage() {
                 <span className="dash-recent-age">{timeAgo(r.createdAt ?? r.timestamp)}</span>
                 <button
                   className="dash-recent-btn"
-                  onClick={() => navigate(`${ROUTES.ANALYSIS}?q=${encodeURIComponent(kw)}`)}
+                  onClick={() => navigate(`${ROUTES.ANALYSIS}?keyword=${encodeURIComponent(kw)}`)}
                 >
                   Xem lại
                 </button>
