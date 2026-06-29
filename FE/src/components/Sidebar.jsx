@@ -154,7 +154,6 @@ export function Sidebar({ isOpen, onClose }) {
     if (!isAuthenticated) return
     appApi.getDashboard()
       .then(d => {
-        if (d?.recent) setRecentSearches(d.recent.slice(0, 5))
         if (d?.plan) setPlanInfo(d.plan)
       })
       .catch(() => {})
@@ -163,7 +162,7 @@ export function Sidebar({ isOpen, onClose }) {
   const handleSearchSubmit = (e) => {
     e.preventDefault()
     if (!searchInput.trim()) return
-    navigate(`${ROUTES.ANALYSIS}?q=${encodeURIComponent(searchInput.trim())}`)
+    navigate(`${ROUTES.ANALYSIS}?keyword=${encodeURIComponent(searchInput.trim())}`)
     setSearchInput('')
     onClose?.()
   }
@@ -248,27 +247,6 @@ export function Sidebar({ isOpen, onClose }) {
           </NavLink>
         ))}
 
-        {isAuthenticated && recentSearches.length > 0 && (
-          <>
-            <div className="sidebar-section-label">Lịch sử tìm kiếm</div>
-            {recentSearches.map((r, i) => (
-              <button
-                key={r.id ?? i}
-                className="sidebar-history-item"
-                onClick={() => {
-                  navigate(`${ROUTES.ANALYSIS}?q=${encodeURIComponent(r.keyword ?? r.query ?? '')}`)
-                  onClose?.()
-                }}
-              >
-                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-                  <circle cx="11" cy="11" r="7" /><path d="m21 21-4.3-4.3" />
-                </svg>
-                <span className="sidebar-history-kw">{r.keyword ?? r.query ?? ''}</span>
-                <span className="sidebar-history-age">{timeAgo(r.createdAt ?? r.timestamp)}</span>
-              </button>
-            ))}
-          </>
-        )}
 
         {!isAuthenticated && (
           <div style={{ marginTop: 16, padding: '0 11px' }}>
