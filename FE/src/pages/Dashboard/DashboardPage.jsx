@@ -42,7 +42,7 @@ export function DashboardPage() {
   const handleSearch = () => {
     const kw = searchInput.trim()
     if (!kw) { searchRef.current?.focus(); return }
-    navigate(`${ROUTES.ANALYSIS}?q=${encodeURIComponent(kw)}`)
+    navigate(`${ROUTES.ANALYSIS}?keyword=${encodeURIComponent(kw)}`)
   }
 
   const handleKey = (e) => {
