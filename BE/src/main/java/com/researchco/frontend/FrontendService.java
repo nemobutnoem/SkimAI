@@ -1430,9 +1430,10 @@ public class FrontendService {
                             long likes = 0L;
                             long comments = 0L;
                             boolean itemOffline = false;
+                            Map<?, ?> payload = null;
                             if (item.getRawPayload() != null) {
                                 try {
-                                    Map<?, ?> payload = objectMapper.readValue(item.getRawPayload(), Map.class);
+                                    payload = objectMapper.readValue(item.getRawPayload(), Map.class);
                                     views = toLong(payload.get("viewCount"));
                                     likes = toLong(payload.get("likeCount"));
                                     comments = toLong(payload.get("commentCount"));
@@ -1441,9 +1442,7 @@ public class FrontendService {
                                     // ignore
                                 }
                             }
-                            String metricText = itemOffline 
-                                    ? "N/A"
-                                    : String.format("Lượt xem %s | Lượt thích %s | Bình luận %s", formatCompact(views), formatCompact(likes), formatCompact(comments));
+                            String metricText = formatEvidenceMetric(item.getPlatform(), itemOffline, views, likes, comments, payload);
                             return new FrontendDtos.EvidenceItem(
                                     item.getSourceName() == null || item.getSourceName().isBlank() ? "Nguồn nghiên cứu" : item.getSourceName(),
                                     firstMeaningfulText(item.getTitle(), "Nguồn không có tiêu đề"),
@@ -1479,15 +1478,15 @@ public class FrontendService {
                     long likes = 0L;
                     long comments = 0L;
                     boolean itemOffline = false;
-                    if (item.rawPayload() instanceof Map<?, ?> payload) {
+                    Map<?, ?> payload = null;
+                    if (item.rawPayload() instanceof Map<?, ?> p) {
+                        payload = p;
                         views = toLong(payload.get("viewCount"));
                         likes = toLong(payload.get("likeCount"));
                         comments = toLong(payload.get("commentCount"));
                         itemOffline = Boolean.TRUE.equals(payload.get("isFallback"));
                     }
-                    String metricText = itemOffline 
-                            ? "N/A"
-                            : String.format("Lượt xem %s | Lượt thích %s | Bình luận %s", formatCompact(views), formatCompact(likes), formatCompact(comments));
+                    String metricText = formatEvidenceMetric(item.platform(), itemOffline, views, likes, comments, payload);
                     return new FrontendDtos.EvidenceItem(
                             item.sourceName() == null || item.sourceName().isBlank() ? "Nguồn nghiên cứu" : item.sourceName(),
                             firstMeaningfulText(item.title(), "Nguồn không có tiêu đề"),
@@ -1499,6 +1498,37 @@ public class FrontendService {
                     );
                 })
                 .toList();
+    }
+
+    private String formatEvidenceMetric(String platform, boolean itemOffline, long views, long likes, long comments, Map<?, ?> payload) {
+        if (itemOffline) {
+            return "N/A";
+        }
+        if ("YOUTUBE".equalsIgnoreCase(platform)) {
+            return String.format("Lượt xem %s | Lượt thích %s | Bình luận %s", 
+                    formatCompact(views), formatCompact(likes), formatCompact(comments));
+        } else {
+            int position = -1;
+            if (payload != null && payload.containsKey("position")) {
+                try {
+                    position = ((Number) payload.get("position")).intValue();
+                } catch (Exception e) {
+                    // ignore
+                }
+            }
+            
+            String popularity = "Trung bình";
+            String rankText = "";
+            if (position >= 0) {
+                int rank = "NEWS".equalsIgnoreCase(platform) ? position + 1 : position;
+                if (rank > 0) {
+                    if (rank <= 2) popularity = "Cao";
+                    else if (rank > 5) popularity = "Thấp";
+                    rankText = " (Top " + rank + " Google)";
+                }
+            }
+            return String.format("Độ nổi bật nguồn: %s%s", popularity, rankText);
+        }
     }
 
     public List<FrontendDtos.CompareItem> getAnalysisCompare(String keyword) {
