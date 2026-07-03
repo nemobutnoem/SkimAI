@@ -36,7 +36,9 @@ public class SerpApiGoogleProvider implements SearchProvider {
         this.objectMapper = objectMapper;
         this.apiKey = apiKey;
         this.maxResults = maxResults;
-        this.httpClient = HttpClient.newHttpClient();
+        this.httpClient = HttpClient.newBuilder()
+                .connectTimeout(java.time.Duration.ofSeconds(15))
+                .build();
     }
 
     @Override
@@ -125,7 +127,10 @@ public class SerpApiGoogleProvider implements SearchProvider {
     }
 
     private JsonNode getJson(URI uri) throws Exception {
-        HttpRequest request = HttpRequest.newBuilder(uri).GET().build();
+        HttpRequest request = HttpRequest.newBuilder(uri)
+                .GET()
+                .timeout(java.time.Duration.ofSeconds(30))
+                .build();
         HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
         if (response.statusCode() < 200 || response.statusCode() >= 300) {
             log.error("[SERPAPI_GOOGLE] HTTP {} — body: {}", response.statusCode(), response.body());
