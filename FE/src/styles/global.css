@@ -4678,6 +4678,7 @@ code {
   padding: 13px 20px;
   border-bottom: 1px solid var(--bd2);
   transition: background .12s;
+  cursor: pointer;
 }
 
 .dash-recent-row:last-child {

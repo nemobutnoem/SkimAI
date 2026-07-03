@@ -157,14 +157,21 @@ export function DashboardPage() {
             recent.map((r, i) => {
               const kw = r.keyword ?? r.title ?? r.query ?? ''
               return (
-                <div key={r.id ?? i} className="dash-recent-row">
+                <div 
+                  key={r.id ?? i} 
+                  className="dash-recent-row"
+                  onClick={() => navigate(`${ROUTES.ANALYSIS}?keyword=${encodeURIComponent(kw)}`)}
+                >
                   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--text-muted)" strokeWidth="2" strokeLinecap="round">
                     <circle cx="11" cy="11" r="7" /><path d="m21 21-4.3-4.3" />
                   </svg>
                   <span className="dash-recent-kw">{kw}</span>
                   <button
                     className="dash-recent-btn"
-                    onClick={() => navigate(`${ROUTES.ANALYSIS}?keyword=${encodeURIComponent(kw)}`)}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      navigate(`${ROUTES.ANALYSIS}?keyword=${encodeURIComponent(kw)}`);
+                    }}
                   >
                     Xem lại
                   </button>
