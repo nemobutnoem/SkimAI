@@ -466,6 +466,7 @@ export function AnalysisPage() {
   const toast = useToast()
   const [searchParams] = useSearchParams()
   const keyword = searchParams.get('keyword')?.trim() || ''
+  const reportId = searchParams.get('reportId')?.trim() || ''
   const [draftKeyword, setDraftKeyword] = useState('')
   const searchInputRef = useRef(null)
 
@@ -627,6 +628,21 @@ export function AnalysisPage() {
   }
 
   useEffect(() => {
+    if (reportId) {
+      setLoading(true)
+      appApi.getReportById(reportId)
+        .then((res) => {
+          if (res?.reportContent) {
+            setData(res.reportContent)
+            appApi.getAnalysisTimeline(res.keyword).then(setTimelinePoints).catch(() => [])
+            appApi.getAnalysisEvidence(res.keyword).then(setEvidenceItems).catch(() => [])
+          }
+        })
+        .catch(console.error)
+        .finally(() => setLoading(false))
+      return
+    }
+
     if (!keyword) {
       setData(null)
       setEvidenceItems([])
@@ -635,7 +651,7 @@ export function AnalysisPage() {
     }
     load()
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [keyword])
+  }, [keyword, reportId])
 
   const sourceRows = useMemo(() => buildSourceTrendRows(data, evidenceItems), [data, evidenceItems])
   const overall = useMemo(() => buildOverallRead(data, sourceRows, timelinePoints), [data, sourceRows, timelinePoints])
