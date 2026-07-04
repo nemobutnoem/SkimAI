@@ -68,9 +68,9 @@ export function AdminFeedbacksPage() {
   })
 
   return (
-    <div className="stack page-wrap">
-      <div className="admin-content-wrap">
-        <div className="page-header" style={{ marginBottom: '24px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+    <div className="stack page-wrap" style={{ width: '100%', maxWidth: '100%', boxSizing: 'border-box' }}>
+      <div className="admin-content-wrap" style={{ width: '100%', maxWidth: '100%', boxSizing: 'border-box' }}>
+        <div className="page-header" style={{ marginBottom: '24px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '16px' }}>
           <div>
             <h1 style={{ fontSize: '26px', fontWeight: '700' }}>Quản lý Phản hồi & Hỗ trợ</h1>
             <p className="hint">Xem danh sách các thắc mắc, phản hồi lỗi từ người dùng và phản hồi lại qua Email.</p>
@@ -110,7 +110,10 @@ export function AdminFeedbacksPage() {
             borderRadius: '12px', 
             overflow: 'hidden', 
             background: 'white',
-            boxShadow: '0 4px 12px rgba(0,0,0,0.02)'
+            boxShadow: '0 4px 12px rgba(0,0,0,0.02)',
+            width: '100%',
+            maxWidth: '100%',
+            boxSizing: 'border-box'
           }}>
             <div style={{ maxHeight: '600px', overflowY: 'auto' }}>
               {filteredFeedbacks.map((f) => {
@@ -135,12 +138,14 @@ export function AdminFeedbacksPage() {
                         padding: '14px 20px',
                         cursor: 'pointer',
                         gap: '16px',
-                        userSelect: 'none'
+                        userSelect: 'none',
+                        width: '100%',
+                        boxSizing: 'border-box'
                       }}
                       className="feedback-inbox-row"
                     >
                       {/* Left: Status & Name */}
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '12px', minWidth: '240px', width: '240px', flexShrink: 0 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '12px', minWidth: '180px', width: '180px', flexShrink: 0 }}>
                         <span className={`badge ${f.status === 'PENDING' ? 'badge-danger' : 'badge-success'}`} style={{
                           padding: '3px 8px',
                           borderRadius: '4px',
