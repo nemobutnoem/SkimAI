@@ -168,8 +168,7 @@ export function AdminFeedbacksPage() {
                         flexGrow: 1, 
                         fontSize: '14px', 
                         overflow: 'hidden', 
-                        whiteSpace: 'nowrap', 
-                        textOverflow: 'ellipsis',
+                        minWidth: 0,
                         display: 'flex',
                         gap: '8px',
                         alignItems: 'center'
@@ -181,17 +180,26 @@ export function AdminFeedbacksPage() {
                           borderRadius: '4px',
                           fontSize: '11px',
                           fontWeight: '600',
-                          whiteSpace: 'nowrap'
+                          whiteSpace: 'nowrap',
+                          flexShrink: 0
                         }}>
                           {getCategoryLabel(f.category)}
                         </span>
-                        <span style={{ fontWeight: '700', color: 'var(--text-primary)' }}>
-                          {f.title}
-                        </span>
-                        <span style={{ color: 'var(--text-muted, #94a3b8)' }}>—</span>
-                        <span style={{ color: 'var(--text-secondary)' }}>
-                          {f.content}
-                        </span>
+                        <div style={{
+                          overflow: 'hidden',
+                          textOverflow: 'ellipsis',
+                          whiteSpace: 'nowrap',
+                          flexGrow: 1,
+                          minWidth: 0
+                        }}>
+                          <span style={{ fontWeight: '700', color: 'var(--text-primary)' }}>
+                            {f.title}
+                          </span>
+                          <span style={{ color: 'var(--text-muted, #94a3b8)', margin: '0 8px' }}>—</span>
+                          <span style={{ color: 'var(--text-secondary)' }}>
+                            {f.content}
+                          </span>
+                        </div>
                       </div>
 
                       {/* Right: Date */}
