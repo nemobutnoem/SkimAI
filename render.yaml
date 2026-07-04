@@ -11,10 +11,12 @@ services:
         value: prod
       - key: FRONTEND_BASE_URL
         sync: false
+      - key: GOOGLE_CLIENT_ID
+        sync: false
       - key: JWT_SECRET
         sync: false
       - key: JWT_EXPIRATION_MS
-        value: "86400000"
+        value: "604800000"
       - key: SPRING_DATASOURCE_URL
         sync: false
       - key: SPRING_DATASOURCE_USERNAME

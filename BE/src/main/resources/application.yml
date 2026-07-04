@@ -2,9 +2,9 @@ spring:
   application:
     name: researchco-backend
   datasource:
-    url: ${SPRING_DATASOURCE_URL:${DATABASE_URL:jdbc:postgresql://aws-1-ap-southeast-1.pooler.supabase.com:5432/postgres?sslmode=require&preferQueryMode=simple&prepareThreshold=0}}
-    username: ${SPRING_DATASOURCE_USERNAME:${DATABASE_USERNAME:postgres.kbxulunixssiykelahpz}}
-    password: ${SPRING_DATASOURCE_PASSWORD:${DATABASE_PASSWORD:Nguyenhoang@0712}}
+    url: ${SPRING_DATASOURCE_URL:${DATABASE_URL:jdbc:postgresql://localhost:5432/postgres}}
+    username: ${SPRING_DATASOURCE_USERNAME:${DATABASE_USERNAME:postgres}}
+    password: ${SPRING_DATASOURCE_PASSWORD:${DATABASE_PASSWORD:postgres}}
     hikari:
       maximum-pool-size: 5
       minimum-idle: 1
@@ -36,10 +36,10 @@ app:
   frontend-base-url: ${FRONTEND_BASE_URL:http://localhost:5173,http://localhost:5174}
   auth:
     google:
-      client-id: ${GOOGLE_CLIENT_ID:84486682480-d2n9j94neqp1stuti5i4of7koont41hq.apps.googleusercontent.com}
+      client-id: ${GOOGLE_CLIENT_ID:}
   jwt:
     secret: ${JWT_SECRET:dev-only-local-secret-must-change-in-production-min32}
-    expiration-ms: ${JWT_EXPIRATION_MS:86400000}
+    expiration-ms: ${JWT_EXPIRATION_MS:604800000}
   payment:
     test-mode: ${PAYMENT_TEST_MODE:false}
     bank:
