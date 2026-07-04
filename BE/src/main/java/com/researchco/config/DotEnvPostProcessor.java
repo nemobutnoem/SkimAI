@@ -20,10 +20,10 @@ public class DotEnvPostProcessor implements EnvironmentPostProcessor {
 
     @Override
     public void postProcessEnvironment(ConfigurableEnvironment environment, SpringApplication application) {
-        Path beDir = Paths.get("").toAbsolutePath();
-        Path envFile = beDir.resolve(".env");
+        Path cwd = Paths.get("").toAbsolutePath();
+        Path envFile = resolveEnvFile(cwd);
 
-        if (!Files.exists(envFile)) {
+        if (envFile == null) {
             return;
         }
 
@@ -51,5 +51,18 @@ public class DotEnvPostProcessor implements EnvironmentPostProcessor {
         if (!props.isEmpty()) {
             environment.getPropertySources().addFirst(new MapPropertySource("dotenv-be", props));
         }
+    }
+
+    private Path resolveEnvFile(Path cwd) {
+        // 1. cwd/.env  (started from BE/ dir)
+        Path candidate = cwd.resolve(".env");
+        if (Files.exists(candidate)) return candidate;
+        // 2. cwd/BE/.env  (started from project root)
+        candidate = cwd.resolve("BE").resolve(".env");
+        if (Files.exists(candidate)) return candidate;
+        // 3. parent/.env  (started from a subdirectory inside BE)
+        candidate = cwd.getParent() != null ? cwd.getParent().resolve(".env") : null;
+        if (candidate != null && Files.exists(candidate)) return candidate;
+        return null;
     }
 }

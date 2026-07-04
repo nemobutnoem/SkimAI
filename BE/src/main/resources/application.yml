@@ -55,8 +55,6 @@ integration:
     api-key: ${SERPAPI_API_KEY:}
     google-max-results: ${SERPAPI_GOOGLE_MAX_RESULTS:5}
     news-max-results: ${SERPAPI_NEWS_MAX_RESULTS:5}
-  stripe:
-    secret-key: ${STRIPE_SECRET_KEY:}
   payos:
     client-id: ${PAYOS_CLIENT_ID:}
     api-key: ${PAYOS_API_KEY:}

@@ -98,6 +98,7 @@ export function LoginPage() {
   const navigate = useNavigate()
   const location = useLocation()
   const { loginWithGoogle, login, isAuthenticated, user } = useAuth()
+  const redirectFromRef = useRef(location.state?.from || ROUTES.DASHBOARD)
 
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -112,10 +113,10 @@ export function LoginPage() {
     if (isAuthenticated) {
       const target = user?.role === 'admin'
         ? ROUTES.ADMIN_DASHBOARD
-        : (location.state?.from || ROUTES.DASHBOARD)
+        : redirectFromRef.current
       navigate(target, { replace: true })
     }
-  }, [isAuthenticated, user, navigate, location.state])
+  }, [isAuthenticated, user, navigate])
 
   useEffect(() => {
     const clientId = import.meta.env.VITE_GOOGLE_CLIENT_ID
@@ -135,7 +136,7 @@ export function LoginPage() {
               const session = await loginWithGoogle({ credential: response?.credential })
               const target = session?.user?.role === 'admin'
                 ? ROUTES.ADMIN_DASHBOARD
-                : (location.state?.from || ROUTES.DASHBOARD)
+                : redirectFromRef.current
               navigate(target, { replace: true })
             } catch (err) {
               setError(err?.message ?? 'Đăng nhập Google thất bại')
@@ -151,7 +152,7 @@ export function LoginPage() {
       })
       .catch((err) => { if (!cancelled) setGoogleError(err?.message ?? 'Không load được Google Identity') })
     return () => { cancelled = true }
-  }, [loginWithGoogle, navigate, location.state])
+  }, [loginWithGoogle, navigate])
 
   const handleEmailLogin = async (e) => {
     e.preventDefault()
@@ -162,7 +163,7 @@ export function LoginPage() {
       const session = await login({ email, password })
       const target = session?.user?.role === 'admin'
         ? ROUTES.ADMIN_DASHBOARD
-        : (location.state?.from || ROUTES.DASHBOARD)
+        : redirectFromRef.current
       navigate(target, { replace: true })
     } catch (err) {
       setError(err?.message ?? 'Email hoặc mật khẩu không đúng')
