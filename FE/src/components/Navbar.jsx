@@ -165,7 +165,14 @@ export function Navbar() {
     return (
       <header className="app-header">
         <div className="app-header-inner">
-          <div className="app-brand" role="button" tabIndex={0} onClick={() => navigate(ROUTES.HOME)}>AISKIM</div>
+          <div className="app-brand" role="button" tabIndex={0} onClick={() => navigate(ROUTES.HOME)}>
+            <div className="app-brand-icon">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M2 12h3l2-9 4 18 3-11 2 5 2-3h4" />
+              </svg>
+            </div>
+            <span>AISKIM</span>
+          </div>
           <span className="admin-section-badge">Admin</span>
           <nav className="app-nav">
             {links.map((link) => (
@@ -192,7 +199,14 @@ export function Navbar() {
     return (
       <header className="app-header">
         <div className="app-header-inner">
-          <div className="app-brand" role="button" tabIndex={0} onClick={() => navigate(ROUTES.HOME)}>AISKIM</div>
+          <div className="app-brand" role="button" tabIndex={0} onClick={() => navigate(ROUTES.HOME)}>
+            <div className="app-brand-icon">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M2 12h3l2-9 4 18 3-11 2 5 2-3h4" />
+              </svg>
+            </div>
+            <span>AISKIM</span>
+          </div>
           <nav className="app-nav">
             {links.map((link) => (
               <NavLink key={link.to} to={link.to} className={({ isActive }) => ['app-link', isActive ? 'active' : ''].join(' ').trim()}>
@@ -221,7 +235,14 @@ export function Navbar() {
   return (
     <header className="app-header">
       <div className="app-header-inner">
-        <div className="app-brand" role="button" tabIndex={0} onClick={() => navigate(ROUTES.HOME)}>AISKIM</div>
+        <div className="app-brand" role="button" tabIndex={0} onClick={() => navigate(ROUTES.HOME)}>
+          <div className="app-brand-icon">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M2 12h3l2-9 4 18 3-11 2 5 2-3h4" />
+            </svg>
+          </div>
+          <span>AISKIM</span>
+        </div>
         <nav className="app-nav">
           {links.map((link) => (
             <NavLink key={link.to} to={link.to} className={({ isActive }) => ['app-link', isActive ? 'active' : ''].join(' ').trim()}>

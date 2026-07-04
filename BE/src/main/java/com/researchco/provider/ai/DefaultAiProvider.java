@@ -722,17 +722,23 @@ public class DefaultAiProvider implements AiProvider {
                 .mapToLong(FrontendDtos.KeywordMetric::totalViews)
                 .max()
                 .orElse(0L);
+        long maxMentions = keywordMetrics.stream()
+                .mapToInt(FrontendDtos.KeywordMetric::mentionCount)
+                .max()
+                .orElse(1);
+
         List<FrontendDtos.TrendPoint> trendPoints = keywordMetrics.stream()
                 .sorted(Comparator.comparingLong(FrontendDtos.KeywordMetric::totalViews).reversed())
                 .limit(6)
                 .map(metric -> {
+                    long views = metric.totalViews();
                     int momentum = maxViews > 0
-                            ? clamp((int) Math.round((metric.totalViews() * 100.0) / maxViews), 12, 100)
-                            : clamp(metric.mentionCount() * 12, 12, 100);
+                            ? clamp((int) Math.round((views * 100.0) / maxViews), 12, 100)
+                            : clamp((int) Math.round((metric.mentionCount() * 100.0) / maxMentions), 12, 100);
                     String note = String.format(
                             Locale.ROOT,
                             "%s lượt xem • %d đề cập",
-                            formatCompact(metric.totalViews()),
+                            formatCompact(views),
                             metric.mentionCount()
                     );
                     return new FrontendDtos.TrendPoint(metric.keyword(), momentum, note);

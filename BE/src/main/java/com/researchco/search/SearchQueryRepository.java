@@ -21,6 +21,9 @@ public interface SearchQueryRepository extends JpaRepository<SearchQueryEntity, 
 
     List<SearchQueryEntity> findTop10ByUserOrderByCreatedAtDesc(UserEntity user);
 
+    @Query("SELECT q FROM SearchQueryEntity q WHERE q.user = :user AND q.createdAt IN (SELECT MAX(q2.createdAt) FROM SearchQueryEntity q2 WHERE q2.user = :user GROUP BY LOWER(TRIM(q2.keyword))) ORDER BY q.createdAt DESC")
+    List<SearchQueryEntity> findUniqueRecentQueriesByUser(@Param("user") UserEntity user, org.springframework.data.domain.Pageable pageable);
+
     List<SearchQueryEntity> findByUserAndKeywordAndCountryCodeAndLanguageCode(
             UserEntity user,
             String keyword,

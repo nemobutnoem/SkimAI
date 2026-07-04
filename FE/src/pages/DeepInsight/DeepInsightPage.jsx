@@ -46,7 +46,6 @@ function canonicalSource(value) {
 
 const OPP_ICONS = ['🚀', '💡', '📊', '🎯']
 const SIGNAL_ICONS = ['📡', '💬', '⚔️']
-
 export function DeepInsightPage() {
   const [searchParams, setSearchParams] = useSearchParams()
   const keyword = searchParams.get('keyword') || ''
@@ -591,6 +590,23 @@ export function DeepInsightPage() {
         .skeleton-pulse {
           animation: pulse 1.5s cubic-bezier(0.4, 0, 0.6, 1) infinite;
         }
+        .di-grid-layout {
+          display: grid;
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+          gap: 20px;
+          margin-top: 20px;
+          align-items: start;
+        }
+        .di-grid-col {
+          display: flex;
+          flex-direction: column;
+          gap: 20px;
+        }
+        @media (max-width: 1024px) {
+          .di-grid-layout {
+            grid-template-columns: 1fr;
+          }
+        }
         .swot-grid {
           display: grid;
           grid-template-columns: 1fr 1fr;
@@ -603,31 +619,43 @@ export function DeepInsightPage() {
           }
         }
         .swot-cell {
-          padding: 16px 20px;
-          border-radius: 10px;
-          border-left: 5px solid;
+          padding: 20px;
+          border-radius: 12px;
+          border-left: 4px solid;
           background: var(--white);
-          box-shadow: var(--shadow-sm);
+          box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.05), 0 2px 4px -2px rgb(0 0 0 / 0.05);
+          transition: all 0.2s ease;
+        }
+        .swot-cell:hover {
+          transform: translateY(-2px);
+          box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
         }
         .swot-strengths {
-          background-color: #e6f4ea;
-          border-color: var(--green);
-          color: #137333;
+          background-color: rgba(16, 185, 129, 0.05) !important;
+          border-color: rgb(16, 185, 129) !important;
+          color: rgb(6, 95, 70) !important;
         }
         .swot-weaknesses {
-          background-color: #fce8e6;
-          border-color: var(--red);
-          color: #c5221f;
+          background-color: rgba(239, 68, 68, 0.05) !important;
+          border-color: rgb(239, 68, 68) !important;
+          color: rgb(153, 27, 27) !important;
         }
         .swot-opportunities {
-          background-color: #e8f0fe;
-          border-color: var(--blue);
-          color: #1a73e8;
+          background-color: rgba(59, 130, 246, 0.05) !important;
+          border-color: rgb(59, 130, 246) !important;
+          color: rgb(30, 58, 138) !important;
         }
         .swot-threats {
-          background-color: #fef7e0;
-          border-color: var(--orange);
-          color: #b06000;
+          background-color: rgba(245, 158, 11, 0.05) !important;
+          border-color: rgb(245, 158, 11) !important;
+          color: rgb(146, 64, 14) !important;
+        }
+        .di-strategic-card {
+          background: linear-gradient(135deg, #0f172a 0%, #1e293b 50%, #0d9488 100%) !important;
+          border-radius: var(--radius-lg);
+          padding: 30px;
+          color: var(--white);
+          box-shadow: 0 8px 30px rgba(0, 0, 0, 0.15);
         }
         .swot-cell h5 {
           margin: 0 0 10px 0;
@@ -821,264 +849,273 @@ export function DeepInsightPage() {
 
           {activeReportTab === 'overview' && (
             <>
-              {/* Market Insight */}
-              <div className="di-section-card">
-                <div className="di-section-title">📊 Nhận định thị trường</div>
-                <div className="di-key-finding">
-                  <div className="di-kf-label">Phát hiện chính</div>
-                  {loading && !data ? (
-                    <div className="skeleton-pulse" style={{ height: '24px', width: '90%', margin: '8px 0', background: 'var(--gray-100)', borderRadius: '4px' }} />
-                  ) : (
-                    <p>{signalSummary ?? `Nhấp "Chạy phân tích" để tạo nhận định từ AI cho "${keyword}".`}</p>
-                  )}
-                </div>
-                <div className="di-stat-grid">
-                  {stats.map((s) => (
-                    <div className="di-stat-box" key={s.label}>
-                      <div className="di-stat-num di-stat-num-text">
-                        {loading && !data ? (
-                          <div className="skeleton-pulse" style={{ height: '28px', width: '80px', margin: '0 auto', background: 'var(--gray-200)', borderRadius: '4px' }} />
-                        ) : (
-                          s.value
-                        )}
-                      </div>
-                      <div className="di-stat-desc">{s.label}</div>
-                    </div>
-                  ))}
-                </div>
-
-                {/* Evidence items list section */}
-                {filteredEvidence.length > 0 && (
-                  <div className="di-evidence-container" style={{ marginTop: '24px', paddingTop: '20px', borderTop: '1px solid var(--gray-200)' }}>
-                    <div style={{ fontSize: '14px', fontWeight: '600', marginBottom: '12px', color: 'var(--gray-700)', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                      <span>🔗 Bằng chứng nguồn gốc ({activeSource})</span>
-                    </div>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                      {filteredEvidence.map((item, idx) => (
-                        <div key={idx} style={{ padding: '12px', background: '#f8fafc', borderRadius: '8px', border: '1px solid #e2e8f0', display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '12px' }}>
-                            {item.url ? (
-                              <a href={item.url} target="_blank" rel="noreferrer noopener" style={{ fontWeight: '600', color: 'var(--primary)', textDecoration: 'none', fontSize: '13px', lineHeight: '1.4' }} className="evidence-title-link">
-                                {item.title}
-                              </a>
-                            ) : (
-                              <span style={{ fontWeight: '600', color: 'var(--gray-800)', fontSize: '13px', lineHeight: '1.4' }}>
-                                {item.title}
-                              </span>
-                            )}
-                            <span style={{ fontSize: '10px', background: '#e0f2fe', color: '#0369a1', padding: '2px 8px', borderRadius: '12px', whiteSpace: 'nowrap', fontWeight: '500' }}>
-                              {canonicalSource(item.source)}
-                            </span>
-                          </div>
-                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '8px', fontSize: '11px', color: '#64748b' }}>
-                            <span>{item.metric}</span>
-                            {item.sentimentLabel && (
-                              <span style={{ 
-                                color: item.sentimentLabel === 'POSITIVE' ? 'var(--green)' : item.sentimentLabel === 'NEGATIVE' ? 'var(--red)' : '#f59e0b',
-                                fontWeight: '600'
-                              }}>
-                                {item.sentimentLabel === 'POSITIVE' ? 'Tích cực' : item.sentimentLabel === 'NEGATIVE' ? 'Tiêu cực' : 'Trung lập'}
-                              </span>
-                            )}
-                          </div>
+              <div className="di-grid-layout">
+              {/* Cột trái */}
+              <div className="di-grid-col">
+                {/* Market Insight */}
+                <div className="di-section-card">
+                  <div className="di-section-title">📊 Nhận định thị trường</div>
+                  <div className="di-key-finding">
+                    <div className="di-kf-label">Phát hiện chính</div>
+                    {loading && !data ? (
+                      <div className="skeleton-pulse" style={{ height: '24px', width: '90%', margin: '8px 0', background: 'var(--gray-100)', borderRadius: '4px' }} />
+                    ) : (
+                      <p>{signalSummary ?? `Nhấp "Chạy phân tích" để tạo nhận định từ AI cho "${keyword}".`}</p>
+                    )}
+                  </div>
+                  <div className="di-stat-grid">
+                    {stats.map((s) => (
+                      <div className="di-stat-box" key={s.label}>
+                        <div className="di-stat-num di-stat-num-text">
+                          {loading && !data ? (
+                            <div className="skeleton-pulse" style={{ height: '28px', width: '80px', margin: '0 auto', background: 'var(--gray-200)', borderRadius: '4px' }} />
+                          ) : (
+                            s.value
+                          )}
                         </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-              </div>
-
-              {/* Market Overview & Characteristics */}
-              <div className="di-section-card">
-                <div className="di-section-title">🏢 Quy mô & Đặc điểm ngành</div>
-                {loading && !data ? (
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginTop: '15px' }}>
-                    <div className="skeleton-pulse" style={{ height: '20px', width: '80%', background: 'var(--gray-200)', borderRadius: '4px' }} />
-                    <div className="skeleton-pulse" style={{ height: '14px', width: '90%', background: 'var(--gray-100)', borderRadius: '4px' }} />
-                    <div className="skeleton-pulse" style={{ height: '14px', width: '85%', background: 'var(--gray-100)', borderRadius: '4px' }} />
-                  </div>
-                ) : (
-                  <div style={{ marginTop: '15px' }}>
-                    <p style={{ fontSize: '14px', lineHeight: '1.6', color: 'var(--gray-800)', margin: '0 0 12px 0' }}>
-                      <strong>Ước tính quy mô / Động lượng tăng trưởng:</strong> {data?.marketOverview?.industrySize || 'Chưa có thông tin'}
-                    </p>
-                    <h5 style={{ margin: '15px 0 8px 0', fontSize: '13.5px', color: 'var(--text-primary)', fontWeight: '600' }}>Đặc điểm cốt lõi của ngành:</h5>
-                    <ul className="char-list">
-                      {data?.marketOverview?.keyCharacteristics?.length ? (
-                        data.marketOverview.keyCharacteristics.map((char, idx) => (
-                          <li key={idx} className="char-item">
-                            <span className="char-bullet">•</span>
-                            <span>{char}</span>
-                          </li>
-                        ))
-                      ) : (
-                        <p className="hint">Chưa có thông tin đặc điểm ngành.</p>
-                      )}
-                    </ul>
-                  </div>
-                )}
-              </div>
-
-              {/* SWOT Matrix */}
-              <div className="di-section-card">
-                <div className="di-section-title">📊 Ma trận SWOT (Cho Startup/SMB tham chiếu)</div>
-                {loading && !data ? (
-                  <div className="swot-grid">
-                    {[1, 2, 3, 4].map(idx => (
-                      <div className="skeleton-pulse" key={idx} style={{ height: '120px', background: 'var(--gray-100)', borderRadius: '10px' }} />
+                        <div className="di-stat-desc">{s.label}</div>
+                      </div>
                     ))}
                   </div>
-                ) : (
-                  <div className="swot-grid">
-                    <div className="swot-cell swot-strengths">
-                      <h5>Strengths (Điểm mạnh)</h5>
-                      <ul className="swot-list">
-                        {data?.swot?.strengths?.map((item, idx) => <li key={idx}>{item}</li>)}
-                      </ul>
-                    </div>
-                    <div className="swot-cell swot-weaknesses">
-                      <h5>Weaknesses (Điểm yếu)</h5>
-                      <ul className="swot-list">
-                        {data?.swot?.weaknesses?.map((item, idx) => <li key={idx}>{item}</li>)}
-                      </ul>
-                    </div>
-                    <div className="swot-cell swot-opportunities">
-                      <h5>Opportunities (Cơ hội)</h5>
-                      <ul className="swot-list">
-                        {data?.swot?.opportunities?.map((item, idx) => <li key={idx}>{item}</li>)}
-                      </ul>
-                    </div>
-                    <div className="swot-cell swot-threats">
-                      <h5>Threats (Thách thức)</h5>
-                      <ul className="swot-list">
-                        {data?.swot?.threats?.map((item, idx) => <li key={idx}>{item}</li>)}
-                      </ul>
-                    </div>
-                  </div>
-                )}
-              </div>
 
-              {/* Search Trend Analysis */}
-              <div className="di-section-card">
-                <div className="di-section-title">📈 Phân tích xu hướng tìm kiếm</div>
-                <div className="di-trend-status">{trendMessage}</div>
-                <div className="di-trend-table">
-                  <div className="di-trend-table-head">
-                    <span className="di-tth di-tth-rank">#</span>
-                    <span className="di-tth di-tth-name">Từ khóa</span>
-                    <span className="di-tth di-tth-note">Số liệu</span>
-                    <span className="di-tth di-tth-bar">Động lượng xu hướng</span>
-                  </div>
-                  {loading && !data ? (
-                    [1, 2, 3].map((idx) => (
-                      <div className="di-trend-table-row" key={idx}>
-                        <span className="di-trend-rank">{idx}</span>
-                        <span className="di-trend-kw"><div className="skeleton-pulse" style={{ height: '16px', width: '120px', background: 'var(--gray-100)', borderRadius: '4px' }} /></span>
-                        <span className="di-trend-note"><div className="skeleton-pulse" style={{ height: '14px', width: '160px', background: 'var(--gray-100)', borderRadius: '4px' }} /></span>
-                        <span className="di-trend-bar-cell">
-                          <div className="di-trend-bar-track">
-                            <div className="skeleton-pulse" style={{ height: '100%', width: '60%', background: 'var(--gray-200)', borderRadius: '2px' }} />
-                          </div>
-                        </span>
+                  {/* Evidence items list section */}
+                  {filteredEvidence.length > 0 && (
+                    <div className="di-evidence-container" style={{ marginTop: '24px', paddingTop: '20px', borderTop: '1px solid var(--gray-200)' }}>
+                      <div style={{ fontSize: '14px', fontWeight: '600', marginBottom: '12px', color: 'var(--gray-700)', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                        <span>🔗 Bằng chứng nguồn gốc ({activeSource})</span>
                       </div>
-                    ))
-                  ) : (
-                    trendPoints.map((point, idx) => (
-                      <div className="di-trend-table-row" key={point.label}>
-                        <span className="di-trend-rank">{idx + 1}</span>
-                        <span className="di-trend-kw">{point.label}</span>
-                        <span className="di-trend-note">{point.note}</span>
-                        <span className="di-trend-bar-cell">
-                          <div className="di-trend-bar-track">
-                            <div className="di-trend-bar-fill" style={{ width: `${point.value}%` }} />
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                        {filteredEvidence.map((item, idx) => (
+                          <div key={idx} style={{ padding: '12px', background: '#f8fafc', borderRadius: '8px', border: '1px solid #e2e8f0', display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '12px' }}>
+                              {item.url ? (
+                                <a href={item.url} target="_blank" rel="noreferrer noopener" style={{ fontWeight: '600', color: 'var(--primary)', textDecoration: 'none', fontSize: '13px', lineHeight: '1.4' }} className="evidence-title-link">
+                                  {item.title}
+                                </a>
+                              ) : (
+                                <span style={{ fontWeight: '600', color: 'var(--gray-800)', fontSize: '13px', lineHeight: '1.4' }}>
+                                  {item.title}
+                                </span>
+                              )}
+                              <span style={{ fontSize: '10px', background: '#e0f2fe', color: '#0369a1', padding: '2px 8px', borderRadius: '12px', whiteSpace: 'nowrap', fontWeight: '500' }}>
+                                {canonicalSource(item.source)}
+                              </span>
+                            </div>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '8px', fontSize: '11px', color: '#64748b' }}>
+                              <span>{item.metric}</span>
+                              {item.sentimentLabel && (
+                                <span style={{ 
+                                  color: item.sentimentLabel === 'POSITIVE' ? 'var(--green)' : item.sentimentLabel === 'NEGATIVE' ? 'var(--red)' : '#f59e0b',
+                                  fontWeight: '600'
+                                }}>
+                                  {item.sentimentLabel === 'POSITIVE' ? 'Tích cực' : item.sentimentLabel === 'NEGATIVE' ? 'Tiêu cực' : 'Trung lập'}
+                                </span>
+                              )}
+                            </div>
                           </div>
-                          <span className="di-trend-pct">{point.value}%</span>
-                        </span>
+                        ))}
                       </div>
-                    ))
+                    </div>
                   )}
+                </div>
+
+                {/* Market Overview & Characteristics */}
+                <div className="di-section-card">
+                  <div className="di-section-title">🏢 Quy mô & Đặc điểm ngành</div>
+                  {loading && !data ? (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginTop: '15px' }}>
+                      <div className="skeleton-pulse" style={{ height: '20px', width: '80%', background: 'var(--gray-200)', borderRadius: '4px' }} />
+                      <div className="skeleton-pulse" style={{ height: '14px', width: '90%', background: 'var(--gray-100)', borderRadius: '4px' }} />
+                      <div className="skeleton-pulse" style={{ height: '14px', width: '85%', background: 'var(--gray-100)', borderRadius: '4px' }} />
+                    </div>
+                  ) : (
+                    <div style={{ marginTop: '15px' }}>
+                      <p style={{ fontSize: '14px', lineHeight: '1.6', color: 'var(--gray-800)', margin: '0 0 12px 0' }}>
+                        <strong>Ước tính quy mô / Động lượng tăng trưởng:</strong> {data?.marketOverview?.industrySize || 'Chưa có thông tin'}
+                      </p>
+                      <h5 style={{ margin: '15px 0 8px 0', fontSize: '13.5px', color: 'var(--text-primary)', fontWeight: '600' }}>Đặc điểm cốt lõi của ngành:</h5>
+                      <ul className="char-list">
+                        {data?.marketOverview?.keyCharacteristics?.length ? (
+                          data.marketOverview.keyCharacteristics.map((char, idx) => (
+                            <li key={idx} className="char-item">
+                              <span className="char-bullet">•</span>
+                              <span>{char}</span>
+                            </li>
+                          ))
+                        ) : (
+                          <p className="hint">Chưa có thông tin đặc điểm ngành.</p>
+                        )}
+                      </ul>
+                    </div>
+                  )}
+                </div>
+
+
+                {/* Media & Industry Signals */}
+                <div className="di-section-card">
+                  <div className="di-section-title">📡 Tín hiệu truyền thông & ngành</div>
+                  <div className="di-signal-grid">
+                    {loading && !data ? (
+                      [1, 2, 3].map((idx) => (
+                        <div className="di-signal-card" key={idx}>
+                          <div className="di-signal-icon skeleton-pulse" style={{ width: '40px', height: '40px', background: 'var(--gray-200)', borderRadius: '50%' }} />
+                          <div style={{ flex: 1 }}>
+                            <div className="skeleton-pulse" style={{ height: '18px', width: '140px', marginBottom: '8px', background: 'var(--gray-200)', borderRadius: '4px' }} />
+                            <div className="skeleton-pulse" style={{ height: '14px', width: '100%', marginBottom: '4px', background: 'var(--gray-100)', borderRadius: '4px' }} />
+                            <div className="skeleton-pulse" style={{ height: '14px', width: '80%', background: 'var(--gray-100)', borderRadius: '4px' }} />
+                          </div>
+                        </div>
+                      ))
+                    ) : (
+                      mediaSignals.map((sig, idx) => (
+                        <div className="di-signal-card" key={sig.title}>
+                          <div className="di-signal-icon">{SIGNAL_ICONS[idx % SIGNAL_ICONS.length]}</div>
+                          <div>
+                            <h5>{sig.title}</h5>
+                            <p>{sig.desc}</p>
+                          </div>
+                        </div>
+                      ))
+                    )}
+                  </div>
                 </div>
               </div>
 
-              {/* Media & Industry Signals */}
-              <div className="di-section-card">
-                <div className="di-section-title">📡 Tín hiệu truyền thông & ngành</div>
-                <div className="di-signal-grid">
+              {/* Cột phải */}
+              <div className="di-grid-col">
+                {/* SWOT Matrix */}
+                <div className="di-section-card">
+                  <div className="di-section-title">📊 Ma trận SWOT (Cho Startup/SMB tham chiếu)</div>
                   {loading && !data ? (
-                    [1, 2, 3].map((idx) => (
-                      <div className="di-signal-card" key={idx}>
-                        <div className="di-signal-icon skeleton-pulse" style={{ width: '40px', height: '40px', background: 'var(--gray-200)', borderRadius: '50%' }} />
-                        <div style={{ flex: 1 }}>
-                          <div className="skeleton-pulse" style={{ height: '18px', width: '140px', marginBottom: '8px', background: 'var(--gray-200)', borderRadius: '4px' }} />
+                    <div className="swot-grid">
+                      {[1, 2, 3, 4].map(idx => (
+                        <div className="skeleton-pulse" key={idx} style={{ height: '120px', background: 'var(--gray-100)', borderRadius: '10px' }} />
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="swot-grid">
+                      <div className="swot-cell swot-strengths">
+                        <h5>Strengths (Điểm mạnh)</h5>
+                        <ul className="swot-list">
+                          {data?.swot?.strengths?.map((item, idx) => <li key={idx}>{item}</li>)}
+                        </ul>
+                      </div>
+                      <div className="swot-cell swot-weaknesses">
+                        <h5>Weaknesses (Điểm yếu)</h5>
+                        <ul className="swot-list">
+                          {data?.swot?.weaknesses?.map((item, idx) => <li key={idx}>{item}</li>)}
+                        </ul>
+                      </div>
+                      <div className="swot-cell swot-opportunities">
+                        <h5>Opportunities (Cơ hội)</h5>
+                        <ul className="swot-list">
+                          {data?.swot?.opportunities?.map((item, idx) => <li key={idx}>{item}</li>)}
+                        </ul>
+                      </div>
+                      <div className="swot-cell swot-threats">
+                        <h5>Threats (Thách thức)</h5>
+                        <ul className="swot-list">
+                          {data?.swot?.threats?.map((item, idx) => <li key={idx}>{item}</li>)}
+                        </ul>
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {/* Market Opportunities */}
+                <div className="di-section-card">
+                  <div className="di-section-title">🎯 Cơ hội thị trường</div>
+                  <div className="di-opportunity-grid">
+                    {loading && !data ? (
+                      [1, 2, 3].map((idx) => (
+                        <div className="di-opportunity-card di-opp-blue" style={{ opacity: 0.7 }} key={idx}>
+                          <div className="di-opp-icon skeleton-pulse" style={{ width: '32px', height: '32px', borderRadius: '50%', background: 'var(--gray-200)' }} />
+                          <div className="skeleton-pulse" style={{ height: '18px', width: '140px', margin: '12px 0 8px', background: 'var(--gray-200)', borderRadius: '4px' }} />
                           <div className="skeleton-pulse" style={{ height: '14px', width: '100%', marginBottom: '4px', background: 'var(--gray-100)', borderRadius: '4px' }} />
                           <div className="skeleton-pulse" style={{ height: '14px', width: '80%', background: 'var(--gray-100)', borderRadius: '4px' }} />
                         </div>
-                      </div>
-                    ))
-                  ) : (
-                    mediaSignals.map((sig, idx) => (
-                      <div className="di-signal-card" key={sig.title}>
-                        <div className="di-signal-icon">{SIGNAL_ICONS[idx % SIGNAL_ICONS.length]}</div>
-                        <div>
-                          <h5>{sig.title}</h5>
-                          <p>{sig.desc}</p>
+                      ))
+                    ) : (
+                      opportunityCards.map((opp, idx) => (
+                        <div className={`di-opportunity-card di-opp-${opp.theme}`} key={opp.title}>
+                          <div className="di-opp-icon">{OPP_ICONS[idx % OPP_ICONS.length]}</div>
+                          <h5>{opp.title}</h5>
+                          <p>{opp.desc}</p>
                         </div>
-                      </div>
-                    ))
-                  )}
+                      ))
+                    )}
+                  </div>
+                </div>
+
+                {/* Search Trend Analysis */}
+                <div className="di-section-card">
+                  <div className="di-section-title">📈 Phân tích xu hướng tìm kiếm</div>
+                  <div className="di-trend-status">{trendMessage}</div>
+                  <div className="di-trend-table">
+                    <div className="di-trend-table-head">
+                      <span className="di-tth di-tth-rank">#</span>
+                      <span className="di-tth di-tth-name">Từ khóa</span>
+                      <span className="di-tth di-tth-note">Số liệu</span>
+                      <span className="di-tth di-tth-bar">Động lượng xu hướng</span>
+                    </div>
+                    {loading && !data ? (
+                      [1, 2, 3].map((idx) => (
+                        <div className="di-trend-table-row" key={idx}>
+                          <span className="di-trend-rank">{idx}</span>
+                          <span className="di-trend-kw"><div className="skeleton-pulse" style={{ height: '16px', width: '120px', background: 'var(--gray-100)', borderRadius: '4px' }} /></span>
+                          <span className="di-trend-note"><div className="skeleton-pulse" style={{ height: '14px', width: '160px', background: 'var(--gray-100)', borderRadius: '4px' }} /></span>
+                          <span className="di-trend-bar-cell">
+                            <div className="di-trend-bar-track">
+                              <div className="skeleton-pulse" style={{ height: '100%', width: '60%', background: 'var(--gray-200)', borderRadius: '2px' }} />
+                            </div>
+                          </span>
+                        </div>
+                      ))
+                    ) : (
+                      trendPoints.map((point, idx) => (
+                        <div className="di-trend-table-row" key={point.label}>
+                          <span className="di-trend-rank">{idx + 1}</span>
+                          <span className="di-trend-kw">{point.label}</span>
+                          <span className="di-trend-note">{point.note}</span>
+                          <span className="di-trend-bar-cell">
+                            <div className="di-trend-bar-track">
+                              <div className="di-trend-bar-fill" style={{ width: `${point.value}%` }} />
+                            </div>
+                            <span className="di-trend-pct">{point.value}%</span>
+                          </span>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                </div>
+
+                {/* Estimated Audience Sentiment */}
+                <div className="di-section-card">
+                  <div className="di-section-title">💬 Chủ đề thảo luận chính</div>
+                  <div className="hint" style={{ marginBottom: '15px' }}>Được ước tính từ lượt tương tác và sự trùng lặp từ khóa của các thảo luận.</div>
+                  <div className="di-topics-list" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '12px' }}>
+                    {loading && !data ? (
+                      [1, 2, 3, 4].map((idx) => (
+                        <div className="di-discussion-topic" key={idx} style={{ border: '1px solid var(--gray-200)', background: '#f8fafc', padding: '12px 16px' }}>
+                          <span className="di-topic-name"><div className="skeleton-pulse" style={{ height: '14px', width: '100px', background: 'var(--gray-100)', borderRadius: '4px' }} /></span>
+                          <span className="di-topic-change"><div className="skeleton-pulse" style={{ height: '14px', width: '50px', background: 'var(--gray-200)', borderRadius: '4px' }} /></span>
+                        </div>
+                      ))
+                    ) : (
+                      discussionTopics.map((t) => (
+                        <div className="di-discussion-topic" key={t.name} style={{ border: '1px solid var(--gray-200)', background: '#f8fafc', padding: '12px 16px' }}>
+                          <span className="di-topic-name" style={{ fontWeight: '500' }}>{t.name}</span>
+                          <span className="di-topic-change">{t.change}</span>
+                        </div>
+                      ))
+                    )}
+                  </div>
                 </div>
               </div>
+            </div>
 
-              {/* Estimated Audience Sentiment */}
-              <div className="di-section-card">
-                <div className="di-section-title">💬 Chủ đề thảo luận chính</div>
-                <div className="hint" style={{ marginBottom: '15px' }}>Được ước tính từ lượt tương tác và sự trùng lặp từ khóa của các thảo luận.</div>
-                <div className="di-topics-list" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '12px' }}>
-                  {loading && !data ? (
-                    [1, 2, 3, 4].map((idx) => (
-                      <div className="di-discussion-topic" key={idx} style={{ border: '1px solid var(--gray-200)', background: '#f8fafc', padding: '12px 16px' }}>
-                        <span className="di-topic-name"><div className="skeleton-pulse" style={{ height: '14px', width: '100px', background: 'var(--gray-100)', borderRadius: '4px' }} /></span>
-                        <span className="di-topic-change"><div className="skeleton-pulse" style={{ height: '14px', width: '50px', background: 'var(--gray-200)', borderRadius: '4px' }} /></span>
-                      </div>
-                    ))
-                  ) : (
-                    discussionTopics.map((t) => (
-                      <div className="di-discussion-topic" key={t.name} style={{ border: '1px solid var(--gray-200)', background: '#f8fafc', padding: '12px 16px' }}>
-                        <span className="di-topic-name" style={{ fontWeight: '500' }}>{t.name}</span>
-                        <span className="di-topic-change">{t.change}</span>
-                      </div>
-                    ))
-                  )}
-                </div>
-              </div>
-
-              {/* Market Opportunities */}
-              <div className="di-section-card">
-                <div className="di-section-title">🎯 Cơ hội thị trường</div>
-                <div className="di-opportunity-grid">
-                  {loading && !data ? (
-                    [1, 2, 3].map((idx) => (
-                      <div className="di-opportunity-card di-opp-blue" style={{ opacity: 0.7 }} key={idx}>
-                        <div className="di-opp-icon skeleton-pulse" style={{ width: '32px', height: '32px', borderRadius: '50%', background: 'var(--gray-200)' }} />
-                        <div className="skeleton-pulse" style={{ height: '18px', width: '140px', margin: '12px 0 8px', background: 'var(--gray-200)', borderRadius: '4px' }} />
-                        <div className="skeleton-pulse" style={{ height: '14px', width: '100%', marginBottom: '4px', background: 'var(--gray-100)', borderRadius: '4px' }} />
-                        <div className="skeleton-pulse" style={{ height: '14px', width: '80%', background: 'var(--gray-100)', borderRadius: '4px' }} />
-                      </div>
-                    ))
-                  ) : (
-                    opportunityCards.map((opp, idx) => (
-                      <div className={`di-opportunity-card di-opp-${opp.theme}`} key={opp.title}>
-                        <div className="di-opp-icon">{OPP_ICONS[idx % OPP_ICONS.length]}</div>
-                        <h5>{opp.title}</h5>
-                        <p>{opp.desc}</p>
-                      </div>
-                    ))
-                  )}
-                </div>
-              </div>
-
-              {/* Strategic Recommendation */}
-              <div className="di-strategic-card">
+            {/* Strategic Recommendation - Full-width */}
+              <div className="di-strategic-card" style={{ marginTop: '20px' }}>
                 <h4>✨ Khuyến nghị chiến lược</h4>
                 {loading && !data ? (
                   <>
@@ -1109,21 +1146,6 @@ export function DeepInsightPage() {
                   </>
                 )}
               </div>
-
-              {/* References Section */}
-              {data?.references?.length > 0 && (
-                <div className="di-section-card" style={{ borderLeft: '4px solid var(--text-muted)' }}>
-                  <div className="di-section-title">📚 Tài liệu tham khảo (References - APA 7th)</div>
-                  <p className="hint">Danh sách các tài liệu và báo cáo tham khảo được AI sử dụng để lập nhận định.</p>
-                  <ul className="ref-list">
-                    {data.references.map((ref, idx) => (
-                      <li key={idx} className="ref-item">
-                        {ref}
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              )}
             </>
           )}
 

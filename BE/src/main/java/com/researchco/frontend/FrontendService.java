@@ -228,7 +228,8 @@ public class FrontendService {
 
     public FrontendDtos.DashboardResponse getDashboard() {
         UserEntity user = preferredUser();
-        List<SearchQueryEntity> recentQueries = searchQueryRepository.findTop10ByUserOrderByCreatedAtDesc(user);
+        List<SearchQueryEntity> recentQueries = searchQueryRepository.findUniqueRecentQueriesByUser(
+                user, org.springframework.data.domain.PageRequest.of(0, 10));
 
         long userSearches = searchQueryRepository.countByUser(user);
         long userReports = reportRepository.countByUserId(user.getId());
@@ -1189,32 +1190,25 @@ public class FrontendService {
                 .mapToLong(FrontendDtos.KeywordMetric::totalViews)
                 .max()
                 .orElse(0L);
+        long maxMentions = keywordMetrics.stream()
+                .mapToInt(FrontendDtos.KeywordMetric::mentionCount)
+                .max()
+                .orElse(1);
 
         List<FrontendDtos.TrendPoint> resultsList = new ArrayList<>();
         for (int i = 0; i < keywordMetrics.size(); i++) {
             FrontendDtos.KeywordMetric metric = keywordMetrics.get(i);
-            double rankFactor = 1.0 - (i * 0.12);
-            if (rankFactor < 0.3) {
-                rankFactor = 0.3;
-            }
-            long variedViews = Math.round(metric.totalViews() * rankFactor);
-            if (variedViews < 100) {
-                variedViews = 100;
-            }
+            long views = metric.totalViews();
             int momentum = maxViews > 0
-                    ? clamp((int) Math.round((variedViews * 100.0) / maxViews), 12, 100)
-                    : clamp(metric.mentionCount() * 12, 12, 100);
-            int naturalMomentum = momentum;
-            if (i == 0) {
-                naturalMomentum = 100;
-            }
+                    ? clamp((int) Math.round((views * 100.0) / maxViews), 12, 100)
+                    : clamp((int) Math.round((metric.mentionCount() * 100.0) / maxMentions), 12, 100);
             String note = String.format(
                     Locale.ROOT,
                     "%s lượt xem • %d đề cập",
-                    formatCompact(variedViews),
+                    formatCompact(views),
                     metric.mentionCount()
             );
-            resultsList.add(new FrontendDtos.TrendPoint(metric.keyword(), naturalMomentum, note));
+            resultsList.add(new FrontendDtos.TrendPoint(metric.keyword(), momentum, note));
         }
         return resultsList;
     }
@@ -2371,7 +2365,7 @@ public class FrontendService {
         String countryCode = localeProfile.countryCode();
         String languageCode = localeProfile.languageCode();
 
-        // Luôn luôn tạo một record hoạt động tìm kiếm mới
+        // Luôn luôn tạo một record hoạt động tìm kiếm mới để lưu trữ snapshot lịch sử phục vụ so sánh/báo cáo
         return searchQueryRepository.save(SearchQueryEntity.builder()
                 .user(user)
                 .keyword(normalizedKeyword)

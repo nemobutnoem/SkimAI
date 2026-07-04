@@ -478,6 +478,9 @@ export function AnalysisPage() {
   const [streamProgress, setStreamProgress] = useState(0)
   const [_cacheInfo, setCacheInfo] = useState(null)
 
+  const eventSourceRef = useRef(null)
+  const isMountedRef = useRef(true)
+
   const copyToClipboard = useCallback((text, label) => {
     navigator.clipboard.writeText(text).then(() => {
       toast.success(`Đã sao chép ${label ?? 'nội dung'}`)
@@ -488,6 +491,7 @@ export function AnalysisPage() {
 
   // `/` shortcut focuses search input
   useEffect(() => {
+    isMountedRef.current = true
     const handler = (e) => {
       if (e.key !== '/') return
       const tag = document.activeElement?.tagName
@@ -496,12 +500,20 @@ export function AnalysisPage() {
       searchInputRef.current?.focus()
     }
     document.addEventListener('keydown', handler)
-    return () => document.removeEventListener('keydown', handler)
+    return () => {
+      isMountedRef.current = false
+      document.removeEventListener('keydown', handler)
+      if (eventSourceRef.current) {
+        eventSourceRef.current.close()
+        eventSourceRef.current = null
+      }
+    }
   }, [])
 
 
 
   const loadTraditional = async () => {
+    if (!isMountedRef.current) return
     setLoading(true)
     try {
       const [result, evidence, timeline] = await Promise.all([
@@ -509,16 +521,24 @@ export function AnalysisPage() {
         appApi.getAnalysisEvidence(keyword).catch(() => []),
         appApi.getAnalysisTimeline(keyword).catch(() => []),
       ])
+      if (!isMountedRef.current) return
       setData(result)
       setEvidenceItems(evidence)
       setTimelinePoints(timeline)
       setStreamProgress(0)
     } finally {
-      setLoading(false)
+      if (isMountedRef.current) setLoading(false)
     }
   }
 
   const load = async () => {
+    if (eventSourceRef.current) {
+      eventSourceRef.current.close()
+      eventSourceRef.current = null
+    }
+
+    if (!isMountedRef.current) return
+
     setLoading(true)
     setStreamProgress(0)
     setCacheInfo(null)
@@ -535,6 +555,7 @@ export function AnalysisPage() {
       const eventSource = appApi.streamAnalysis(
         keyword,
         (eventName, eventData) => {
+          if (!isMountedRef.current) return
           if (eventName === 'query-start') {
             setStreamProgress(1)
           } else if (eventName === 'cache-hit') {
@@ -592,6 +613,7 @@ export function AnalysisPage() {
           } else if (eventName === 'complete') {
             completed = true
             setStreamProgress(7)
+            eventSourceRef.current = null
 
             // Stream endpoint may return only placeholders when there's no snapshot yet.
             // In that case, fetch the full analysis from the traditional endpoint.
@@ -606,22 +628,34 @@ export function AnalysisPage() {
               appApi.getAnalysisTimeline(keyword).catch(() => []),
               appApi.getAnalysisEvidence(keyword).catch(() => [])
             ]).then(([timeline, evidence]) => {
+              if (!isMountedRef.current) return
               setTimelinePoints(timeline)
               setEvidenceItems(evidence)
-            }).finally(() => setTimeout(() => setLoading(false), 300))
+            }).finally(() => {
+              if (isMountedRef.current) {
+                setTimeout(() => {
+                  if (isMountedRef.current) setLoading(false)
+                }, 300)
+              }
+            })
           }
         },
         (error) => {
+          if (!isMountedRef.current) return
           if (completed) return
+          eventSourceRef.current = null
           console.error('Stream error:', error)
           loadTraditional()
         }
       )
 
+      eventSourceRef.current = eventSource
+
       if (!eventSource) {
         if (!completed) loadTraditional()
       }
     } catch (error) {
+      if (!isMountedRef.current) return
       console.error('Stream initialization error:', error)
       if (!completed) loadTraditional()
     }
@@ -650,6 +684,12 @@ export function AnalysisPage() {
       return
     }
     load()
+    return () => {
+      if (eventSourceRef.current) {
+        eventSourceRef.current.close()
+        eventSourceRef.current = null
+      }
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [keyword, reportId])
 
@@ -1104,6 +1144,18 @@ export function AnalysisPage() {
           opacity: 1;
           transform: translateX(-50%) translateY(-2px);
         }
+        .analysis-grid-layout {
+          display: grid;
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+          gap: 20px;
+          margin-top: 20px;
+          align-items: start;
+        }
+        @media (max-width: 1024px) {
+          .analysis-grid-layout {
+            grid-template-columns: 1fr;
+          }
+        }
       `}</style>
       <section className="analysis-suite-hero card">
         <div style={{ flex: 1, minWidth: 0 }}>
@@ -1285,130 +1337,136 @@ export function AnalysisPage() {
         </section>
       </div>
 
-      <InsightSection title="Tổng quan xu hướng" badge="01" getCopyText={() => sourceRows.map(r => `${r.source}: ${r.direction} — ${r.summary}`).join('\n')}>
-        <div className="source-trend-list">
-          {sourceRows.length ? sourceRows.map((row) => (
-            <div className="source-trend-row" key={row.source}>
-              <div>
-                <strong>{row.source}</strong>
-                <p>{row.summary}</p>
-              </div>
-              <span className={`direction-pill direction-${directionClass(row.direction)}`}>
-                {directionLabel(row.direction)}
-              </span>
-            </div>
-          )) : (
-            <p className="hint">{noDataFor('tổng quan xu hướng')}</p>
-          )}
-        </div>
-
-
-      </InsightSection>
-
-      <InsightSection title="Đánh giá tổng thể" badge="02" isLocked={!isAuthenticated} getCopyText={() => `Trạng thái: ${overall.marketState}\nĐiểm: ${overall.marketScore}/100\nMức quan tâm: ${overall.interestLevel}\nĐộ phủ: ${overall.coverage}%\n\nBằng chứng:\n${overall.evidenceReasons.join('\n')}`}>
-        <div className="decision-grid">
-          <div className="decision-score-card">
-            <span className="decision-label">Điểm thị trường</span>
-            <strong>{overall.isOffline ? 'N/A' : (overall.hasData ? <><AnimatedNumber value={overall.marketScore} />/100</> : 'N/A')}</strong>
-            <div className="score-track">
-              <div className="score-fill" style={{ width: `${(overall.hasData && !overall.isOffline) ? overall.marketScore : 0}%` }} />
-            </div>
-            <p>{overall.isOffline ? 'Không khả dụng (Chế độ offline)' : (overall.hasData ? `Mức quan tâm: ${overall.interestLevel}` : noDataFor('mức độ quan tâm hiện tại'))}</p>
-          </div>
-          <div className="decision-verdict">
-            <span className="decision-label">Đánh giá chung</span>
-            <h4>{overall.isOffline ? 'Không khả dụng (Chế độ offline)' : (overall.hasData ? `Thị trường đang ${overall.marketState}` : noDataFor('đánh giá tổng thể'))}</h4>
-            <p>
-              {overall.isOffline
-                ? 'Dữ liệu tương tác và lượt xem không khả dụng ở chế độ ngoại tuyến.'
-                : (overall.hasData
-                  ? `Độ tin cậy ở mức ${overall.confidenceBand} (${overall.confidenceScore}/100), dựa trên độ phủ ${Number(overall.coverage)}%, ${overall.sourceCount} nguồn và ${formatNumber(overall.totalComments)} bình luận.`
-                  : noDataFor('độ tin cậy'))}
-            </p>
-          </div>
-        </div>
-        <div className="decision-detail-grid">
-          <div>
-            <div className="analysis-subsection-title">Vì sao hệ thống kết luận như vậy</div>
-            <ul className="prompt-bullet-list">
-              {(overall.hasData ? overall.evidenceReasons : [noDataFor('bằng chứng đánh giá tổng thể')]).map((reason) => (
-                <li key={reason}>{reason}</li>
-              ))}
-            </ul>
-          </div>
-          <div>
-            <div className="analysis-subsection-title">Caveat / dữ liệu còn thiếu</div>
-            <ul className="prompt-bullet-list">
-              {(overall.missingData.length ? overall.missingData : ['Dữ liệu hiện đủ cho kết luận sơ bộ, vẫn nên kiểm chứng thêm trước quyết định lớn.']).map((item) => (
-                <li key={item}>{item}</li>
-              ))}
-            </ul>
-          </div>
-        </div>
-      </InsightSection>
-
-      <InsightSection title="Tiềm năng thị trường" badge="03" isLocked={!isAuthenticated} getCopyText={() => overall.isOffline ? 'Dữ liệu không khả dụng ở chế độ offline.' : `Điểm cơ hội: ${opportunityRead.score}/100 (${opportunityRead.band})\n${opportunityRead.title}\n${opportunityRead.risk}\n\nHành động đề xuất: ${opportunityRead.nextMove}`}>
-        <div className="decision-grid">
-          <div className="decision-score-card opportunity-score">
-            <span className="decision-label">Điểm cơ hội</span>
-            <strong>{overall.isOffline ? 'N/A' : `${opportunityRead.score}/100`}</strong>
-            <div className="score-track">
-              <div className="score-fill" style={{ width: `${overall.isOffline ? 0 : opportunityRead.score}%` }} />
-            </div>
-            <p>Độ mạnh tín hiệu: {overall.isOffline ? 'không khả dụng' : opportunityRead.band}</p>
-          </div>
-          <div className="decision-verdict">
-            <span className="decision-label">Cơ hội tốt nhất</span>
-            <h4>{opportunityRead.title}</h4>
-            <p>{opportunityRead.risk}</p>
-          </div>
-        </div>
-        <div className="decision-detail-grid">
-          <div>
-            <div className="analysis-subsection-title">Ý nghĩa</div>
-            <ul className="prompt-bullet-list">
-              {opportunityRead.why.map((item) => (
-                <li key={item}>{item}</li>
-              ))}
-            </ul>
-          </div>
-          <div>
-            <div className="analysis-subsection-title">Hành động đề xuất tiếp theo</div>
-            <p className="prompt-main-text">{opportunityRead.nextMove}</p>
-          </div>
-        </div>
-        {topKeywords.length && !overall.isOffline ? (
-          <div className="metric-bar-wrap" style={{ marginTop: 20, paddingTop: 16, borderTop: '1px solid var(--border-color)' }}>
-            <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 4 }}>
-              Từ khóa nổi bật
-            </div>
-            {(() => {
-              const maxMentions = Math.max(...topKeywords.map(k => k.mentionCount ?? 1), 1)
-              return topKeywords.map((item, i) => (
-                <div key={item.keyword} className="metric-bar-row">
-                  <span className="metric-bar-label">{item.keyword}</span>
-                  <div className="metric-bar-track">
-                    <div
-                      className="metric-bar-fill metric-bar-fill-primary"
-                      style={{ width: `${Math.round(((item.mentionCount ?? 1) / maxMentions) * 100)}%`, opacity: 1 - i * 0.12 }}
-                    />
+      <div className="analysis-grid-layout">
+        {/* Cột 1: Xu hướng & Đánh giá tổng thể */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+          <InsightSection title="Tổng quan xu hướng" badge="01" getCopyText={() => sourceRows.map(r => `${r.source}: ${r.direction} — ${r.summary}`).join('\n')}>
+            <div className="source-trend-list">
+              {sourceRows.length ? sourceRows.map((row) => (
+                <div className="source-trend-row" key={row.source}>
+                  <div>
+                    <strong>{row.source}</strong>
+                    <p>{row.summary}</p>
                   </div>
-                  <span className="metric-bar-value">{item.mentionCount ?? 1}</span>
+                  <span className={`direction-pill direction-${directionClass(row.direction)}`}>
+                    {directionLabel(row.direction)}
+                  </span>
                 </div>
-              ))
-            })()}
-          </div>
-        ) : null}
-      </InsightSection>
+              )) : (
+                <p className="hint">{noDataFor('tổng quan xu hướng')}</p>
+              )}
+            </div>
+          </InsightSection>
 
-      <InsightSection title="Kênh tiếp cận đề xuất" badge="04" isLocked={!isAuthenticated} getCopyText={() => channelRecommendation}>
-        <p className="prompt-main-text">{channelRecommendation}</p>
-        <div className="tag-wrap">
-          {(data?.suggestedActions ?? []).slice(0, 4).map((action) => (
-            <button key={action} className="tag" type="button">{action}</button>
-          ))}
+          <InsightSection title="Đánh giá tổng thể" badge="02" isLocked={!isAuthenticated} getCopyText={() => `Trạng thái: ${overall.marketState}\nĐiểm: ${overall.marketScore}/100\nMức quan tâm: ${overall.interestLevel}\nĐộ phủ: ${overall.coverage}%\n\nBằng chứng:\n${overall.evidenceReasons.join('\n')}`}>
+            <div className="decision-grid">
+              <div className="decision-score-card">
+                <span className="decision-label">Điểm thị trường</span>
+                <strong>{overall.isOffline ? 'N/A' : (overall.hasData ? <><AnimatedNumber value={overall.marketScore} />/100</> : 'N/A')}</strong>
+                <div className="score-track">
+                  <div className="score-fill" style={{ width: `${(overall.hasData && !overall.isOffline) ? overall.marketScore : 0}%` }} />
+                </div>
+                <p>{overall.isOffline ? 'Không khả dụng (Chế độ offline)' : (overall.hasData ? `Mức quan tâm: ${overall.interestLevel}` : noDataFor('mức độ quan tâm hiện tại'))}</p>
+              </div>
+              <div className="decision-verdict">
+                <span className="decision-label">Đánh giá chung</span>
+                <h4>{overall.isOffline ? 'Không khả dụng (Chế độ offline)' : (overall.hasData ? `Thị trường đang ${overall.marketState}` : noDataFor('đánh giá tổng thể'))}</h4>
+                <p>
+                  {overall.isOffline
+                    ? 'Dữ liệu tương tác và lượt xem không khả dụng ở chế độ ngoại tuyến.'
+                    : (overall.hasData
+                      ? `Độ tin cậy ở mức ${overall.confidenceBand} (${overall.confidenceScore}/100), dựa trên độ phủ ${Number(overall.coverage)}%, ${overall.sourceCount} nguồn và ${formatNumber(overall.totalComments)} bình luận.`
+                      : noDataFor('độ tin cậy'))}
+                </p>
+              </div>
+            </div>
+            <div className="decision-detail-grid">
+              <div>
+                <div className="analysis-subsection-title">Vì sao hệ thống kết luận như vậy</div>
+                <ul className="prompt-bullet-list">
+                  {(overall.hasData ? overall.evidenceReasons : [noDataFor('bằng chứng đánh giá tổng thể')]).map((reason) => (
+                    <li key={reason}>{reason}</li>
+                  ))}
+                </ul>
+              </div>
+              <div>
+                <div className="analysis-subsection-title">Caveat / dữ liệu còn thiếu</div>
+                <ul className="prompt-bullet-list">
+                  {(overall.missingData.length ? overall.missingData : ['Dữ liệu hiện đủ cho kết luận sơ bộ, vẫn nên kiểm chứng thêm trước quyết định lớn.']).map((item) => (
+                    <li key={item}>{item}</li>
+                  ))}
+                </ul>
+              </div>
+            </div>
+          </InsightSection>
         </div>
-      </InsightSection>
+
+        {/* Cột 2: Tiềm năng & Đề xuất */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+          <InsightSection title="Tiềm năng thị trường" badge="03" isLocked={!isAuthenticated} getCopyText={() => overall.isOffline ? 'Dữ liệu không khả dụng ở chế độ offline.' : `Điểm cơ hội: ${opportunityRead.score}/100 (${opportunityRead.band})\n${opportunityRead.title}\n${opportunityRead.risk}\n\nHành động đề xuất: ${opportunityRead.nextMove}`}>
+            <div className="decision-grid">
+              <div className="decision-score-card opportunity-score">
+                <span className="decision-label">Điểm cơ hội</span>
+                <strong>{overall.isOffline ? 'N/A' : `${opportunityRead.score}/100`}</strong>
+                <div className="score-track">
+                  <div className="score-fill" style={{ width: `${overall.isOffline ? 0 : opportunityRead.score}%` }} />
+                </div>
+                <p>Độ mạnh tín hiệu: {overall.isOffline ? 'không khả dụng' : opportunityRead.band}</p>
+              </div>
+              <div className="decision-verdict">
+                <span className="decision-label">Cơ hội tốt nhất</span>
+                <h4>{opportunityRead.title}</h4>
+                <p>{opportunityRead.risk}</p>
+              </div>
+            </div>
+            <div className="decision-detail-grid">
+              <div>
+                <div className="analysis-subsection-title">Ý nghĩa</div>
+                <ul className="prompt-bullet-list">
+                  {opportunityRead.why.map((item) => (
+                    <li key={item}>{item}</li>
+                  ))}
+                </ul>
+              </div>
+              <div>
+                <div className="analysis-subsection-title">Hành động đề xuất tiếp theo</div>
+                <p className="prompt-main-text">{opportunityRead.nextMove}</p>
+              </div>
+            </div>
+            {topKeywords.length && !overall.isOffline ? (
+              <div className="metric-bar-wrap" style={{ marginTop: 20, paddingTop: 16, borderTop: '1px solid var(--border-color)' }}>
+                <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 4 }}>
+                  Từ khóa nổi bật
+                </div>
+                {(() => {
+                  const maxMentions = Math.max(...topKeywords.map(k => k.mentionCount ?? 1), 1)
+                  return topKeywords.map((item, i) => (
+                    <div key={item.keyword} className="metric-bar-row">
+                      <span className="metric-bar-label">{item.keyword}</span>
+                      <div className="metric-bar-track">
+                        <div
+                          className="metric-bar-fill metric-bar-fill-primary"
+                          style={{ width: `${Math.round(((item.mentionCount ?? 1) / maxMentions) * 100)}%`, opacity: 1 - i * 0.12 }}
+                        />
+                      </div>
+                      <span className="metric-bar-value">{item.mentionCount ?? 1}</span>
+                    </div>
+                  ))
+                })()}
+              </div>
+            ) : null}
+          </InsightSection>
+
+          <InsightSection title="Kênh tiếp cận đề xuất" badge="04" isLocked={!isAuthenticated} getCopyText={() => channelRecommendation}>
+            <p className="prompt-main-text">{channelRecommendation}</p>
+            <div className="tag-wrap">
+              {(data?.suggestedActions ?? []).slice(0, 4).map((action) => (
+                <button key={action} className="tag" type="button">{action}</button>
+              ))}
+            </div>
+          </InsightSection>
+        </div>
+      </div>
 
       {researchGuard ? (
         <section className={`card research-guard-card ${canRunDeepInsight ? 'guard-ok' : 'guard-low'}`}>
