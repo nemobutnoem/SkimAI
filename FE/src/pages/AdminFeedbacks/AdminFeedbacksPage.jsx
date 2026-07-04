@@ -200,10 +200,6 @@ export function AdminFeedbacksPage() {
                           <span style={{ fontWeight: '700', color: 'var(--text-primary)' }}>
                             {f.title}
                           </span>
-                          <span style={{ color: 'var(--text-muted, #94a3b8)', margin: '0 8px' }}>—</span>
-                          <span style={{ color: 'var(--text-secondary)' }}>
-                            {f.content}
-                          </span>
                         </div>
                       </div>
 
