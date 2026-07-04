@@ -112,7 +112,7 @@ export function AdminSettingsPage() {
             <div className="stack">
               <label className="field">
                 <span>Tên ứng dụng</span>
-                <input defaultValue="AISKIM" />
+                <input defaultValue="SKIM AI" />
               </label>
               <label className="field">
                 <span>Ngôn ngữ mặc định</span>
