@@ -84,7 +84,9 @@ function HamburgerMenu({ links, extraLinks = [], user, isAuthenticated, isAdmin,
       <div className="mobile-overlay" onClick={onClose} />
       <div className="mobile-menu">
         <div className="mobile-menu-header">
-          <span className="mobile-menu-brand">AISKIM</span>
+          <span className="mobile-menu-brand">
+            <span className="text-skim">SKIM</span> <span className="text-ai">AI</span>
+          </span>
           <button className="mobile-menu-close" onClick={onClose} aria-label="Đóng">✕</button>
         </div>
         <nav className="mobile-menu-nav">
@@ -166,12 +168,18 @@ export function Navbar() {
       <header className="app-header">
         <div className="app-header-inner">
           <div className="app-brand" role="button" tabIndex={0} onClick={() => navigate(ROUTES.HOME)}>
-            <div className="app-brand-icon">
-              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M2 12h3l2-9 4 18 3-11 2 5 2-3h4" />
-              </svg>
-            </div>
-            <span>AISKIM</span>
+            <svg className="app-brand-svg" width="28" height="28" viewBox="0 0 64 64" fill="none">
+              <circle cx="28" cy="28" r="20" stroke="#5f27cd" strokeWidth="5.5" fill="#f3f0ff" />
+              <rect x="18" y="28" width="4.5" height="10" rx="2" fill="#5f27cd" />
+              <rect x="25" y="22" width="4.5" height="16" rx="2" fill="#5f27cd" />
+              <rect x="32" y="16" width="4.5" height="22" rx="2" fill="#5f27cd" />
+              <path d="M38 18c0-2 1-3 3-3c-2 0-3-1-3-3c0 2-1 3-3 3c2 0 3 1 3 3z" fill="#9b5de5" />
+              <path d="M43 12c0-1 .5-1.5 1.5-1.5c-1 0-1.5-.5-1.5-1.5c0 1-.5 1.5-1.5 1.5c1 0 1.5.5 1.5 1.5z" fill="#9b5de5" />
+              <line x1="42" y1="42" x2="54" y2="54" stroke="#5f27cd" strokeWidth="6" strokeLinecap="round" />
+            </svg>
+            <span className="app-brand-text">
+              <span className="text-skim">SKIM</span> <span className="text-ai">AI</span>
+            </span>
           </div>
           <span className="admin-section-badge">Admin</span>
           <nav className="app-nav">
@@ -200,12 +208,18 @@ export function Navbar() {
       <header className="app-header">
         <div className="app-header-inner">
           <div className="app-brand" role="button" tabIndex={0} onClick={() => navigate(ROUTES.HOME)}>
-            <div className="app-brand-icon">
-              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M2 12h3l2-9 4 18 3-11 2 5 2-3h4" />
-              </svg>
-            </div>
-            <span>AISKIM</span>
+            <svg className="app-brand-svg" width="28" height="28" viewBox="0 0 64 64" fill="none">
+              <circle cx="28" cy="28" r="20" stroke="#5f27cd" strokeWidth="5.5" fill="#f3f0ff" />
+              <rect x="18" y="28" width="4.5" height="10" rx="2" fill="#5f27cd" />
+              <rect x="25" y="22" width="4.5" height="16" rx="2" fill="#5f27cd" />
+              <rect x="32" y="16" width="4.5" height="22" rx="2" fill="#5f27cd" />
+              <path d="M38 18c0-2 1-3 3-3c-2 0-3-1-3-3c0 2-1 3-3 3c2 0 3 1 3 3z" fill="#9b5de5" />
+              <path d="M43 12c0-1 .5-1.5 1.5-1.5c-1 0-1.5-.5-1.5-1.5c0 1-.5 1.5-1.5 1.5c1 0 1.5.5 1.5 1.5z" fill="#9b5de5" />
+              <line x1="42" y1="42" x2="54" y2="54" stroke="#5f27cd" strokeWidth="6" strokeLinecap="round" />
+            </svg>
+            <span className="app-brand-text">
+              <span className="text-skim">SKIM</span> <span className="text-ai">AI</span>
+            </span>
           </div>
           <nav className="app-nav">
             {links.map((link) => (
@@ -236,12 +250,18 @@ export function Navbar() {
     <header className="app-header">
       <div className="app-header-inner">
         <div className="app-brand" role="button" tabIndex={0} onClick={() => navigate(ROUTES.HOME)}>
-          <div className="app-brand-icon">
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M2 12h3l2-9 4 18 3-11 2 5 2-3h4" />
-            </svg>
-          </div>
-          <span>AISKIM</span>
+          <svg className="app-brand-svg" width="28" height="28" viewBox="0 0 64 64" fill="none">
+            <circle cx="28" cy="28" r="20" stroke="#5f27cd" strokeWidth="5.5" fill="#f3f0ff" />
+            <rect x="18" y="28" width="4.5" height="10" rx="2" fill="#5f27cd" />
+            <rect x="25" y="22" width="4.5" height="16" rx="2" fill="#5f27cd" />
+            <rect x="32" y="16" width="4.5" height="22" rx="2" fill="#5f27cd" />
+            <path d="M38 18c0-2 1-3 3-3c-2 0-3-1-3-3c0 2-1 3-3 3c2 0 3 1 3 3z" fill="#9b5de5" />
+            <path d="M43 12c0-1 .5-1.5 1.5-1.5c-1 0-1.5-.5-1.5-1.5c0 1-.5 1.5-1.5 1.5c1 0 1.5.5 1.5 1.5z" fill="#9b5de5" />
+            <line x1="42" y1="42" x2="54" y2="54" stroke="#5f27cd" strokeWidth="6" strokeLinecap="round" />
+          </svg>
+          <span className="app-brand-text">
+            <span className="text-skim">SKIM</span> <span className="text-ai">AI</span>
+          </span>
         </div>
         <nav className="app-nav">
           {links.map((link) => (

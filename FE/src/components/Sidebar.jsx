@@ -167,16 +167,26 @@ export function Sidebar({ isOpen, onClose }) {
     <aside className={`app-sidebar${isOpen ? ' open' : ''}`}>
       {/* Brand */}
       <div className="sidebar-brand">
-        <div
-          className="sidebar-brand-icon"
+        <svg
+          className="sidebar-brand-svg"
+          width="28"
+          height="28"
+          viewBox="0 0 64 64"
+          fill="none"
           onClick={() => { navigate(isAuthenticated ? ROUTES.DASHBOARD : ROUTES.HOME); onClose?.() }}
           style={{ cursor: 'pointer' }}
         >
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M2 12h3l2-9 4 18 3-11 2 5 2-3h4" />
-          </svg>
-        </div>
-        <span className="sidebar-brand-name">AISKIM</span>
+          <circle cx="28" cy="28" r="20" stroke="#a29bfe" strokeWidth="5.5" fill="rgba(255,255,255,0.08)" />
+          <rect x="18" y="28" width="4.5" height="10" rx="2" fill="#a29bfe" />
+          <rect x="25" y="22" width="4.5" height="16" rx="2" fill="#a29bfe" />
+          <rect x="32" y="16" width="4.5" height="22" rx="2" fill="#a29bfe" />
+          <path d="M38 18c0-2 1-3 3-3c-2 0-3-1-3-3c0 2-1 3-3 3c2 0 3 1 3 3z" fill="#a29bfe" />
+          <path d="M43 12c0-1 .5-1.5 1.5-1.5c-1 0-1.5-.5-1.5-1.5c0 1-.5 1.5-1.5 1.5c1 0 1.5.5 1.5 1.5z" fill="#a29bfe" />
+          <line x1="42" y1="42" x2="54" y2="54" stroke="#a29bfe" strokeWidth="6" strokeLinecap="round" />
+        </svg>
+        <span className="sidebar-brand-name" style={{ marginLeft: 8 }}>
+          <span style={{ color: '#fff' }}>SKIM</span> <span style={{ color: '#a29bfe' }}>AI</span>
+        </span>
         {isOnAdminPage && (
           <span style={{ marginLeft: 'auto', fontSize: 10, fontWeight: 700, background: 'var(--accent-bg)', color: 'var(--accent)', padding: '2px 7px', borderRadius: 99 }}>
             Admin

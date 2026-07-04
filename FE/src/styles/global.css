@@ -586,10 +586,6 @@ a:hover {
   display: flex;
   align-items: center;
   gap: 8px;
-  font-weight: 800;
-  font-size: 15px;
-  letter-spacing: -0.03em;
-  color: var(--text-primary);
   cursor: pointer;
   transition: opacity var(--transition-fast);
 }
@@ -598,16 +594,22 @@ a:hover {
   opacity: 0.85;
 }
 
-.app-brand-icon {
-  width: 28px;
-  height: 28px;
-  border-radius: 7px;
-  background: linear-gradient(135deg, #0D9488 0%, #34D399 100%);
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  box-shadow: 0 2px 6px rgba(13,148,150,0.3);
-  margin-right: 2px;
+.app-brand-svg {
+  flex-shrink: 0;
+}
+
+.app-brand-text {
+  font-weight: 800;
+  font-size: 16px;
+  letter-spacing: -0.03em;
+}
+
+.app-brand-text .text-skim {
+  color: var(--text-primary);
+}
+
+.app-brand-text .text-ai {
+  color: #5f27cd;
 }
 
 .app-nav {
