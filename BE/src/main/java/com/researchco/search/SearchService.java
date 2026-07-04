@@ -209,7 +209,7 @@ public class SearchService {
     }
 
     private void validateSearchLimit(UserEntity user) {
-        LocalDateTime promoEnd = LocalDateTime.of(2026, 7, 6, 23, 59, 59);
+        LocalDateTime promoEnd = LocalDateTime.of(2026, 7, 15, 23, 59, 59);
         if (LocalDateTime.now().isBefore(promoEnd)) {
             return;
         }

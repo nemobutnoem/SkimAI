@@ -255,7 +255,7 @@ public class FrontendService {
         UserEntity user = preferredUser();
         Optional<UserSubscriptionEntity> subscription = userSubscriptionRepository.findFirstByUserAndStatusOrderByStartDateDesc(user, "ACTIVE");
         
-        LocalDateTime promoEnd = LocalDateTime.of(2026, 7, 6, 23, 59, 59);
+        LocalDateTime promoEnd = LocalDateTime.of(2026, 7, 15, 23, 59, 59);
         boolean isPromoActive = LocalDateTime.now().isBefore(promoEnd);
 
         PlanEntity plan;
@@ -2691,7 +2691,7 @@ public class FrontendService {
     }
 
     private void enforceDeepInsightQuota(UserEntity user, UserSubscriptionEntity subscription) {
-        LocalDateTime promoEnd = LocalDateTime.of(2026, 7, 6, 23, 59, 59);
+        LocalDateTime promoEnd = LocalDateTime.of(2026, 7, 15, 23, 59, 59);
         if (LocalDateTime.now().isBefore(promoEnd)) {
             return;
         }
@@ -3085,7 +3085,7 @@ public class FrontendService {
             UserEntity user = preferredUser();
 
             // Enforce export limit per plan
-            LocalDateTime promoEnd = LocalDateTime.of(2026, 7, 6, 23, 59, 59);
+            LocalDateTime promoEnd = LocalDateTime.of(2026, 7, 15, 23, 59, 59);
             boolean isPromoActive = LocalDateTime.now().isBefore(promoEnd);
 
             if (!isPromoActive && (user.getRole() == null || !user.getRole().equalsIgnoreCase("ADMIN"))) {
