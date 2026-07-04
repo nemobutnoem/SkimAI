@@ -1,4 +1,4 @@
-﻿:root {
+:root {
   /* Brand palette — v2 dark navy + teal */
   --primary: #0D9488;
   --primary-dark: #0F172A;
@@ -4540,7 +4540,7 @@ code {
 
 .dash-kpi-grid {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
   gap: 12px;
 }
 
@@ -4606,7 +4606,7 @@ code {
 
 .dash-trends-grid {
   display: grid;
-  grid-template-columns: repeat(5, 1fr);
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
 }
 
 .dash-trend-cell {
@@ -4659,6 +4659,11 @@ code {
   box-shadow: var(--shadow-sm);
 }
 
+.dash-recent-list-container {
+  max-height: 350px;
+  overflow-y: auto;
+}
+
 .dash-recent-header {
   font-size: 14px;
   font-weight: 700;
@@ -4673,6 +4678,7 @@ code {
   padding: 13px 20px;
   border-bottom: 1px solid var(--bd2);
   transition: background .12s;
+  cursor: pointer;
 }
 
 .dash-recent-row:last-child {

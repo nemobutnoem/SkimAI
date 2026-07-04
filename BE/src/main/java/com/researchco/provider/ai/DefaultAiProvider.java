@@ -44,8 +44,8 @@ public class DefaultAiProvider implements AiProvider {
         this.systemSettingRepository = systemSettingRepository;
         
         org.springframework.http.client.SimpleClientHttpRequestFactory factory = new org.springframework.http.client.SimpleClientHttpRequestFactory();
-        factory.setConnectTimeout(5000);
-        factory.setReadTimeout(5000);
+        factory.setConnectTimeout(15000);
+        factory.setReadTimeout(60000);
         this.restTemplate = new RestTemplate(factory);
     }
 

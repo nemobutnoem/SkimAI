@@ -49,6 +49,17 @@ public class FrontendController {
         return frontendService.getAccountOverview();
     }
 
+    @PutMapping("/account/profile")
+    public FrontendDtos.Profile updateProfile(@RequestBody @jakarta.validation.Valid FrontendDtos.ProfileUpdateRequest request) {
+        return frontendService.updateProfile(request);
+    }
+
+    @PostMapping("/account/password")
+    public Map<String, String> changePassword(@RequestBody @jakarta.validation.Valid FrontendDtos.PasswordChangeRequest request) {
+        frontendService.changePassword(request);
+        return Map.of("message", "Đổi mật khẩu thành công!");
+    }
+
     @PutMapping("/account/notifications")
     public Map<String, Boolean> saveNotificationSettings(@RequestBody Map<String, Boolean> settings) {
         return frontendService.saveNotificationSettings(settings);

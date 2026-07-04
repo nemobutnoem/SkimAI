@@ -147,6 +147,12 @@ public class FrontendService {
     @Lazy
     private FrontendService self;
 
+    @Autowired
+    private org.springframework.security.crypto.password.PasswordEncoder passwordEncoder;
+
+    @Autowired
+    private org.springframework.jdbc.core.JdbcTemplate jdbcTemplate;
+
     @Value("${app.payment.bank.id:MB}")
     private String paymentBankId;
 
@@ -263,7 +269,7 @@ public class FrontendService {
         }
 
         long queryCount = searchQueryRepository.countByUser(user);
-        long reportCount = reportRepository.countByUserIdAndStatusIgnoreCase(user.getId(), "EXPORTED");
+        long reportCount = reportRepository.countByUserId(user.getId());
         List<FrontendDtos.InvoiceItem> invoices = paymentTransactionRepository.findByUserOrderByCreatedAtDesc(user).stream()
                 .limit(3)
                 .map(tx -> new FrontendDtos.InvoiceItem(
@@ -323,18 +329,102 @@ public class FrontendService {
                         new FrontendDtos.UsageItem("Lượt sử dụng AI", aiUsagePct)
                 ),
                 invoices,
-                new LinkedHashMap<>(notificationSettings.get())
+                getNotificationSettings(user)
         );
+    }
+
+    @jakarta.annotation.PostConstruct
+    public void initDatabaseTable() {
+        try {
+            jdbcTemplate.execute(
+                "CREATE TABLE IF NOT EXISTS user_notifications (" +
+                "    user_id UUID PRIMARY KEY," +
+                "    email_updates BOOLEAN DEFAULT TRUE," +
+                "    weekly_report BOOLEAN DEFAULT TRUE," +
+                "    usage_alerts BOOLEAN DEFAULT FALSE" +
+                ")"
+            );
+        } catch (Exception e) {
+            System.err.println("Error initializing user_notifications table: " + e.getMessage());
+        }
+    }
+
+    public Map<String, Boolean> getNotificationSettings(UserEntity user) {
+        try {
+            return jdbcTemplate.queryForObject(
+                "SELECT email_updates, weekly_report, usage_alerts FROM user_notifications WHERE user_id = ?",
+                (rs, rowNum) -> {
+                    Map<String, Boolean> map = new LinkedHashMap<>();
+                    map.put("emailUpdates", rs.getBoolean("email_updates"));
+                    map.put("weeklyReport", rs.getBoolean("weekly_report"));
+                    map.put("usageAlerts", rs.getBoolean("usage_alerts"));
+                    return map;
+                },
+                user.getId()
+            );
+        } catch (org.springframework.dao.EmptyResultDataAccessException e) {
+            Map<String, Boolean> defaults = new LinkedHashMap<>();
+            defaults.put("emailUpdates", true);
+            defaults.put("weeklyReport", true);
+            defaults.put("usageAlerts", false);
+            return defaults;
+        }
     }
 
     @Transactional
     public Map<String, Boolean> saveNotificationSettings(Map<String, Boolean> settings) {
-        Map<String, Boolean> normalized = new LinkedHashMap<>();
-        normalized.put("emailUpdates", Boolean.TRUE.equals(settings.get("emailUpdates")));
-        normalized.put("weeklyReport", Boolean.TRUE.equals(settings.get("weeklyReport")));
-        normalized.put("usageAlerts", Boolean.TRUE.equals(settings.get("usageAlerts")));
-        notificationSettings.set(normalized);
-        return normalized;
+        UserEntity user = preferredUser();
+        boolean emailUpdates = Boolean.TRUE.equals(settings.get("emailUpdates"));
+        boolean weeklyReport = Boolean.TRUE.equals(settings.get("weeklyReport"));
+        boolean usageAlerts = Boolean.TRUE.equals(settings.get("usageAlerts"));
+
+        int rows = jdbcTemplate.update(
+            "UPDATE user_notifications SET email_updates = ?, weekly_report = ?, usage_alerts = ? WHERE user_id = ?",
+            emailUpdates, weeklyReport, usageAlerts, user.getId()
+        );
+        
+        if (rows == 0) {
+            try {
+                jdbcTemplate.update(
+                    "INSERT INTO user_notifications (user_id, email_updates, weekly_report, usage_alerts) VALUES (?, ?, ?, ?)",
+                    user.getId(), emailUpdates, weeklyReport, usageAlerts
+                );
+            } catch (Exception e) {
+                jdbcTemplate.update(
+                    "UPDATE user_notifications SET email_updates = ?, weekly_report = ?, usage_alerts = ? WHERE user_id = ?",
+                    emailUpdates, weeklyReport, usageAlerts, user.getId()
+                );
+            }
+        }
+        
+        Map<String, Boolean> result = new LinkedHashMap<>();
+        result.put("emailUpdates", emailUpdates);
+        result.put("weeklyReport", weeklyReport);
+        result.put("usageAlerts", usageAlerts);
+        return result;
+    }
+
+    @Transactional
+    public FrontendDtos.Profile updateProfile(FrontendDtos.ProfileUpdateRequest request) {
+        UserEntity user = preferredUser();
+        user.setFullName(request.name().trim());
+        userRepository.save(user);
+        return new FrontendDtos.Profile(user.getFullName(), user.getEmail(), "SkimAI Labs");
+    }
+
+    @Transactional
+    public void changePassword(FrontendDtos.PasswordChangeRequest request) {
+        UserEntity user = preferredUser();
+        if (user.getPasswordHash() == null || user.getPasswordHash().isBlank()) {
+            throw new com.researchco.common.AppException(org.springframework.http.HttpStatus.BAD_REQUEST,
+                    "Tài khoản đăng nhập bằng Google không thể đổi mật khẩu qua đây.");
+        }
+        if (!passwordEncoder.matches(request.currentPassword(), user.getPasswordHash())) {
+            throw new com.researchco.common.AppException(org.springframework.http.HttpStatus.BAD_REQUEST,
+                    "Mật khẩu hiện tại không chính xác.");
+        }
+        user.setPasswordHash(passwordEncoder.encode(request.newPassword()));
+        userRepository.save(user);
     }
 
     @Transactional
@@ -1340,9 +1430,10 @@ public class FrontendService {
                             long likes = 0L;
                             long comments = 0L;
                             boolean itemOffline = false;
+                            Map<?, ?> payload = null;
                             if (item.getRawPayload() != null) {
                                 try {
-                                    Map<?, ?> payload = objectMapper.readValue(item.getRawPayload(), Map.class);
+                                    payload = objectMapper.readValue(item.getRawPayload(), Map.class);
                                     views = toLong(payload.get("viewCount"));
                                     likes = toLong(payload.get("likeCount"));
                                     comments = toLong(payload.get("commentCount"));
@@ -1351,9 +1442,7 @@ public class FrontendService {
                                     // ignore
                                 }
                             }
-                            String metricText = itemOffline 
-                                    ? "N/A"
-                                    : String.format("Lượt xem %s | Lượt thích %s | Bình luận %s", formatCompact(views), formatCompact(likes), formatCompact(comments));
+                            String metricText = formatEvidenceMetric(item.getPlatform(), itemOffline, views, likes, comments, payload);
                             return new FrontendDtos.EvidenceItem(
                                     item.getSourceName() == null || item.getSourceName().isBlank() ? "Nguồn nghiên cứu" : item.getSourceName(),
                                     firstMeaningfulText(item.getTitle(), "Nguồn không có tiêu đề"),
@@ -1389,15 +1478,15 @@ public class FrontendService {
                     long likes = 0L;
                     long comments = 0L;
                     boolean itemOffline = false;
-                    if (item.rawPayload() instanceof Map<?, ?> payload) {
+                    Map<?, ?> payload = null;
+                    if (item.rawPayload() instanceof Map<?, ?> p) {
+                        payload = p;
                         views = toLong(payload.get("viewCount"));
                         likes = toLong(payload.get("likeCount"));
                         comments = toLong(payload.get("commentCount"));
                         itemOffline = Boolean.TRUE.equals(payload.get("isFallback"));
                     }
-                    String metricText = itemOffline 
-                            ? "N/A"
-                            : String.format("Lượt xem %s | Lượt thích %s | Bình luận %s", formatCompact(views), formatCompact(likes), formatCompact(comments));
+                    String metricText = formatEvidenceMetric(item.platform(), itemOffline, views, likes, comments, payload);
                     return new FrontendDtos.EvidenceItem(
                             item.sourceName() == null || item.sourceName().isBlank() ? "Nguồn nghiên cứu" : item.sourceName(),
                             firstMeaningfulText(item.title(), "Nguồn không có tiêu đề"),
@@ -1409,6 +1498,37 @@ public class FrontendService {
                     );
                 })
                 .toList();
+    }
+
+    private String formatEvidenceMetric(String platform, boolean itemOffline, long views, long likes, long comments, Map<?, ?> payload) {
+        if (itemOffline) {
+            return "N/A";
+        }
+        if ("YOUTUBE".equalsIgnoreCase(platform)) {
+            return String.format("Lượt xem %s | Lượt thích %s | Bình luận %s", 
+                    formatCompact(views), formatCompact(likes), formatCompact(comments));
+        } else {
+            int position = -1;
+            if (payload != null && payload.containsKey("position")) {
+                try {
+                    position = ((Number) payload.get("position")).intValue();
+                } catch (Exception e) {
+                    // ignore
+                }
+            }
+            
+            String popularity = "Trung bình";
+            String rankText = "";
+            if (position >= 0) {
+                int rank = "NEWS".equalsIgnoreCase(platform) ? position + 1 : position;
+                if (rank > 0) {
+                    if (rank <= 2) popularity = "Cao";
+                    else if (rank > 5) popularity = "Thấp";
+                    rankText = " (Top " + rank + " Google)";
+                }
+            }
+            return String.format("Độ nổi bật nguồn: %s%s", popularity, rankText);
+        }
     }
 
     public List<FrontendDtos.CompareItem> getAnalysisCompare(String keyword) {
@@ -1453,12 +1573,35 @@ public class FrontendService {
     }
 
     public List<FrontendDtos.TimeSeriesPoint> getAnalysisTimeline(String keyword) {
-        FrontendDtos.AnalysisResponse analysis = getAnalysis(keyword);
-        List<FrontendDtos.KeywordMetric> metrics = analysis.relatedKeywords();
+        String normalizedKeyword = getNormalizedTopic(keyword);
+        
+        Optional<SearchQueryEntity> queryOpt = searchQueryRepository
+                .findFirstByKeywordIgnoreCaseOrderByCreatedAtDesc(normalizedKeyword);
+                
+        List<FrontendDtos.KeywordMetric> metrics = List.of();
+        
+        if (queryOpt.isPresent()) {
+            com.researchco.snapshot.AnalysisSnapshotEntity snapshot = analysisSnapshotRepository
+                    .findBySearchQueryId(queryOpt.get().getId()).orElse(null);
+            if (snapshot != null) {
+                metrics = snapshotKeywordRepository.findBySnapshotId(snapshot.getId()).stream()
+                        .sorted(Comparator.comparing(com.researchco.snapshot.SnapshotKeywordEntity::getMentionCount).reversed())
+                        .limit(6)
+                        .map(sk -> {
+                            int hash = Math.abs(sk.getKeyword().hashCode());
+                            double engagement = sk.getAvgEngagement() != null ? sk.getAvgEngagement() : (0.05 + (hash % 100) / 1000.0);
+                            long views = sk.getTotalViews() != null ? sk.getTotalViews() : (sk.getMentionCount() * 1500L + (hash % 5000));
+                            long comments = sk.getTotalComments() != null ? sk.getTotalComments() : (views / 50);
+                            return new FrontendDtos.KeywordMetric(sk.getKeyword(), sk.getMentionCount(), views, comments, 0L, engagement);
+                        })
+                        .toList();
+            }
+        }
+        
         long totalViews = metrics.stream().mapToLong(FrontendDtos.KeywordMetric::totalViews).sum();
         long totalMentions = metrics.stream().mapToLong(FrontendDtos.KeywordMetric::mentionCount).sum();
         long baseline = Math.max(2_000L, totalViews + (totalMentions * 800L));
-        int hash = Math.abs((analysis.keyword() == null ? "market" : analysis.keyword()).hashCode());
+        int hash = Math.abs((keyword == null ? "market" : keyword).hashCode());
 
         double[] ramps = new double[]{0.55, 0.68, 0.79, 0.91, 1.0};
         String[] labels = new String[]{"Tuần -4", "Tuần -3", "Tuần -2", "Tuần -1", "Hiện tại"};
@@ -2222,6 +2365,9 @@ public class FrontendService {
             return null;
         }
         String normalizedKeyword = keyword == null ? "" : keyword.trim();
+        if (normalizedKeyword.isEmpty()) {
+            return null;
+        }
         String countryCode = localeProfile.countryCode();
         String languageCode = localeProfile.languageCode();
 
@@ -2859,7 +3005,7 @@ public class FrontendService {
             return "pending";
         }
         return switch (status.toUpperCase(Locale.ROOT)) {
-            case "PAID" -> "paid";
+            case "PAID", "SUCCESS", "COMPLETED" -> "paid";
             case "PENDING" -> "pending";
             case "CANCELLED" -> "failed";
             default -> status.toLowerCase(Locale.ROOT);

@@ -466,6 +466,7 @@ export function AnalysisPage() {
   const toast = useToast()
   const [searchParams] = useSearchParams()
   const keyword = searchParams.get('keyword')?.trim() || ''
+  const reportId = searchParams.get('reportId')?.trim() || ''
   const [draftKeyword, setDraftKeyword] = useState('')
   const searchInputRef = useRef(null)
 
@@ -528,6 +529,7 @@ export function AnalysisPage() {
     let gotKeywords = false
     let gotNews = false
     let gotInsights = false
+    let completed = false
 
     try {
       const eventSource = appApi.streamAnalysis(
@@ -588,6 +590,7 @@ export function AnalysisPage() {
             }))
             setStreamProgress(6)
           } else if (eventName === 'complete') {
+            completed = true
             setStreamProgress(7)
 
             // Stream endpoint may return only placeholders when there's no snapshot yet.
@@ -609,21 +612,37 @@ export function AnalysisPage() {
           }
         },
         (error) => {
+          if (completed) return
           console.error('Stream error:', error)
           loadTraditional()
         }
       )
 
       if (!eventSource) {
-        loadTraditional()
+        if (!completed) loadTraditional()
       }
     } catch (error) {
       console.error('Stream initialization error:', error)
-      loadTraditional()
+      if (!completed) loadTraditional()
     }
   }
 
   useEffect(() => {
+    if (reportId) {
+      setLoading(true)
+      appApi.getReportById(reportId)
+        .then((res) => {
+          if (res?.reportContent) {
+            setData(res.reportContent)
+            appApi.getAnalysisTimeline(res.keyword).then(setTimelinePoints).catch(() => [])
+            appApi.getAnalysisEvidence(res.keyword).then(setEvidenceItems).catch(() => [])
+          }
+        })
+        .catch(console.error)
+        .finally(() => setLoading(false))
+      return
+    }
+
     if (!keyword) {
       setData(null)
       setEvidenceItems([])
@@ -632,7 +651,7 @@ export function AnalysisPage() {
     }
     load()
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [keyword])
+  }, [keyword, reportId])
 
   const sourceRows = useMemo(() => buildSourceTrendRows(data, evidenceItems), [data, evidenceItems])
   const overall = useMemo(() => buildOverallRead(data, sourceRows, timelinePoints), [data, sourceRows, timelinePoints])

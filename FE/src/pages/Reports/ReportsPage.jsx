@@ -32,19 +32,7 @@ export function ReportsPage() {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
-      {/* Header */}
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-        <div>
-          <div style={{ fontSize: 20, fontWeight: 800, letterSpacing: '-0.02em' }}>Báo cáo</div>
-          <div style={{ fontSize: 13, color: 'var(--text-muted)', marginTop: 2 }}>Lịch sử phân tích thị trường của bạn</div>
-        </div>
-        <button
-          onClick={() => navigate(ROUTES.ANALYSIS)}
-          style={{ padding: '8px 16px', border: 'none', borderRadius: 'var(--radius-md)', background: 'var(--accent)', color: '#fff', font: 'inherit', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}
-        >
-          + Tạo phân tích mới
-        </button>
-      </div>
+
 
       {/* Stats derived from loaded data */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12 }}>
@@ -122,7 +110,16 @@ export function ReportsPage() {
                     <td style={{ padding: '14px 20px', fontSize: 12.5, color: 'var(--text-muted)' }}>{formatDate(r.createdAt)}</td>
                     <td style={{ padding: '14px 20px', textAlign: 'right' }}>
                       <button
-                        onClick={() => navigate(`${ROUTES.ANALYSIS}?keyword=${encodeURIComponent(r.keyword ?? '')}`)}
+                        onClick={() => {
+                          if (r.status === 'DEEP_INSIGHT') {
+                            const source = r.title ? r.title.replace(" Deep Insight", "") : 'Cross-source synthesis';
+                            navigate(`${ROUTES.DEEP_INSIGHT}?keyword=${encodeURIComponent(r.keyword ?? '')}&source=${encodeURIComponent(source)}`);
+                          } else if (r.status === 'EXPORTED') {
+                            navigate(`${ROUTES.ANALYSIS}?reportId=${r.id}&keyword=${encodeURIComponent(r.keyword ?? '')}`);
+                          } else {
+                            navigate(`${ROUTES.ANALYSIS}?keyword=${encodeURIComponent(r.keyword ?? '')}`);
+                          }
+                        }}
                         style={{ background: 'none', border: '1px solid var(--border-color)', borderRadius: 6, padding: '4px 10px', fontSize: 12, cursor: 'pointer', color: 'var(--text-muted)' }}
                       >
                         Xem phân tích

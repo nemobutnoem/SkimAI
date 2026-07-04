@@ -2,6 +2,23 @@ import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { ROUTES } from '../../constants/routes'
 import { appApi } from '../../services/appApi'
+import { useToast } from '../../context/ToastContext'
+
+function fieldStyle(disabled) {
+  return {
+    width: '100%',
+    padding: '10px 14px',
+    borderRadius: 'var(--radius-md)',
+    border: '1px solid var(--border-color)',
+    font: 'inherit',
+    fontSize: 13.5,
+    background: disabled ? 'var(--bg-page)' : 'var(--sur)',
+    color: 'var(--text-primary)',
+    cursor: disabled ? 'not-allowed' : 'text',
+    outline: 'none',
+    boxSizing: 'border-box',
+  }
+}
 
 function UsageBar({ label, value }) {
   return (
@@ -17,14 +34,11 @@ function UsageBar({ label, value }) {
   )
 }
 
-function SectionCard({ title, subtitle, children, action }) {
+function SectionCard({ title, children, action }) {
   return (
     <div style={{ background: 'var(--sur)', border: '1px solid var(--border-color)', borderRadius: 'var(--radius-xl)', overflow: 'hidden', boxShadow: 'var(--shadow-sm)' }}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px 20px', borderBottom: '1px solid var(--bd2)' }}>
-        <div>
-          <div style={{ fontSize: 14, fontWeight: 700 }}>{title}</div>
-          {subtitle && <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 2 }}>{subtitle}</div>}
-        </div>
+        <div style={{ fontSize: 14, fontWeight: 700 }}>{title}</div>
         {action}
       </div>
       <div style={{ padding: '16px 20px' }}>
@@ -34,62 +48,250 @@ function SectionCard({ title, subtitle, children, action }) {
   )
 }
 
+function Switch({ checked, onChange, label, description }) {
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 0', borderBottom: '1px solid var(--bd2)' }}>
+      <div style={{ flex: 1, paddingRight: 16 }}>
+        <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-primary)' }}>{label}</div>
+        {description && <div style={{ fontSize: 11.5, color: 'var(--text-muted)', marginTop: 2 }}>{description}</div>}
+      </div>
+      <label style={{
+        position: 'relative',
+        display: 'inline-block',
+        width: 44,
+        height: 24,
+        cursor: 'pointer'
+      }}>
+        <input
+          type="checkbox"
+          checked={checked}
+          onChange={onChange}
+          style={{ opacity: 0, width: 0, height: 0 }}
+        />
+        <span style={{
+          position: 'absolute',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          backgroundColor: checked ? 'var(--accent)' : 'var(--bd2)',
+          transition: '0.3s',
+          borderRadius: 24,
+        }}>
+          <span style={{
+            position: 'absolute',
+            height: 18,
+            width: 18,
+            left: checked ? 22 : 4,
+            bottom: 3,
+            backgroundColor: 'white',
+            transition: '0.3s',
+            borderRadius: '50%',
+            boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
+          }} />
+        </span>
+      </label>
+    </div>
+  )
+}
+
 export function AccountPage() {
   const [data, setData] = useState(null)
   const navigate = useNavigate()
+  const toast = useToast()
+
+  // Profile Form State
+  const [isEditingProfile, setIsEditingProfile] = useState(false)
+  const [fullName, setFullName] = useState('')
+  const [company, setCompany] = useState('')
+  const [isSavingProfile, setIsSavingProfile] = useState(false)
+
+
+
+  // Notifications State
+  const [notifications, setNotifications] = useState({
+    emailUpdates: false,
+    weeklyReport: false,
+    usageAlerts: false
+  })
+
+  const loadData = () => {
+    appApi.getAccountOverview()
+      .then(res => {
+        setData(res)
+        setFullName(res?.profile?.name ?? '')
+        setCompany(res?.profile?.company ?? '')
+        if (res?.notifications) {
+          setNotifications(res.notifications)
+        }
+      })
+      .catch(() => {})
+  }
 
   useEffect(() => {
-    appApi.getAccountOverview().then(setData).catch(() => {})
+    loadData()
   }, [])
 
+  const handleSaveProfile = async (e) => {
+    e.preventDefault()
+    if (!fullName.trim()) {
+      toast.error('Họ và tên không được để trống')
+      return
+    }
+    setIsSavingProfile(true)
+    try {
+      await appApi.updateProfile({ name: fullName.trim(), company: company.trim() })
+      toast.success('Cập nhật thông tin cá nhân thành công!')
+      setIsEditingProfile(false)
+      loadData()
+    } catch (err) {
+      toast.error(err.message || 'Không thể cập nhật thông tin cá nhân.')
+    } finally {
+      setIsSavingProfile(false)
+    }
+  }
+
+
+
+  const handleToggleNotification = async (key) => {
+    const updated = {
+      ...notifications,
+      [key]: !notifications[key]
+    }
+    setNotifications(updated)
+    try {
+      await appApi.saveNotificationSettings(updated)
+      toast.success('Cài đặt thông báo đã được cập nhật!')
+    } catch (err) {
+      toast.error(err.message || 'Không thể lưu cài đặt thông báo.')
+      // Revert state
+      setNotifications(notifications)
+    }
+  }
+
   const subscription = data?.subscription
-  const billingDate = subscription?.renewsAt
-    ? new Date(subscription.renewsAt).toLocaleDateString('vi-VN')
-    : 'Chưa lập lịch'
+  const getBillingDateLabel = () => {
+    if (!subscription?.renewsAt) return 'Chưa lập lịch'
+    const rawVal = subscription.renewsAt
+    const d = new Date(rawVal)
+    if (isNaN(d.getTime())) {
+      return rawVal
+    }
+    return d.toLocaleDateString('vi-VN')
+  }
+  const billingDate = getBillingDateLabel()
+
+  const getBillingCycleLabel = () => {
+    if (!subscription?.billingCycle) return ''
+    const cycle = subscription.billingCycle
+    if (cycle === 'monthly') return 'Hàng tháng'
+    if (cycle === 'yearly') return 'Hàng năm'
+    if (cycle === 'promo') return 'Thử nghiệm Beta'
+    if (cycle === 'lifetime') return 'Trọn đời'
+    return cycle
+  }
+  const billingCycleLabel = getBillingCycleLabel()
 
   const initials = (data?.profile?.name ?? 'U').slice(0, 2).toUpperCase()
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
 
-      {/* Page header */}
-      <div style={{ marginBottom: 4 }}>
-        <div style={{ fontSize: 20, fontWeight: 800, letterSpacing: '-0.03em' }}>Tài khoản</div>
-        <div style={{ fontSize: 12.5, color: 'var(--text-muted)', marginTop: 2 }}>Quản lý thông tin cá nhân và gói dịch vụ</div>
-      </div>
-
-      {/* Profile + Plan row */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
-
-        {/* Profile card */}
-        <SectionCard title="Thông tin cá nhân">
-          <div style={{ display: 'flex', alignItems: 'center', gap: 14, marginBottom: 16 }}>
-            <div style={{ width: 48, height: 48, borderRadius: '50%', background: 'var(--dark)', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, fontSize: 16, flexShrink: 0 }}>
-              {initials}
-            </div>
-            <div>
-              <div style={{ fontWeight: 700, fontSize: 15 }}>{data?.profile?.name ?? '—'}</div>
-              <div style={{ fontSize: 12.5, color: 'var(--text-muted)', marginTop: 2 }}>{data?.profile?.email ?? ''}</div>
-              {data?.profile?.company && <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>{data.profile.company}</div>}
-            </div>
-          </div>
-          {subscription && (
-            <div style={{ background: 'var(--accent-bg)', borderRadius: 'var(--radius-md)', padding: '10px 14px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+      {/* Row 1: Profile & Subscription */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(340px, 1fr))', gap: 16 }}>
+        
+        {/* Profile Card */}
+        <SectionCard 
+          title="Thông tin cá nhân"
+          action={
+            !isEditingProfile && (
+              <button 
+                onClick={() => setIsEditingProfile(true)}
+                style={{ background: 'none', border: 'none', color: 'var(--accent)', fontWeight: 600, fontSize: 13, cursor: 'pointer' }}
+              >
+                Chỉnh sửa
+              </button>
+            )
+          }
+        >
+          {isEditingProfile ? (
+            <form onSubmit={handleSaveProfile} style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
               <div>
-                <div style={{ fontSize: 12, color: 'var(--accent)', fontWeight: 700 }}>Gói hiện tại</div>
-                <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-primary)', marginTop: 2 }}>{subscription.planName}</div>
+                <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', marginBottom: 4, textTransform: 'uppercase' }}>Họ và tên</label>
+                <input 
+                  type="text" 
+                  value={fullName} 
+                  onChange={e => setFullName(e.target.value)} 
+                  required
+                  style={fieldStyle(false)}
+                />
               </div>
-              <span style={{ fontSize: 11, fontWeight: 700, padding: '3px 9px', borderRadius: 99, background: subscription.status === 'active' ? 'var(--accent)' : 'var(--orange-light)', color: subscription.status === 'active' ? '#fff' : 'var(--orange)' }}>
-                {subscription.status === 'active' ? 'Hoạt động' : subscription.status}
-              </span>
+              <div>
+                <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', marginBottom: 4, textTransform: 'uppercase' }}>Tên công ty</label>
+                <input 
+                  type="text" 
+                  value={company} 
+                  onChange={e => setCompany(e.target.value)} 
+                  placeholder="Ví dụ: SkimAI Labs"
+                  style={fieldStyle(false)}
+                />
+              </div>
+              <div>
+                <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', marginBottom: 4, textTransform: 'uppercase' }}>Email (Không thể thay đổi)</label>
+                <input 
+                  type="email" 
+                  value={data?.profile?.email ?? ''} 
+                  disabled
+                  style={fieldStyle(true)}
+                />
+              </div>
+              <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', marginTop: 6 }}>
+                <button 
+                  type="button" 
+                  onClick={() => { setIsEditingProfile(false); setFullName(data?.profile?.name ?? ''); setCompany(data?.profile?.company ?? '') }}
+                  style={{ padding: '6px 14px', border: '1px solid var(--border-color)', borderRadius: 'var(--radius-md)', background: 'none', color: 'var(--text-primary)', font: 'inherit', fontSize: 12.5, fontWeight: 600, cursor: 'pointer' }}
+                >
+                  Hủy
+                </button>
+                <button 
+                  type="submit" 
+                  disabled={isSavingProfile}
+                  style={{ padding: '6px 14px', border: 'none', borderRadius: 'var(--radius-md)', background: 'var(--accent)', color: '#fff', font: 'inherit', fontSize: 12.5, fontWeight: 600, cursor: isSavingProfile ? 'not-allowed' : 'pointer', opacity: isSavingProfile ? 0.7 : 1 }}
+                >
+                  {isSavingProfile ? 'Đang lưu...' : 'Lưu thay đổi'}
+                </button>
+              </div>
+            </form>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+                <div style={{ width: 48, height: 48, borderRadius: '50%', background: 'var(--dark)', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, fontSize: 16, flexShrink: 0 }}>
+                  {initials}
+                </div>
+                <div>
+                  <div style={{ fontWeight: 700, fontSize: 15 }}>{data?.profile?.name ?? '—'}</div>
+                  <div style={{ fontSize: 12.5, color: 'var(--text-muted)', marginTop: 2 }}>{data?.profile?.email ?? ''}</div>
+                  {data?.profile?.company && <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 2 }}>🏢 {data.profile.company}</div>}
+                </div>
+              </div>
+              {subscription && (
+                <div style={{ background: 'var(--accent-bg)', borderRadius: 'var(--radius-md)', padding: '10px 14px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                  <div>
+                    <div style={{ fontSize: 11, color: 'var(--accent)', fontWeight: 700, textTransform: 'uppercase' }}>Gói hiện tại</div>
+                    <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-primary)', marginTop: 2 }}>{subscription.planName}</div>
+                  </div>
+                  <span style={{ fontSize: 11, fontWeight: 700, padding: '3px 9px', borderRadius: 99, background: subscription.status === 'active' ? 'var(--accent)' : 'var(--orange-light)', color: subscription.status === 'active' ? '#fff' : 'var(--orange)' }}>
+                    {subscription.status === 'active' ? 'Hoạt động' : subscription.status}
+                  </span>
+                </div>
+              )}
             </div>
           )}
         </SectionCard>
 
-        {/* Subscription card */}
-        <SectionCard
+        {/* Subscription Card */}
+        <SectionCard 
           title="Gói dịch vụ"
-          subtitle={subscription ? `Gia hạn ngày ${billingDate}` : 'Chưa đăng ký gói'}
           action={
             <button
               onClick={() => navigate(ROUTES.PRICING)}
@@ -102,17 +304,17 @@ export function AccountPage() {
           {subscription ? (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13 }}>
-                <span style={{ color: 'var(--text-muted)' }}>Gói</span>
+                <span style={{ color: 'var(--text-muted)' }}>Gói hiện tại</span>
                 <span style={{ fontWeight: 600 }}>{subscription.planName}</span>
               </div>
               <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13 }}>
-                <span style={{ color: 'var(--text-muted)' }}>Chu kỳ</span>
+                <span style={{ color: 'var(--text-muted)' }}>Chu kỳ thanh toán</span>
                 <span style={{ fontWeight: 600 }}>
-                  {subscription.billingCycle === 'monthly' ? 'Hàng tháng' : subscription.billingCycle === 'yearly' ? 'Hàng năm' : subscription.billingCycle}
+                  {billingCycleLabel}
                 </span>
               </div>
               <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13 }}>
-                <span style={{ color: 'var(--text-muted)' }}>Gia hạn</span>
+                <span style={{ color: 'var(--text-muted)' }}>Ngày hết hạn/Gia hạn</span>
                 <span style={{ fontWeight: 600 }}>{billingDate}</span>
               </div>
             </div>
@@ -122,8 +324,7 @@ export function AccountPage() {
               <div style={{ fontSize: 13, color: 'var(--text-muted)', marginBottom: 12 }}>Bạn đang dùng gói miễn phí</div>
               <button
                 onClick={() => navigate(ROUTES.PRICING)}
-                className="btn btn-primary"
-                style={{ fontSize: 13 }}
+                className="btn btn-primary btn-sm"
               >
                 Xem các gói →
               </button>
@@ -132,7 +333,31 @@ export function AccountPage() {
         </SectionCard>
       </div>
 
-      {/* Usage */}
+      {/* Row 2: Notifications */}
+      <SectionCard title="Tùy chọn thông báo">
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+          <Switch 
+            checked={notifications.emailUpdates} 
+            onChange={() => handleToggleNotification('emailUpdates')} 
+            label="Cập nhật hệ thống" 
+            description="Nhận thông báo về tính năng mới và nâng cấp từ SkimAI."
+          />
+          <Switch 
+            checked={notifications.weeklyReport} 
+            onChange={() => handleToggleNotification('weeklyReport')} 
+            label="Báo cáo tuần" 
+            description="Tóm tắt hoạt động nghiên cứu thị trường hàng tuần của bạn."
+          />
+          <Switch 
+            checked={notifications.usageAlerts} 
+            onChange={() => handleToggleNotification('usageAlerts')} 
+            label="Cảnh báo tài nguyên" 
+            description="Nhận thư cảnh báo khi tài khoản sắp sử dụng hết lượt API/AI."
+          />
+        </div>
+      </SectionCard>
+
+      {/* Row 3: Resource Usage */}
       {(data?.usage ?? []).length > 0 && (
         <SectionCard title="Mức sử dụng tài nguyên" subtitle="Cập nhật theo thời gian thực">
           <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
@@ -143,8 +368,8 @@ export function AccountPage() {
         </SectionCard>
       )}
 
-      {/* Invoice history */}
-      <SectionCard title="Lịch sử Hóa đơn" subtitle="GET /api/account/overview">
+      {/* Row 4: Invoice History */}
+      <SectionCard title="Lịch sử Hóa đơn">
         {(data?.invoices ?? []).length > 0 ? (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
             {data.invoices.map((inv, i) => (

@@ -82,14 +82,7 @@ function DatabaseIcon({ size = 16 }) {
   )
 }
 
-function BellIcon({ size = 16 }) {
-  return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" />
-      <path d="M13.73 21a2 2 0 0 1-3.46 0" />
-    </svg>
-  )
-}
+
 
 function UsersIcon({ size = 16 }) {
   return (
@@ -119,6 +112,7 @@ const USER_NAV = [
   { to: ROUTES.DEEP_INSIGHT, label: 'Deep Insight',   icon: StarIcon },
   { to: ROUTES.REPORTS,      label: 'Báo cáo',        icon: ReportIcon },
   { to: ROUTES.PRICING,      label: 'Gói dịch vụ',   icon: PriceIcon, badge: 'FREE' },
+  { to: ROUTES.SUPPORT,      label: 'Hỗ trợ',        icon: SupportIcon },
 ]
 
 const PUBLIC_NAV = [
@@ -142,8 +136,6 @@ export function Sidebar({ isOpen, onClose }) {
   const { isAuthenticated, user, logout } = useAuth()
   const navigate = useNavigate()
   const location = useLocation()
-  const [recentSearches, setRecentSearches] = useState([])
-  const [searchInput, setSearchInput] = useState('')
   const [planInfo, setPlanInfo] = useState(null)
 
   const isAdmin = user?.role === 'admin'
@@ -154,19 +146,12 @@ export function Sidebar({ isOpen, onClose }) {
     if (!isAuthenticated) return
     appApi.getDashboard()
       .then(d => {
-        if (d?.recent) setRecentSearches(d.recent.slice(0, 5))
         if (d?.plan) setPlanInfo(d.plan)
       })
       .catch(() => {})
   }, [isAuthenticated])
 
-  const handleSearchSubmit = (e) => {
-    e.preventDefault()
-    if (!searchInput.trim()) return
-    navigate(`${ROUTES.ANALYSIS}?q=${encodeURIComponent(searchInput.trim())}`)
-    setSearchInput('')
-    onClose?.()
-  }
+
 
   const handleLogout = () => {
     logout()
@@ -199,38 +184,30 @@ export function Sidebar({ isOpen, onClose }) {
         )}
       </div>
 
-      {/* Admin: back to user link */}
-      {isOnAdminPage && isAdmin && (
-        <div style={{ padding: '0 12px 10px' }}>
-          <button
-            onClick={() => { navigate(ROUTES.DASHBOARD); onClose?.() }}
-            style={{ background: 'none', border: 'none', cursor: 'pointer', font: 'inherit', fontSize: 12, color: 'var(--text-muted)', padding: 0 }}
-          >
-            ← Giao diện User
-          </button>
-        </div>
-      )}
-
-      {/* Search box */}
-      <div className="sidebar-search">
-        <form onSubmit={handleSearchSubmit}>
-          <div className="sidebar-search-box">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,.4)" strokeWidth="2" strokeLinecap="round">
-              <circle cx="11" cy="11" r="7" /><path d="m21 21-4.3-4.3" />
-            </svg>
-            <input
-              value={searchInput}
-              onChange={e => setSearchInput(e.target.value)}
-              autoComplete="off"
-              placeholder="Tìm kiếm…"
-            />
-          </div>
-        </form>
-      </div>
-
       {/* Nav */}
       <nav className="sidebar-nav">
         <div className="sidebar-section-label" style={{ paddingTop: 4 }}>Workspace</div>
+        {isAdmin && (
+          <button
+            onClick={() => { navigate(isOnAdminPage ? ROUTES.DASHBOARD : ROUTES.ADMIN_DASHBOARD); onClose?.() }}
+            className="sidebar-nav-item"
+            style={{
+              color: 'var(--accent)',
+              background: 'var(--accent-bg)',
+              marginBottom: 8,
+              border: '1px dashed rgba(13, 148, 136, 0.25)',
+              display: 'flex',
+              alignItems: 'center',
+              width: '100%',
+              boxSizing: 'border-box'
+            }}
+          >
+            <SettingsIcon size={16} />
+            <span style={{ flex: 1, fontWeight: 700 }}>
+              {isOnAdminPage ? 'Giao diện User' : 'Trang quản trị Admin'}
+            </span>
+          </button>
+        )}
         {nav.map(({ to, label, icon: Icon, badge }) => (
           <NavLink
             key={to}
@@ -248,27 +225,6 @@ export function Sidebar({ isOpen, onClose }) {
           </NavLink>
         ))}
 
-        {isAuthenticated && recentSearches.length > 0 && (
-          <>
-            <div className="sidebar-section-label">Lịch sử tìm kiếm</div>
-            {recentSearches.map((r, i) => (
-              <button
-                key={r.id ?? i}
-                className="sidebar-history-item"
-                onClick={() => {
-                  navigate(`${ROUTES.ANALYSIS}?q=${encodeURIComponent(r.keyword ?? r.query ?? '')}`)
-                  onClose?.()
-                }}
-              >
-                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-                  <circle cx="11" cy="11" r="7" /><path d="m21 21-4.3-4.3" />
-                </svg>
-                <span className="sidebar-history-kw">{r.keyword ?? r.query ?? ''}</span>
-                <span className="sidebar-history-age">{timeAgo(r.createdAt ?? r.timestamp)}</span>
-              </button>
-            ))}
-          </>
-        )}
 
         {!isAuthenticated && (
           <div style={{ marginTop: 16, padding: '0 11px' }}>
@@ -316,11 +272,36 @@ export function Sidebar({ isOpen, onClose }) {
   )
 }
 
-/* ── Sidebar layout wrapper ── */
 export function SidebarLayout({ children, pageTitle, pageSubtitle, actions }) {
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const { user, isAuthenticated } = useAuth()
   const navigate = useNavigate()
+  const location = useLocation()
+
+  const getHeaderInfo = () => {
+    if (pageTitle) return { title: pageTitle, subtitle: pageSubtitle }
+    
+    const path = location.pathname
+    if (path.startsWith('/admin/dashboard')) return { title: 'Tổng quan hệ thống', subtitle: 'Báo cáo thông số và dữ liệu admin' }
+    if (path.startsWith('/admin/reports')) return { title: 'Quản lý báo cáo', subtitle: 'Danh sách và kiểm duyệt báo cáo' }
+    if (path.startsWith('/admin/users')) return { title: 'Quản lý người dùng', subtitle: 'Danh sách tài khoản và phân quyền' }
+    if (path.startsWith('/admin/revenue')) return { title: 'Quản lý doanh thu', subtitle: 'Doanh số và giao dịch gói cước' }
+    if (path.startsWith('/admin/feedbacks')) return { title: 'Xử lý phản hồi', subtitle: 'Danh sách yêu cầu hỗ trợ và giải đáp' }
+    if (path.startsWith('/admin/settings')) return { title: 'Cài đặt hệ thống', subtitle: 'Cấu hình tham số và kết nối' }
+
+    if (path.startsWith('/dashboard')) return { title: 'Tổng quan', subtitle: 'Theo dõi hoạt động và chỉ số nghiên cứu của bạn' }
+    if (path.startsWith('/analysis')) return { title: 'Phân tích thị trường', subtitle: 'Quét xu hướng, tổng hợp tin tức và lập báo cáo tự động' }
+    if (path.startsWith('/data-sources')) return { title: 'Nguồn dữ liệu', subtitle: 'Quản lý các nguồn dữ liệu cấp thông tin nghiên cứu' }
+    if (path.startsWith('/deep-insight')) return { title: 'Deep Insight', subtitle: 'Phân tích đa chiều nâng cao (SWOT, Persona, APA)' }
+    if (path.startsWith('/reports')) return { title: 'Báo cáo của tôi', subtitle: 'Danh sách các báo cáo đã tạo và tùy chọn tải về' }
+    if (path.startsWith('/pricing')) return { title: 'Gói dịch vụ', subtitle: 'Nâng cấp gói tài khoản để mở rộng hạn ngạch tìm kiếm' }
+    if (path.startsWith('/support')) return { title: 'Hỗ trợ kỹ thuật', subtitle: 'Gửi yêu cầu hỗ trợ hoặc đóng góp ý kiến nâng cấp' }
+    if (path.startsWith('/account')) return { title: 'Cài đặt tài khoản', subtitle: 'Quản lý thông tin hồ sơ và bảo mật cá nhân' }
+    
+    return { title: null, subtitle: null }
+  }
+  
+  const { title: resolvedTitle, subtitle: resolvedSubtitle } = getHeaderInfo()
 
   return (
     <div className="sidebar-shell">
@@ -334,8 +315,8 @@ export function SidebarLayout({ children, pageTitle, pageSubtitle, actions }) {
       <div className="sidebar-main">
         <header className="sidebar-topbar">
           <div style={{ flex: 1, minWidth: 0 }}>
-            {pageTitle && <div className="sidebar-topbar-title">{pageTitle}</div>}
-            {pageSubtitle && <div className="sidebar-topbar-sub">{pageSubtitle}</div>}
+            {resolvedTitle && <div className="sidebar-topbar-title">{resolvedTitle}</div>}
+            {resolvedSubtitle && <div className="sidebar-topbar-sub">{resolvedSubtitle}</div>}
           </div>
           <div className="sidebar-topbar-actions">
             {actions}
@@ -348,10 +329,7 @@ export function SidebarLayout({ children, pageTitle, pageSubtitle, actions }) {
               </svg>
               Tìm kiếm mới
             </button>
-            <button className="sidebar-icon-btn" title="Thông báo">
-              <BellIcon size={16} />
-              <span style={{ position: 'absolute', top: 7, right: 7, width: 7, height: 7, background: '#EF4444', borderRadius: '50%', border: '1.5px solid var(--sur)' }} />
-            </button>
+
             {isAuthenticated && (
               <div
                 className="sidebar-avatar"

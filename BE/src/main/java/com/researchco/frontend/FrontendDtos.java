@@ -46,6 +46,22 @@ public class FrontendDtos {
     ) {
     }
 
+    public record ProfileUpdateRequest(
+            @NotBlank(message = "Họ và tên không được để trống")
+            @Size(max = 100)
+            String name,
+            @Size(max = 100)
+            String company
+    ) {}
+
+    public record PasswordChangeRequest(
+            @NotBlank(message = "Mật khẩu hiện tại không được để trống")
+            String currentPassword,
+            @NotBlank(message = "Mật khẩu mới không được để trống")
+            @Size(min = 6, message = "Mật khẩu mới phải có ít nhất 6 ký tự")
+            String newPassword
+    ) {}
+
     public record KeywordMetric(
             String keyword,
             int mentionCount,

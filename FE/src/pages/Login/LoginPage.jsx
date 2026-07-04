@@ -100,14 +100,9 @@ export function LoginPage() {
   const { loginWithGoogle, login, isAuthenticated, user } = useAuth()
   const redirectFromRef = useRef(location.state?.from || ROUTES.DASHBOARD)
 
-  const [email, setEmail] = useState('')
-  const [password, setPassword] = useState('')
-  const [remember, setRemember] = useState(false)
   const [error, setError] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [googleError, setGoogleError] = useState('')
-  const [emailFocus, setEmailFocus] = useState(false)
-  const [pwFocus, setPwFocus] = useState(false)
 
   useEffect(() => {
     if (isAuthenticated) {
@@ -152,39 +147,7 @@ export function LoginPage() {
       })
       .catch((err) => { if (!cancelled) setGoogleError(err?.message ?? 'Không load được Google Identity') })
     return () => { cancelled = true }
-  }, [loginWithGoogle, navigate])
-
-  const handleEmailLogin = async (e) => {
-    e.preventDefault()
-    if (!email || !password) { setError('Vui lòng nhập email và mật khẩu'); return }
-    setError('')
-    setIsSubmitting(true)
-    try {
-      const session = await login({ email, password })
-      const target = session?.user?.role === 'admin'
-        ? ROUTES.ADMIN_DASHBOARD
-        : redirectFromRef.current
-      navigate(target, { replace: true })
-    } catch (err) {
-      setError(err?.message ?? 'Email hoặc mật khẩu không đúng')
-    } finally {
-      setIsSubmitting(false)
-    }
-  }
-
-  const inputStyle = (focused) => ({
-    width: '100%',
-    padding: '11px 14px',
-    border: `1.5px solid ${focused ? '#0D9488' : '#E5E7EB'}`,
-    borderRadius: 10,
-    fontFamily: 'inherit',
-    fontSize: 14,
-    color: '#111827',
-    outline: 'none',
-    background: '#fff',
-    boxShadow: focused ? '0 0 0 3px rgba(13,148,136,.1)' : 'none',
-    transition: 'border-color .18s, box-shadow .18s',
-  })
+  }, [loginWithGoogle, navigate, location.state])
 
   return (
     <div style={{ width: '100%', height: '100vh', display: 'flex', overflow: 'hidden', background: '#0F172A' }}>
@@ -246,88 +209,33 @@ export function LoginPage() {
         {/* Subtle bg */}
         <div style={{ position: 'absolute', inset: 0, background: 'radial-gradient(ellipse at 80% 20%,rgba(13,148,136,.04) 0%,transparent 60%),radial-gradient(ellipse at 20% 80%,rgba(99,102,241,.04) 0%,transparent 60%)', pointerEvents: 'none' }} />
 
-        <div style={{ width: '100%', maxWidth: 380, position: 'relative', zIndex: 1, animation: 'lpFadeUp .7s .2s ease both' }}>
+        <div style={{ width: '100%', maxWidth: 380, position: 'relative', zIndex: 1, animation: 'lpFadeUp .7s .2s ease both', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
           {/* Header */}
-          <div style={{ marginBottom: 28 }}>
-            <h1 style={{ fontSize: 26, fontWeight: 800, color: '#111827', letterSpacing: '-.03em', marginBottom: 6 }}>Đăng nhập</h1>
-            <p style={{ fontSize: 14, color: '#6B7280' }}>
-              Chưa có tài khoản?{' '}
-              <a href="#" style={{ color: '#0D9488', fontWeight: 600, textDecoration: 'none' }}>Đăng ký miễn phí →</a>
+          <div style={{ marginBottom: 32, textAlign: 'center', width: '100%' }}>
+            <h1 style={{ fontSize: 26, fontWeight: 800, color: '#111827', letterSpacing: '-0.03em', marginBottom: 8 }}>Đăng nhập</h1>
+            <p style={{ fontSize: 14, color: '#6B7280', lineHeight: 1.5 }}>
+              Truy cập hệ thống phân tích thị trường AISKIM nhanh chóng và bảo mật bằng tài khoản Google của bạn.
             </p>
           </div>
 
           {/* Google button */}
-          <div style={{ marginBottom: 16 }}>
+          <div style={{ marginBottom: 24, width: '100%', display: 'flex', justifyContent: 'center' }}>
             {!googleError ? (
               <div id="googleSignInBtn" style={{ minHeight: 44, display: 'flex', justifyContent: 'center', width: '100%' }} />
             ) : (
-              <div style={{ fontSize: 12.5, color: '#6B7280', textAlign: 'center', padding: '10px 0' }}>{googleError}</div>
+              <div style={{ fontSize: 13, color: '#DC2626', background: '#FEF2F2', border: '1px solid #FECACA', borderRadius: 8, padding: '10px 14px', textAlign: 'center', width: '100%' }}>
+                {googleError}
+              </div>
             )}
           </div>
 
-          {/* Divider */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 20 }}>
-            <div style={{ flex: 1, height: 1, background: '#F3F4F6' }} />
-            <span style={{ fontSize: 12, color: '#9CA3AF', fontWeight: 500 }}>hoặc đăng nhập bằng email</span>
-            <div style={{ flex: 1, height: 1, background: '#F3F4F6' }} />
-          </div>
-
-          {/* Form */}
-          <form onSubmit={handleEmailLogin} style={{ display: 'flex', flexDirection: 'column', gap: 14, marginBottom: 18 }}>
-            <div>
-              <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: '#374151', marginBottom: 6 }}>Email</label>
-              <input
-                type="email"
-                placeholder="you@company.com"
-                value={email}
-                onChange={e => setEmail(e.target.value)}
-                onFocus={() => setEmailFocus(true)}
-                onBlur={() => setEmailFocus(false)}
-                style={inputStyle(emailFocus)}
-              />
+          {error && (
+            <div style={{ fontSize: 13, color: '#DC2626', background: '#FEF2F2', border: '1px solid #FECACA', borderRadius: 8, padding: '10px 14px', marginBottom: 24, width: '100%', textAlign: 'center' }}>
+              {error}
             </div>
-            <div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
-                <label style={{ fontSize: 13, fontWeight: 600, color: '#374151' }}>Mật khẩu</label>
-                <a href="#" style={{ fontSize: 12.5, color: '#0D9488', fontWeight: 500, textDecoration: 'none' }}>Quên mật khẩu?</a>
-              </div>
-              <input
-                type="password"
-                placeholder="••••••••"
-                value={password}
-                onChange={e => setPassword(e.target.value)}
-                onFocus={() => setPwFocus(true)}
-                onBlur={() => setPwFocus(false)}
-                style={inputStyle(pwFocus)}
-              />
-            </div>
+          )}
 
-            <label style={{ display: 'flex', alignItems: 'center', gap: 9, cursor: 'pointer', fontSize: 13, color: '#6B7280' }}>
-              <div
-                onClick={() => setRemember(r => !r)}
-                style={{ width: 17, height: 17, border: `1.5px solid ${remember ? '#0D9488' : '#D1D5DB'}`, borderRadius: 4, background: remember ? '#0D9488' : '#fff', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all .18s' }}
-              >
-                {remember && <svg width="10" height="10" viewBox="0 0 12 12" fill="none" stroke="#fff" strokeWidth="2" strokeLinecap="round"><polyline points="2,6 5,9 10,3" /></svg>}
-              </div>
-              Ghi nhớ đăng nhập
-            </label>
-
-            {error && (
-              <div style={{ fontSize: 13, color: '#DC2626', background: '#FEF2F2', border: '1px solid #FECACA', borderRadius: 8, padding: '10px 14px' }}>
-                {error}
-              </div>
-            )}
-
-            <button
-              type="submit"
-              disabled={isSubmitting}
-              style={{ width: '100%', padding: '13px', border: 'none', borderRadius: 10, background: isSubmitting ? '#9CA3AF' : 'linear-gradient(135deg,#0D9488,#0F766E)', color: '#fff', fontFamily: 'inherit', fontSize: 14.5, fontWeight: 700, cursor: isSubmitting ? 'not-allowed' : 'pointer', letterSpacing: '.01em', transition: '.22s' }}
-            >
-              {isSubmitting ? 'Đang đăng nhập...' : 'Đăng nhập vào AISKIM'}
-            </button>
-          </form>
-
-          <p style={{ textAlign: 'center', fontSize: 12, color: '#9CA3AF', lineHeight: 1.6 }}>
+          <p style={{ textAlign: 'center', fontSize: 12, color: '#9CA3AF', lineHeight: 1.6, marginTop: 8 }}>
             Bằng cách đăng nhập, bạn đồng ý với{' '}
             <a href="#" style={{ color: '#0D9488', textDecoration: 'none' }}>Điều khoản dịch vụ</a>
             {' '}và{' '}
