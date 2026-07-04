@@ -103,12 +103,23 @@ export function DashboardPage() {
 
       {/* KPI grid */}
       <div className="dash-kpi-grid">
-        {displayKpis.map(k => (
-          <div key={k.label} className="dash-kpi-card">
-            <div className="dash-kpi-label">{k.label}</div>
-            <div className="dash-kpi-value">{k.value}</div>
-          </div>
-        ))}
+        {displayKpis.map(k => {
+          let onClick = undefined;
+          let style = {};
+          if (k.label === 'Tài liệu') {
+            onClick = () => navigate(`${ROUTES.REPORTS}?tab=history`);
+            style = { cursor: 'pointer' };
+          } else if (k.label === 'Báo cáo') {
+            onClick = () => navigate(`${ROUTES.REPORTS}?tab=reports`);
+            style = { cursor: 'pointer' };
+          }
+          return (
+            <div key={k.label} className="dash-kpi-card" onClick={onClick} style={style}>
+              <div className="dash-kpi-label">{k.label}</div>
+              <div className="dash-kpi-value">{k.value}</div>
+            </div>
+          )
+        })}
       </div>
 
       {/* Live trends */}

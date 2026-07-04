@@ -276,6 +276,9 @@ const realApi = {
     const query = toQueryString(params)
     return request(`/reports${query ? `?${query}` : ''}`)
   },
+  getSearchHistory() {
+    return request('/search/history')
+  },
   getReportById(reportId) {
     return request(`/reports/${reportId}`)
   },

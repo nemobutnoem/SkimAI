@@ -99,6 +99,17 @@ export const dbMockApi = {
       return matchStatus && matchUser && matchQuery
     })
   },
+  async getSearchHistory() {
+    await sleep(100)
+    return {
+      items: (DB.search_queries || []).map((q) => ({
+        id: q.id,
+        keyword: q.keyword,
+        status: q.status || 'COMPLETED',
+        createdAt: q.created_at
+      }))
+    }
+  },
 
   async getReportById(reportId) {
     await sleep(90)
