@@ -467,6 +467,7 @@ export function AnalysisPage() {
   const [searchParams] = useSearchParams()
   const keyword = searchParams.get('keyword')?.trim() || ''
   const reportId = searchParams.get('reportId')?.trim() || ''
+  const queryId = searchParams.get('queryId')?.trim() || ''
   const [draftKeyword, setDraftKeyword] = useState('')
   const searchInputRef = useRef(null)
 
@@ -677,6 +678,26 @@ export function AnalysisPage() {
       return
     }
 
+    if (queryId) {
+      setLoading(true)
+      Promise.all([
+        appApi.getAnalysis('', queryId),
+        appApi.getAnalysisEvidence('', queryId).catch(() => []),
+        appApi.getAnalysisTimeline('', queryId).catch(() => []),
+      ])
+        .then(([result, evidence, timeline]) => {
+          setData(result)
+          setEvidenceItems(evidence)
+          setTimelinePoints(timeline)
+          if (result?.keyword) {
+            setDraftKeyword(result.keyword)
+          }
+        })
+        .catch(console.error)
+        .finally(() => setLoading(false))
+      return
+    }
+
     if (!keyword) {
       setData(null)
       setEvidenceItems([])
@@ -691,7 +712,7 @@ export function AnalysisPage() {
       }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [keyword, reportId])
+  }, [keyword, reportId, queryId])
 
   const sourceRows = useMemo(() => buildSourceTrendRows(data, evidenceItems), [data, evidenceItems])
   const overall = useMemo(() => buildOverallRead(data, sourceRows, timelinePoints), [data, sourceRows, timelinePoints])

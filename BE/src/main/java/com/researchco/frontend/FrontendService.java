@@ -434,7 +434,31 @@ public class FrontendService {
     }
 
     @Transactional
+    public FrontendDtos.AnalysisResponse getAnalysis(String keyword, String queryId) {
+        return getAnalysis(keyword, queryId, SecurityUtils.currentUserId());
+    }
+
+    @Transactional
     public FrontendDtos.AnalysisResponse getAnalysis(String keyword, UUID userId) {
+        return getAnalysis(keyword, "", userId);
+    }
+
+    public FrontendDtos.AnalysisResponse getAnalysis(String keyword, String queryId, UUID userId) {
+        if (queryId != null && !queryId.trim().isEmpty()) {
+            try {
+                UUID qId = UUID.fromString(queryId.trim());
+                SearchQueryEntity query = searchQueryRepository.findById(qId).orElse(null);
+                if (query != null) {
+                    AnalysisSnapshotEntity snapshot = analysisSnapshotRepository.findBySearchQueryId(qId).orElse(null);
+                    if (snapshot != null) {
+                        return buildAnalysisFromSnapshot(query, snapshot);
+                    }
+                }
+            } catch (Exception e) {
+                log.error("Failed loading search query snapshot for queryId={}: {}", queryId, e.getMessage());
+            }
+        }
+
         String normalizedKeyword = getNormalizedTopic(keyword);
         LocaleProfile localeProfile = resolveLocaleProfile(normalizedKeyword);
         SearchQueryEntity trackedQuery = self.recordSearchActivity(normalizedKeyword, localeProfile, userId);
@@ -1406,7 +1430,58 @@ public class FrontendService {
         );
     }
 
+    private List<FrontendDtos.EvidenceItem> mapSourceItemsToEvidence(List<SourceItemEntity> cachedItems) {
+        if (cachedItems == null) return List.of();
+        return cachedItems.stream()
+                .limit(8)
+                .map(item -> {
+                    long views = 0L;
+                    long likes = 0L;
+                    long comments = 0L;
+                    boolean itemOffline = false;
+                    Map<?, ?> payload = null;
+                    if (item.getRawPayload() != null) {
+                        try {
+                            payload = objectMapper.readValue(item.getRawPayload(), Map.class);
+                            views = toLong(payload.get("viewCount"));
+                            likes = toLong(payload.get("likeCount"));
+                            comments = toLong(payload.get("commentCount"));
+                            itemOffline = Boolean.TRUE.equals(payload.get("isFallback"));
+                        } catch (Exception e) {
+                            // ignore
+                        }
+                    }
+                    String metricText = formatEvidenceMetric(item.getPlatform(), itemOffline, views, likes, comments, payload);
+                    return new FrontendDtos.EvidenceItem(
+                            item.getSourceName() == null || item.getSourceName().isBlank() ? "Nguồn nghiên cứu" : item.getSourceName(),
+                            firstMeaningfulText(item.getTitle(), "Nguồn không có tiêu đề"),
+                            metricText,
+                            cleanSnippet(item.getSnippet(), item.getTitle()),
+                            item.getUrl(),
+                            item.getSentimentLabel() != null ? item.getSentimentLabel() : "NEUTRAL",
+                            item.getPlatform() != null ? item.getPlatform() : ""
+                    );
+                })
+                .toList();
+    }
+
     public List<FrontendDtos.EvidenceItem> getAnalysisEvidence(String keyword) {
+        return getAnalysisEvidence(keyword, "");
+    }
+
+    public List<FrontendDtos.EvidenceItem> getAnalysisEvidence(String keyword, String queryId) {
+        if (queryId != null && !queryId.trim().isEmpty()) {
+            try {
+                UUID qId = UUID.fromString(queryId.trim());
+                List<SourceItemEntity> cachedItems = sourceItemRepository.findBySearchQueryId(qId);
+                if (cachedItems != null && !cachedItems.isEmpty()) {
+                    return mapSourceItemsToEvidence(cachedItems);
+                }
+            } catch (Exception e) {
+                log.error("Failed loading evidence for queryId={}: {}", queryId, e.getMessage());
+            }
+        }
+
         String normalizedKeyword = getNormalizedTopic(keyword);
         
         // 1. TÌM SNAPSHOT FRESH TRONG VÒNG 1 GIỜ ĐỂ TRÁNH GỌI LIVE API NHIỀU LẦN
@@ -1417,37 +1492,7 @@ public class FrontendService {
         if (freshQueryOpt.isPresent()) {
             List<SourceItemEntity> cachedItems = sourceItemRepository.findBySearchQueryId(freshQueryOpt.get().getId());
             if (cachedItems != null && !cachedItems.isEmpty()) {
-                return cachedItems.stream()
-                        .limit(8)
-                        .map(item -> {
-                            long views = 0L;
-                            long likes = 0L;
-                            long comments = 0L;
-                            boolean itemOffline = false;
-                            Map<?, ?> payload = null;
-                            if (item.getRawPayload() != null) {
-                                try {
-                                    payload = objectMapper.readValue(item.getRawPayload(), Map.class);
-                                    views = toLong(payload.get("viewCount"));
-                                    likes = toLong(payload.get("likeCount"));
-                                    comments = toLong(payload.get("commentCount"));
-                                    itemOffline = Boolean.TRUE.equals(payload.get("isFallback"));
-                                } catch (Exception e) {
-                                    // ignore
-                                }
-                            }
-                            String metricText = formatEvidenceMetric(item.getPlatform(), itemOffline, views, likes, comments, payload);
-                            return new FrontendDtos.EvidenceItem(
-                                    item.getSourceName() == null || item.getSourceName().isBlank() ? "Nguồn nghiên cứu" : item.getSourceName(),
-                                    firstMeaningfulText(item.getTitle(), "Nguồn không có tiêu đề"),
-                                    metricText,
-                                    cleanSnippet(item.getSnippet(), item.getTitle()),
-                                    item.getUrl(),
-                                    item.getSentimentLabel() != null ? item.getSentimentLabel() : "NEUTRAL",
-                                    item.getPlatform() != null ? item.getPlatform() : ""
-                            );
-                        })
-                        .toList();
+                return mapSourceItemsToEvidence(cachedItems);
             }
         }
 
@@ -1567,11 +1612,25 @@ public class FrontendService {
     }
 
     public List<FrontendDtos.TimeSeriesPoint> getAnalysisTimeline(String keyword) {
-        String normalizedKeyword = getNormalizedTopic(keyword);
+        return getAnalysisTimeline(keyword, "");
+    }
+
+    public List<FrontendDtos.TimeSeriesPoint> getAnalysisTimeline(String keyword, String queryId) {
+        Optional<SearchQueryEntity> queryOpt = Optional.empty();
+        if (queryId != null && !queryId.trim().isEmpty()) {
+            try {
+                UUID qId = UUID.fromString(queryId.trim());
+                queryOpt = searchQueryRepository.findById(qId);
+            } catch (Exception e) {
+                log.error("Failed parsing queryId={}: {}", queryId, e.getMessage());
+            }
+        }
         
-        Optional<SearchQueryEntity> queryOpt = searchQueryRepository
-                .findFirstByKeywordIgnoreCaseOrderByCreatedAtDesc(normalizedKeyword);
-                
+        if (queryOpt.isEmpty()) {
+            String normalizedKeyword = getNormalizedTopic(keyword);
+            queryOpt = searchQueryRepository.findFirstByKeywordIgnoreCaseOrderByCreatedAtDesc(normalizedKeyword);
+        }
+        
         List<FrontendDtos.KeywordMetric> metrics = List.of();
         
         if (queryOpt.isPresent()) {
@@ -1595,7 +1654,9 @@ public class FrontendService {
         long totalViews = metrics.stream().mapToLong(FrontendDtos.KeywordMetric::totalViews).sum();
         long totalMentions = metrics.stream().mapToLong(FrontendDtos.KeywordMetric::mentionCount).sum();
         long baseline = Math.max(2_000L, totalViews + (totalMentions * 800L));
-        int hash = Math.abs((keyword == null ? "market" : keyword).hashCode());
+        
+        String displayKeyword = queryOpt.isPresent() ? queryOpt.get().getKeyword() : keyword;
+        int hash = Math.abs((displayKeyword == null ? "market" : displayKeyword).hashCode());
 
         double[] ramps = new double[]{0.55, 0.68, 0.79, 0.91, 1.0};
         String[] labels = new String[]{"Tuần -4", "Tuần -3", "Tuần -2", "Tuần -1", "Hiện tại"};

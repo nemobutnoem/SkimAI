@@ -66,9 +66,11 @@ public class FrontendController {
     }
 
     @GetMapping("/analysis")
-    public FrontendDtos.AnalysisResponse getAnalysis(@RequestParam(name = "keyword", defaultValue = "") @Size(max = 255) String keyword) {
-        synchronized (getLock(keyword)) {
-            return frontendService.getAnalysis(keyword);
+    public FrontendDtos.AnalysisResponse getAnalysis(
+            @RequestParam(name = "keyword", defaultValue = "") @Size(max = 255) String keyword,
+            @RequestParam(name = "queryId", defaultValue = "") String queryId) {
+        synchronized (getLock(keyword.isEmpty() ? queryId : keyword)) {
+            return frontendService.getAnalysis(keyword, queryId);
         }
     }
 
@@ -111,9 +113,11 @@ public class FrontendController {
     }
 
     @GetMapping("/analysis/evidence")
-    public List<FrontendDtos.EvidenceItem> getAnalysisEvidence(@RequestParam(name = "keyword", defaultValue = "") @Size(max = 255) String keyword) {
-        synchronized (getLock(keyword)) {
-            return frontendService.getAnalysisEvidence(keyword);
+    public List<FrontendDtos.EvidenceItem> getAnalysisEvidence(
+            @RequestParam(name = "keyword", defaultValue = "") @Size(max = 255) String keyword,
+            @RequestParam(name = "queryId", defaultValue = "") String queryId) {
+        synchronized (getLock(keyword.isEmpty() ? queryId : keyword)) {
+            return frontendService.getAnalysisEvidence(keyword, queryId);
         }
     }
 
@@ -125,9 +129,11 @@ public class FrontendController {
     }
 
     @GetMapping("/analysis/timeline")
-    public List<FrontendDtos.TimeSeriesPoint> getAnalysisTimeline(@RequestParam(name = "keyword", defaultValue = "") @Size(max = 255) String keyword) {
-        synchronized (getLock(keyword)) {
-            return frontendService.getAnalysisTimeline(keyword);
+    public List<FrontendDtos.TimeSeriesPoint> getAnalysisTimeline(
+            @RequestParam(name = "keyword", defaultValue = "") @Size(max = 255) String keyword,
+            @RequestParam(name = "queryId", defaultValue = "") String queryId) {
+        synchronized (getLock(keyword.isEmpty() ? queryId : keyword)) {
+            return frontendService.getAnalysisTimeline(keyword, queryId);
         }
     }
 

@@ -64,8 +64,10 @@ const realApi = {
   getHomeTrends() {
     return request('/home/trends')
   },
-  getAnalysis(keyword) {
-    const query = new URLSearchParams({ keyword: keyword ?? '' }).toString()
+  getAnalysis(keyword, queryId) {
+    const params = { keyword: keyword ?? '' }
+    if (queryId) params.queryId = queryId
+    const query = new URLSearchParams(params).toString()
     return request(`/analysis?${query}`)
   },
   exportAnalysisReport(keyword) {
@@ -84,16 +86,20 @@ const realApi = {
     const query = new URLSearchParams({ keyword: keyword ?? '' }).toString()
     return request(`/analysis/competitor?${query}`)
   },
-  getAnalysisEvidence(keyword) {
-    const query = new URLSearchParams({ keyword: keyword ?? '' }).toString()
+  getAnalysisEvidence(keyword, queryId) {
+    const params = { keyword: keyword ?? '' }
+    if (queryId) params.queryId = queryId
+    const query = new URLSearchParams(params).toString()
     return request(`/analysis/evidence?${query}`)
   },
   getAnalysisCompare(keyword) {
     const query = new URLSearchParams({ keyword: keyword ?? '' }).toString()
     return request(`/analysis/compare?${query}`)
   },
-  getAnalysisTimeline(keyword) {
-    const query = new URLSearchParams({ keyword: keyword ?? '' }).toString()
+  getAnalysisTimeline(keyword, queryId) {
+    const params = { keyword: keyword ?? '' }
+    if (queryId) params.queryId = queryId
+    const query = new URLSearchParams(params).toString()
     return request(`/analysis/timeline?${query}`)
   },
   streamAnalysis(keyword, onEvent, onError) {
