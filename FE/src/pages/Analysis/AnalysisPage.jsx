@@ -681,9 +681,9 @@ export function AnalysisPage() {
     if (queryId) {
       setLoading(true)
       Promise.all([
-        appApi.getAnalysis('', queryId),
-        appApi.getAnalysisEvidence('', queryId).catch(() => []),
-        appApi.getAnalysisTimeline('', queryId).catch(() => []),
+        appApi.getAnalysis(keyword, queryId),
+        appApi.getAnalysisEvidence(keyword, queryId).catch(() => []),
+        appApi.getAnalysisTimeline(keyword, queryId).catch(() => []),
       ])
         .then(([result, evidence, timeline]) => {
           setData(result)

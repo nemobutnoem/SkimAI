@@ -148,7 +148,7 @@ export function ReportsPage() {
                       <td style={{ padding: '14px 20px', fontSize: 12.5, color: 'var(--text-muted)' }}>{formatDate(h.createdAt)}</td>
                       <td style={{ padding: '14px 20px', textAlign: 'right' }}>
                         <button
-                          onClick={() => navigate(`${ROUTES.ANALYSIS}?queryId=${h.id}`)}
+                          onClick={() => navigate(`${ROUTES.ANALYSIS}?queryId=${h.id}&keyword=${encodeURIComponent(h.keyword)}`)}
                           style={{ background: 'none', border: '1px solid var(--border-color)', borderRadius: 6, padding: '4px 10px', fontSize: 12, cursor: 'pointer', color: 'var(--text-muted)' }}
                         >
                           Xem lại
