@@ -1662,7 +1662,8 @@ public class FrontendService {
                             pricingFeatures(plan),
                             plan.getName().equalsIgnoreCase(currentPlanId),
                             plan.getName().equalsIgnoreCase(currentPlanId) ? "Current plan" :
-                                    "ENTERPRISE".equalsIgnoreCase(plan.getName()) ? "Contact sales" : "Start now"
+                                    "ENTERPRISE".equalsIgnoreCase(plan.getName()) ? "Contact sales" : "Start now",
+                            plan.getDescription()
                     );
                 })
                 .toList();
@@ -3039,21 +3040,25 @@ public class FrontendService {
         if (plan == null || plan.getName() == null) {
             return List.of("Gói linh hoạt");
         }
+        int searchLimit = plan.getSearchLimit() != null ? plan.getSearchLimit() : 0;
+        int exportLimit = plan.getExportLimit() != null ? plan.getExportLimit() : 0;
+        int deepInsightLimit = plan.getDeepInsightLimit() != null ? plan.getDeepInsightLimit() : 0;
+
         return switch (plan.getName().toUpperCase(Locale.ROOT)) {
             case "FREE" -> List.of(
-                    "10 lượt tìm kiếm/tháng",
+                    searchLimit + " lượt tìm kiếm/tháng",
                     "Truy cập cộng đồng",
                     "Không hỗ trợ xuất báo cáo"
             );
             case "STARTER" -> List.of(
-                    "100 lượt tìm kiếm/tháng",
-                    "Phân tích sâu AI (2 lần/tuần)",
+                    searchLimit + " lượt tìm kiếm/tháng",
+                    "Phân tích sâu AI (" + deepInsightLimit + " lần/tuần)",
                     "Phân tích thị trường cơ bản",
-                    "Xuất báo cáo PDF"
+                    exportLimit > 0 ? "Xuất báo cáo (" + exportLimit + " bản/tháng)" : "Không hỗ trợ xuất báo cáo"
             );
             case "TEAM" -> List.of(
-                    "500 lượt tìm kiếm/tháng",
-                    "Phân tích sâu AI (10 lần/tuần)",
+                    searchLimit + " lượt tìm kiếm/tháng",
+                    "Phân tích sâu AI (" + deepInsightLimit + " lần/tuần)",
                     "Phân tích sâu bằng AI nâng cao",
                     "Xem đối thủ cạnh tranh"
             );
@@ -3065,8 +3070,8 @@ public class FrontendService {
                     "Hỗ trợ ưu tiên"
             );
             default -> List.of(
-                    (plan.getSearchLimit() != null && plan.getSearchLimit() >= 9999 ? "Không giới hạn" : plan.getSearchLimit()) + " lượt tìm kiếm/tháng",
-                    (plan.getExportLimit() != null && plan.getExportLimit() >= 999 ? "Không giới hạn" : plan.getExportLimit()) + " lượt xuất báo cáo/tháng",
+                    (searchLimit >= 9999 ? "Không giới hạn" : searchLimit) + " lượt tìm kiếm/tháng",
+                    (exportLimit >= 999 ? "Không giới hạn" : exportLimit) + " lượt xuất báo cáo/tháng",
                     plan.getDescription() != null ? plan.getDescription() : "Gói linh hoạt"
             );
         };

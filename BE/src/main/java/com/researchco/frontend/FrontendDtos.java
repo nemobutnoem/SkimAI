@@ -292,7 +292,8 @@ public class FrontendDtos {
             String yearly,
             List<String> features,
             boolean current,
-            String ctaLabel
+            String ctaLabel,
+            String description
     ) {
     }
 

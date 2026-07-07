@@ -253,7 +253,7 @@ export function PricingPage() {
                 </div>
 
                 <p className="pricing-desc">
-                  {PLAN_DESC[plan.id?.toLowerCase()] ?? plan.description ?? ''}
+                  {plan.description || PLAN_DESC[plan.id?.toLowerCase()] || ''}
                 </p>
 
                 <ul className="pricing-features">
