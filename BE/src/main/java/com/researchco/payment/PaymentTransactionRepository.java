@@ -24,4 +24,6 @@ public interface PaymentTransactionRepository extends JpaRepository<PaymentTrans
     List<PaymentTransactionEntity> findTop10ByOrderByCreatedAtDesc();
 
     List<PaymentTransactionEntity> findByCreatedAtBetween(LocalDateTime start, LocalDateTime end);
+
+    List<PaymentTransactionEntity> findByStatus(String status);
 }
