@@ -9,4 +9,4 @@ FROM eclipse-temurin:17-jre
 WORKDIR /app
 COPY --from=builder /app/target/researchco-backend-0.0.1-SNAPSHOT.jar app.jar
 EXPOSE 8080
-ENTRYPOINT ["sh", "-c", "java -Dserver.port=${PORT:-8080} -jar /app/app.jar"]
+ENTRYPOINT ["sh", "-c", "java -XX:+UseSerialGC -Xss256k -XX:MaxMetaspaceSize=128m -Xms128m -Xmx256m -Dserver.port=${PORT:-8080} -jar /app/app.jar"]
