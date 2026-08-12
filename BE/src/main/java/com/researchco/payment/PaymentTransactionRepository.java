@@ -25,5 +25,6 @@ public interface PaymentTransactionRepository extends JpaRepository<PaymentTrans
 
     List<PaymentTransactionEntity> findByCreatedAtBetween(LocalDateTime start, LocalDateTime end);
 
-    List<PaymentTransactionEntity> findByStatus(String status);
+    @org.springframework.data.jpa.repository.Query("SELECT p FROM PaymentTransactionEntity p JOIN FETCH p.user JOIN FETCH p.plan WHERE p.status = :status")
+    List<PaymentTransactionEntity> findByStatusWithUserAndPlan(@org.springframework.data.repository.query.Param("status") String status);
 }

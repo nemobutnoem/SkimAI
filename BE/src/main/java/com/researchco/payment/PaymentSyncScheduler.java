@@ -21,7 +21,7 @@ public class PaymentSyncScheduler {
     public void syncPendingPayments() {
         log.info("Starting automatic payment status synchronization...");
         try {
-            List<PaymentTransactionEntity> pendingTransactions = paymentTransactionRepository.findByStatus("PENDING");
+            List<PaymentTransactionEntity> pendingTransactions = paymentTransactionRepository.findByStatusWithUserAndPlan("PENDING");
             if (pendingTransactions.isEmpty()) {
                 log.info("No pending payment transactions found to synchronize.");
                 return;
