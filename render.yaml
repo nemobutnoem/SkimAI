@@ -2,7 +2,7 @@ services:
   - type: web
     name: skimai-backend
     runtime: docker
-    plan: free
+    plan: starter
     dockerfilePath: ./BE/Dockerfile
     healthCheckPath: /api/home/trends
     autoDeploy: true
