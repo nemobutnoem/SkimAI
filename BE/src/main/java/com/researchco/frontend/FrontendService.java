@@ -2054,10 +2054,49 @@ public class FrontendService {
                                     null, null, null, null, null
                             );
                         }
+                    } else if (!paymentTestMode) {
+                        payment.setStatus("PENDING");
+                        paymentTransactionRepository.save(payment);
+                        return new FrontendDtos.PricingCheckoutResponse(
+                                "pending_payment",
+                                "Payment status verification returned HTTP " + response.statusCode(),
+                                payment.getPlan().getName().toLowerCase(Locale.ROOT),
+                                titleCase(payment.getPlan().getName()),
+                                payment.getBillingCycle(),
+                                "inv_" + payment.getId().toString().substring(0, 8),
+                                "$" + priceLabel(payment.getAmount()),
+                                null, payment.getCheckoutUrl(), payment.getProviderSessionId(),
+                                null, null, null, null, null
+                        );
                     }
                 } catch (Exception e) {
                     log.error("Failed to verify PayOS payment status for session={}", payment.getProviderSessionId(), e);
+                    if (!paymentTestMode) {
+                        return new FrontendDtos.PricingCheckoutResponse(
+                                "pending_payment",
+                                "Failed to connect to PayOS API for verification.",
+                                payment.getPlan().getName().toLowerCase(Locale.ROOT),
+                                titleCase(payment.getPlan().getName()),
+                                payment.getBillingCycle(),
+                                "inv_" + payment.getId().toString().substring(0, 8),
+                                "$" + priceLabel(payment.getAmount()),
+                                null, payment.getCheckoutUrl(), payment.getProviderSessionId(),
+                                null, null, null, null, null
+                        );
+                    }
                 }
+            } else if (!paymentTestMode) {
+                return new FrontendDtos.PricingCheckoutResponse(
+                        "pending_payment",
+                        "Payment verification pending.",
+                        payment.getPlan().getName().toLowerCase(Locale.ROOT),
+                        titleCase(payment.getPlan().getName()),
+                        payment.getBillingCycle(),
+                        "inv_" + payment.getId().toString().substring(0, 8),
+                        "$" + priceLabel(payment.getAmount()),
+                        null, payment.getCheckoutUrl(), payment.getProviderSessionId(),
+                        null, null, null, null, null
+                );
             }
 
             activateSubscription(payment);
