@@ -115,7 +115,11 @@ export function AdminDashboardPage() {
     for (const item of stats) {
       const label = item?.label
       if (!label) continue
-      const n = Number.parseFloat(String(item?.value ?? ''))
+      let cleanVal = String(item?.value ?? '')
+      if (label === 'Revenue' && cleanVal.startsWith('$')) {
+        cleanVal = cleanVal.substring(1).replace(/,/g, '')
+      }
+      const n = Number.parseFloat(cleanVal)
       if (Number.isFinite(n)) {
         result[label] = n
       }
@@ -194,17 +198,25 @@ export function AdminDashboardPage() {
       { label: 'Users', value: '0', change: '', negative: false },
       { label: 'Searches', value: '0', change: '', negative: false },
       { label: 'Reports', value: '0', change: '', negative: false },
-      { label: 'Subscriptions', value: '0', change: '', negative: false },
+      { label: 'Revenue', value: '$0.00', change: '', negative: false },
       { label: 'Premium', value: '0', change: '', negative: false },
     ]
   })()
 
   const formatAnimatedNumber = (label, rawValue) => {
-    const target = Number.parseFloat(String(rawValue ?? ''))
+    let cleanValue = String(rawValue ?? '')
+    const isCurrency = label === 'Revenue'
+    if (isCurrency && cleanValue.startsWith('$')) {
+      cleanValue = cleanValue.substring(1).replace(/,/g, '')
+    }
+    const target = Number.parseFloat(cleanValue)
     if (!Number.isFinite(target)) return rawValue
     const current = animatedStatValues[label]
     const value = Number.isFinite(current) ? current : 0
-    return Math.round(value).toLocaleString()
+    const formatted = isCurrency 
+      ? value.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+      : Math.round(value).toLocaleString()
+    return isCurrency ? `$${formatted}` : formatted
   }
 
   return (

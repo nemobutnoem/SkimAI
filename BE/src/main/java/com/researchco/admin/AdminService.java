@@ -124,18 +124,29 @@ public class AdminService {
         long reportsCurrent = reportRepository.countByCreatedAtBetween(currentStart, currentEnd);
         long reportsPrev = reportRepository.countByCreatedAtBetween(prevStart, prevEnd);
 
+        BigDecimal revenueTotal = paymentTransactionRepository.findAll().stream()
+                .filter(tx -> "PAID".equalsIgnoreCase(tx.getStatus()))
+                .map(PaymentTransactionEntity::getAmount)
+                .filter(Objects::nonNull)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+
+        BigDecimal revenueCurrent = paymentTransactionRepository.findByCreatedAtBetween(currentStart, currentEnd).stream()
+                .filter(tx -> "PAID".equalsIgnoreCase(tx.getStatus()))
+                .map(PaymentTransactionEntity::getAmount)
+                .filter(Objects::nonNull)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+
+        BigDecimal revenuePrev = paymentTransactionRepository.findByCreatedAtBetween(prevStart, prevEnd).stream()
+                .filter(tx -> "PAID".equalsIgnoreCase(tx.getStatus()))
+                .map(PaymentTransactionEntity::getAmount)
+                .filter(Objects::nonNull)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+
         List<UserSubscriptionEntity> allSubscriptions = userSubscriptionRepository.findAllNonAdmin();
 
         List<UserSubscriptionEntity> activeSubscriptions = allSubscriptions.stream()
                 .filter(sub -> "ACTIVE".equalsIgnoreCase(sub.getStatus()))
                 .toList();
-
-        long subscriptionsCurrent = activeSubscriptions.stream()
-                .filter(sub -> sub.getStartDate() != null && sub.getStartDate().isAfter(currentStart) && sub.getStartDate().isBefore(currentEnd))
-                .count();
-        long subscriptionsPrev = activeSubscriptions.stream()
-                .filter(sub -> sub.getStartDate() != null && sub.getStartDate().isAfter(prevStart) && sub.getStartDate().isBefore(prevEnd))
-                .count();
 
         long premiumActive = activeSubscriptions.stream()
                 .filter(sub -> sub.getPlan() != null && !"FREE".equalsIgnoreCase(sub.getPlan().getName()))
@@ -153,7 +164,6 @@ public class AdminService {
         AdminDtos.ChartSeries userGrowth = buildMonthlyCountSeries(
                 7,
                 (start, end) -> countNonAdminUsersBetween(start, end)
-                // (start, end) -> activeSubscriptions.stream().filter(sub -> sub.getStartDate() != null && sub.getStartDate().isAfter(start) && sub.getStartDate().isBefore(end)).count()
         );
 
         AdminDtos.ChartSeries revenue = buildMonthlyAmountSeries(6);
@@ -172,7 +182,7 @@ public class AdminService {
                         stat("Users", countAllNonAdminUsers(), usersCurrent, usersPrev),
                         stat("Searches", searchQueryRepository.count(), searchesCurrent, searchesPrev),
                         stat("Reports", reportRepository.count(), reportsCurrent, reportsPrev),
-                        stat("Subscriptions", activeSubscriptions.size(), subscriptionsCurrent, subscriptionsPrev),
+                        statRevenue("Revenue", revenueTotal, revenueCurrent, revenuePrev),
                         stat("Premium", premiumActive, premiumCurrent, premiumPrev)
                 ),
                 activities,
@@ -375,11 +385,29 @@ public class AdminService {
                 return new AdminDtos.StatItem(label, String.valueOf(total), change, negative);
         }
 
+        private AdminDtos.StatItem statRevenue(String label, BigDecimal total, BigDecimal currentMonth, BigDecimal prevMonth) {
+                double changePct = percentChange(currentMonth, prevMonth);
+                boolean negative = changePct < 0;
+                String change = String.format(Locale.ROOT, "%+.1f%%", changePct);
+                return new AdminDtos.StatItem(label, "$" + priceLabel(total), change, negative);
+        }
+
         private double percentChange(long current, long previous) {
                 if (previous == 0) {
                         return current == 0 ? 0.0 : 100.0;
                 }
                 return ((current - previous) * 100.0) / previous;
+        }
+
+        private double percentChange(BigDecimal current, BigDecimal previous) {
+                if (previous == null || previous.compareTo(BigDecimal.ZERO) == 0) {
+                        return current == null || current.compareTo(BigDecimal.ZERO) == 0 ? 0.0 : 100.0;
+                }
+                if (current == null) {
+                        return -100.0;
+                }
+                return current.subtract(previous).multiply(BigDecimal.valueOf(100L))
+                        .divide(previous, 2, RoundingMode.HALF_UP).doubleValue();
         }
 
         private AdminDtos.ChartSeries buildMonthlyCountSeries(int months, CountProvider provider) {
