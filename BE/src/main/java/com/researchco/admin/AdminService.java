@@ -124,9 +124,14 @@ public class AdminService {
         long reportsCurrent = reportRepository.countByCreatedAtBetween(currentStart, currentEnd);
         long reportsPrev = reportRepository.countByCreatedAtBetween(prevStart, prevEnd);
 
-        BigDecimal revenueTotal = paymentTransactionRepository.findAll().stream()
-                .filter(tx -> "PAID".equalsIgnoreCase(tx.getStatus()))
-                .map(PaymentTransactionEntity::getAmount)
+        List<UserSubscriptionEntity> allSubscriptions = userSubscriptionRepository.findAllNonAdmin();
+
+        List<UserSubscriptionEntity> activeSubscriptions = allSubscriptions.stream()
+                .filter(sub -> "ACTIVE".equalsIgnoreCase(sub.getStatus()))
+                .toList();
+
+        BigDecimal mrr = activeSubscriptions.stream()
+                .map(sub -> sub.getPlan() == null ? null : sub.getPlan().getPrice())
                 .filter(Objects::nonNull)
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
 
@@ -141,12 +146,6 @@ public class AdminService {
                 .map(PaymentTransactionEntity::getAmount)
                 .filter(Objects::nonNull)
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
-
-        List<UserSubscriptionEntity> allSubscriptions = userSubscriptionRepository.findAllNonAdmin();
-
-        List<UserSubscriptionEntity> activeSubscriptions = allSubscriptions.stream()
-                .filter(sub -> "ACTIVE".equalsIgnoreCase(sub.getStatus()))
-                .toList();
 
         long premiumActive = activeSubscriptions.stream()
                 .filter(sub -> sub.getPlan() != null && !"FREE".equalsIgnoreCase(sub.getPlan().getName()))
@@ -182,7 +181,7 @@ public class AdminService {
                         stat("Users", countAllNonAdminUsers(), usersCurrent, usersPrev),
                         stat("Searches", searchQueryRepository.count(), searchesCurrent, searchesPrev),
                         stat("Reports", reportRepository.count(), reportsCurrent, reportsPrev),
-                        statRevenue("Revenue", revenueTotal, revenueCurrent, revenuePrev),
+                        statRevenue("Revenue", mrr, revenueCurrent, revenuePrev),
                         stat("Premium", premiumActive, premiumCurrent, premiumPrev)
                 ),
                 activities,
