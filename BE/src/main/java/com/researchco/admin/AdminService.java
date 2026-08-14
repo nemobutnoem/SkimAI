@@ -126,16 +126,17 @@ public class AdminService {
 
         List<UserSubscriptionEntity> allSubscriptions = userSubscriptionRepository.findAllNonAdmin();
 
-        long subscriptionsCurrent = allSubscriptions.stream()
-                .filter(sub -> sub.getStartDate() != null && sub.getStartDate().isAfter(currentStart) && sub.getStartDate().isBefore(currentEnd))
-                .count();
-        long subscriptionsPrev = allSubscriptions.stream()
-                .filter(sub -> sub.getStartDate() != null && sub.getStartDate().isAfter(prevStart) && sub.getStartDate().isBefore(prevEnd))
-                .count();
-
         List<UserSubscriptionEntity> activeSubscriptions = allSubscriptions.stream()
                 .filter(sub -> "ACTIVE".equalsIgnoreCase(sub.getStatus()))
                 .toList();
+
+        long subscriptionsCurrent = activeSubscriptions.stream()
+                .filter(sub -> sub.getStartDate() != null && sub.getStartDate().isAfter(currentStart) && sub.getStartDate().isBefore(currentEnd))
+                .count();
+        long subscriptionsPrev = activeSubscriptions.stream()
+                .filter(sub -> sub.getStartDate() != null && sub.getStartDate().isAfter(prevStart) && sub.getStartDate().isBefore(prevEnd))
+                .count();
+
         long premiumActive = activeSubscriptions.stream()
                 .filter(sub -> sub.getPlan() != null && !"FREE".equalsIgnoreCase(sub.getPlan().getName()))
                 .count();
@@ -152,6 +153,7 @@ public class AdminService {
         AdminDtos.ChartSeries userGrowth = buildMonthlyCountSeries(
                 7,
                 (start, end) -> countNonAdminUsersBetween(start, end)
+                // (start, end) -> activeSubscriptions.stream().filter(sub -> sub.getStartDate() != null && sub.getStartDate().isAfter(start) && sub.getStartDate().isBefore(end)).count()
         );
 
         AdminDtos.ChartSeries revenue = buildMonthlyAmountSeries(6);
@@ -170,7 +172,7 @@ public class AdminService {
                         stat("Users", countAllNonAdminUsers(), usersCurrent, usersPrev),
                         stat("Searches", searchQueryRepository.count(), searchesCurrent, searchesPrev),
                         stat("Reports", reportRepository.count(), reportsCurrent, reportsPrev),
-                        stat("Subscriptions", allSubscriptions.size(), subscriptionsCurrent, subscriptionsPrev),
+                        stat("Subscriptions", activeSubscriptions.size(), subscriptionsCurrent, subscriptionsPrev),
                         stat("Premium", premiumActive, premiumCurrent, premiumPrev)
                 ),
                 activities,
